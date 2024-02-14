@@ -3,8 +3,11 @@
 
 #include <GLFW/glfw3.h>
 
+#include <vulkan/vulkan.h>
+
 int main()
 {
+    assert(VK_FALSE == 0);
     printf("Hello, world\n");
 
     const auto rc = glfwInit();

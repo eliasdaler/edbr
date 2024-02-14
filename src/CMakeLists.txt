@@ -12,3 +12,6 @@ target_add_extra_warnings(game)
 target_include_directories(game PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 
 target_link_libraries(game PRIVATE glfw::glfw)
+
+find_package(Vulkan REQUIRED)
+target_link_libraries(game PRIVATE Vulkan::Vulkan)
