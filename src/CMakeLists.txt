@@ -14,4 +14,8 @@ target_include_directories(game PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 target_link_libraries(game PRIVATE glfw::glfw)
 
 find_package(Vulkan REQUIRED)
-target_link_libraries(game PRIVATE Vulkan::Vulkan)
+target_link_libraries(game PRIVATE
+  Vulkan::Vulkan
+  vk-bootstrap::vk-bootstrap
+)
+
