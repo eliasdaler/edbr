@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <iostream>
+#include <set>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -31,6 +32,26 @@ bool checkValidationLayerSupport(std::string_view validationLayerName)
         }
     }
     return false;
+}
+
+bool checkPhysicalDeviceSupportsNeededExtensions(VkPhysicalDevice device)
+{
+    auto deviceExtensions = std::array{
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
+
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(
+        device, nullptr, &extensionCount, availableExtensions.data());
+
+    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+    for (const auto& extension : availableExtensions) {
+        requiredExtensions.erase(extension.extensionName);
+    }
+    return requiredExtensions.empty();
 }
 
 VkPhysicalDevice pickPhysicalDevice(std::span<VkPhysicalDevice> physicalDevices)
@@ -76,14 +97,12 @@ VkInstance createVkInstance()
         .pApplicationInfo = &appInfo,
     };
 
-    // checkValidationLayerSupport();
-
 #ifndef NDEBUG
     static const char* KHRONOS_VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     assert(checkValidationLayerSupport(KHRONOS_VALIDATION_LAYER_NAME));
     const auto validationLayers = std::array{KHRONOS_VALIDATION_LAYER_NAME};
-    createInfo.ppEnabledLayerNames = validationLayers.data();
     createInfo.enabledLayerCount = validationLayers.size();
+    createInfo.ppEnabledLayerNames = validationLayers.data();
 #endif
 
     std::vector<const char*> extensionNames{};
@@ -166,24 +185,138 @@ std::uint32_t pickQueue(VkInstance instance, VkPhysicalDevice physicalDevice)
     return pickedQueue;
 }
 
-VkDevice createVkDevice(VkInstance instance, VkPhysicalDevice physicalDevice)
+VkDevice createVkDevice(
+    VkInstance instance,
+    VkPhysicalDevice physicalDevice,
+    std::uint32_t* queueIndex)
 {
+    *queueIndex = pickQueue(instance, physicalDevice);
     float queuePriorities{1.f};
     VkDeviceQueueCreateInfo queueCreateInfo{
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = pickQueue(instance, physicalDevice),
+        .queueFamilyIndex = *queueIndex,
         .queueCount = 1,
         .pQueuePriorities = &queuePriorities,
     };
 
-    VkDevice device{};
+    const auto deviceExtensions = std::array{
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
+
     VkDeviceCreateInfo createInfo{
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
+        .enabledExtensionCount = deviceExtensions.size(),
+        .ppEnabledExtensionNames = deviceExtensions.data(),
     };
+
+    VkDevice device{};
     VK_CHECK(vkCreateDevice(physicalDevice, &createInfo, 0, &device));
     return device;
+}
+
+bool checkSurfaceFormatSupported(
+    VkPhysicalDevice device,
+    VkSurfaceKHR surface,
+    VkSurfaceFormatKHR requiredFormat)
+{
+    std::uint32_t formatCount;
+    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr));
+
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+    VK_CHECK(
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, surfaceFormats.data()));
+    assert(!surfaceFormats.empty());
+
+    for (const auto& format : surfaceFormats) {
+        if ((format.format == requiredFormat.format &&
+             format.colorSpace == requiredFormat.colorSpace) ||
+            format.format == VK_FORMAT_UNDEFINED) { // no preferred format
+            return true;
+        }
+    }
+    return false;
+}
+
+bool checkPresentModeSupported(
+    VkPhysicalDevice device,
+    VkSurfaceKHR surface,
+    VkPresentModeKHR requiredPresentMode)
+{
+    std::uint32_t presentModeCount;
+    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, 0));
+
+    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
+        device, surface, &presentModeCount, presentModes.data()));
+    for (const auto& presentMode : presentModes) {
+        if (presentMode == requiredPresentMode) {
+            return true;
+        }
+    }
+    return false;
+}
+
+struct SwapchainInfo {
+    VkSurfaceFormatKHR format;
+    VkPresentModeKHR presentMode;
+};
+SwapchainInfo selectSwapchainProps(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+    SwapchainInfo info{
+        .format =
+            VkSurfaceFormatKHR{
+                .format = VK_FORMAT_B8G8R8A8_UNORM,
+                .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+            },
+        .presentMode = VK_PRESENT_MODE_FIFO_KHR,
+    };
+
+    assert(checkSurfaceFormatSupported(device, surface, info.format));
+    assert(checkPresentModeSupported(device, surface, info.presentMode));
+
+    return info;
+}
+
+VkSwapchainKHR createSwapchain(
+    VkPhysicalDevice physicalDevice,
+    VkDevice device,
+    VkSurfaceKHR surface,
+    std::uint32_t queueIndex,
+    GLFWwindow* window)
+{
+    const auto info = selectSwapchainProps(physicalDevice, surface);
+
+    VkSurfaceCapabilitiesKHR surfCapabilities;
+    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfCapabilities));
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    assert(surfCapabilities.maxImageExtent.width == (uint32_t)width);
+    assert(surfCapabilities.maxImageExtent.height == (uint32_t)height);
+    // FIXME: handle other cases later
+
+    VkSwapchainCreateInfoKHR createInfo{
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface = surface,
+        .minImageCount = surfCapabilities.minImageCount,
+        .imageFormat = info.format.format,
+        .imageColorSpace = info.format.colorSpace,
+        .imageExtent = VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height},
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .queueFamilyIndexCount = 1,
+        .pQueueFamilyIndices = &queueIndex,
+        .preTransform = surfCapabilities.currentTransform,
+        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode = info.presentMode,
+    };
+
+    VkSwapchainKHR swapchain{};
+    VK_CHECK(vkCreateSwapchainKHR(device, &createInfo, 0, &swapchain));
+    return swapchain;
 }
 
 int main()
@@ -196,7 +329,9 @@ int main()
     assert(instance);
     const auto physicalDevice = createVkPhysicalDevice(instance);
     assert(physicalDevice);
-    const auto device = createVkDevice(instance, physicalDevice);
+    assert(checkPhysicalDeviceSupportsNeededExtensions(physicalDevice));
+    std::uint32_t queueIndex{};
+    const auto device = createVkDevice(instance, physicalDevice, &queueIndex);
     assert(device);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -208,10 +343,14 @@ int main()
     VK_CHECK(glfwCreateWindowSurface(instance, window, NULL, &surface));
     assert(surface);
 
+    auto swapchain = createSwapchain(physicalDevice, device, surface, queueIndex, window);
+    assert(swapchain);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
 
+    vkDestroySwapchainKHR(device, swapchain, 0);
     vkDestroySurfaceKHR(instance, surface, 0);
     vkDestroyDevice(device, 0);
     vkDestroyInstance(instance, 0);
