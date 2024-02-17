@@ -9,6 +9,7 @@ project(
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ColorDiagnostics)
 include(TargetAddExtraWarnings)
+include(TargetShaders)
 
 if (WIN32)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "Link to libs dynamically")

@@ -27,3 +27,9 @@ target_link_libraries(game PRIVATE
   GPUOpen::VulkanMemoryAllocator
 )
 
+set(SHADERS
+  gradient.comp
+)
+list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
+
+target_shaders(game ${SHADERS})
