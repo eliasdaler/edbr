@@ -35,6 +35,7 @@ public:
 
 private:
     void initVulkan();
+    void createSwapchain(std::uint32_t width, std::uint32_t height);
     void createCommandBuffers();
     void initSyncStructures();
 

@@ -12,6 +12,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 namespace
 {
 static constexpr std::uint32_t SCREEN_WIDTH = 1024;
@@ -21,6 +24,7 @@ static constexpr std::uint32_t SCREEN_HEIGHT = 768;
 void Renderer::init()
 {
     initVulkan();
+    createSwapchain(SCREEN_WIDTH, SCREEN_HEIGHT);
     createCommandBuffers();
     initSyncStructures();
 }
@@ -56,11 +60,24 @@ void Renderer::initVulkan()
     graphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
     graphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
 
+    // init vma allocator
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = physicalDevice;
+    allocatorInfo.device = device;
+    allocatorInfo.instance = instance;
+    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    vmaCreateAllocator(&allocatorInfo, &allocator);
+
+    deletionQueue.pushFunction([&]() { vmaDestroyAllocator(allocator); });
+}
+
+void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
+{
     vkb::SwapchainBuilder swapchainBuilder{device};
     swapchain = swapchainBuilder.use_default_format_selection()
                     .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-                    .set_desired_extent(SCREEN_WIDTH, SCREEN_HEIGHT)
+                    .set_desired_extent(width, height)
                     .build()
                     .value();
 
