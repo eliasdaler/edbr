@@ -5,11 +5,69 @@
 #include <cmath>
 #include <limits>
 
-Renderer::Renderer(VkQueue graphicsQueue, std::uint32_t graphicsQueueFamily) :
-    graphicsQueue(graphicsQueue), graphicsQueueFamily(graphicsQueueFamily)
-{}
+#include <vulkan/vulkan.h>
 
-void Renderer::createCommandBuffers(VkDevice device)
+#include <VkBootstrap.h>
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+namespace
+{
+static constexpr std::uint32_t SCREEN_WIDTH = 1024;
+static constexpr std::uint32_t SCREEN_HEIGHT = 768;
+}
+
+void Renderer::init()
+{
+    initVulkan();
+    createCommandBuffers();
+    initSyncStructures();
+}
+
+void Renderer::initVulkan()
+{
+    vkb::InstanceBuilder builder;
+    instance = builder.set_app_name("Vulkan app")
+                   .request_validation_layers()
+                   .use_default_debug_messenger()
+                   .require_api_version(1, 3, 0)
+                   .build()
+                   .value();
+
+    glfwInit();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Vulkan app", nullptr, nullptr);
+    assert(window);
+
+    VK_CHECK(glfwCreateWindowSurface(instance, window, 0, &surface));
+
+    vkb::PhysicalDeviceSelector selector{instance};
+    auto physicalDevice = selector.set_minimum_version(1, 3).set_surface(surface).select().value();
+
+    vkb::DeviceBuilder device_builder{physicalDevice};
+    VkPhysicalDeviceSynchronization2Features enabledFeatures{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+        .synchronization2 = true,
+    };
+    device = device_builder.add_pNext(&enabledFeatures).build().value();
+
+    graphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
+    graphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
+
+    vkb::SwapchainBuilder swapchainBuilder{device};
+    swapchain = swapchainBuilder.use_default_format_selection()
+                    .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                    .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                    .set_desired_extent(SCREEN_WIDTH, SCREEN_HEIGHT)
+                    .build()
+                    .value();
+
+    swapchainImages = vkutil::getSwapchainImages(device, swapchain);
+}
+
+void Renderer::createCommandBuffers()
 {
     VkCommandPoolCreateInfo createInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -31,7 +89,7 @@ void Renderer::createCommandBuffers(VkDevice device)
     }
 }
 
-void Renderer::initSyncStructures(VkDevice device)
+void Renderer::initSyncStructures()
 {
     const auto fenceCreateInfo = VkFenceCreateInfo{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -47,7 +105,7 @@ void Renderer::initSyncStructures(VkDevice device)
     }
 }
 
-void Renderer::destroyCommandBuffers(VkDevice device)
+void Renderer::destroyCommandBuffers()
 {
     vkDeviceWaitIdle(device);
 
@@ -56,7 +114,7 @@ void Renderer::destroyCommandBuffers(VkDevice device)
     }
 }
 
-void Renderer::destroySyncStructures(VkDevice device)
+void Renderer::destroySyncStructures()
 {
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
         vkDestroyFence(device, frames[i].renderFence, 0);
@@ -65,20 +123,27 @@ void Renderer::destroySyncStructures(VkDevice device)
     }
 }
 
+void Renderer::run()
+{
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        draw();
+    }
+}
+
 Renderer::FrameData& Renderer::getCurrentFrame()
 {
     return frames[frameNumber % FRAME_OVERLAP];
 }
 
-void Renderer::draw(
-    VkDevice device,
-    VkSwapchainKHR swapchain,
-    const std::vector<VkImage>& swapchainImages)
+void Renderer::draw()
 {
     static constexpr auto defaultTimeout = std::numeric_limits<std::uint64_t>::max();
 
-    const auto& currentFrame = getCurrentFrame();
+    auto& currentFrame = getCurrentFrame();
     VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFence, true, defaultTimeout));
+    currentFrame.deletionQueue.flush();
+
     VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFence));
 
     std::uint32_t swapchainImageIndex{};
@@ -128,7 +193,7 @@ void Renderer::draw(
             .waitSemaphoreCount = 1,
             .pWaitSemaphores = &currentFrame.renderSemaphore,
             .swapchainCount = 1,
-            .pSwapchains = &swapchain,
+            .pSwapchains = &swapchain.swapchain,
             .pImageIndices = &swapchainImageIndex,
         };
 
@@ -136,4 +201,21 @@ void Renderer::draw(
     }
 
     frameNumber++;
+}
+
+void Renderer::cleanup()
+{
+    vkDeviceWaitIdle(device);
+    deletionQueue.flush();
+
+    destroyCommandBuffers();
+    destroySyncStructures();
+
+    vkb::destroy_swapchain(swapchain);
+    vkb::destroy_surface(instance, surface);
+    vkb::destroy_device(device);
+    vkb::destroy_instance(instance);
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }

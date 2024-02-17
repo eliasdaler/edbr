@@ -6,6 +6,13 @@
 #include <cstdint>
 #include <vector>
 
+#include <DeletionQueue.h>
+
+#include <VkBootstrap.h>
+#include <vk_mem_alloc.h>
+
+class GLFWwindow;
+
 class Renderer {
 public:
     static constexpr std::size_t FRAME_OVERLAP = 2;
@@ -17,26 +24,41 @@ public:
         VkSemaphore swapchainSemaphore;
         VkSemaphore renderSemaphore;
         VkFence renderFence;
+
+        DeletionQueue deletionQueue;
     };
 
 public:
-    Renderer(VkQueue graphicsQueue, std::uint32_t graphicsQueueFamily);
-    void createCommandBuffers(VkDevice device);
-    void initSyncStructures(VkDevice device);
-
-    void destroyCommandBuffers(VkDevice device);
-    void destroySyncStructures(VkDevice device);
-
-    FrameData& getCurrentFrame();
-    void draw(
-        VkDevice device,
-        VkSwapchainKHR swapchain,
-        const std::vector<VkImage>& swapchainImages);
+    void init();
+    void run();
+    void cleanup();
 
 private:
-    std::array<FrameData, FRAME_OVERLAP> frames{};
-    std::uint32_t frameNumber{0};
+    void initVulkan();
+    void createCommandBuffers();
+    void initSyncStructures();
 
+    void destroyCommandBuffers();
+    void destroySyncStructures();
+
+    FrameData& getCurrentFrame();
+    void draw();
+
+    GLFWwindow* window{nullptr};
+
+    vkb::Instance instance;
+    vkb::Device device;
+
+    vkb::Swapchain swapchain;
+    VkSurfaceKHR surface;
+    std::vector<VkImage> swapchainImages;
+
+    VmaAllocator allocator;
     VkQueue graphicsQueue;
     std::uint32_t graphicsQueueFamily;
+
+    DeletionQueue deletionQueue;
+
+    std::array<FrameData, FRAME_OVERLAP> frames{};
+    std::uint32_t frameNumber{0};
 };
