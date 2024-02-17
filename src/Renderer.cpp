@@ -88,6 +88,7 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
                     .set_desired_extent(width, height)
                     .build()
                     .value();
+    swapchainExtent = VkExtent2D{.width = width, .height = height};
 
     swapchainImages = vkutil::getSwapchainImages(device, swapchain);
 
@@ -204,15 +205,8 @@ void Renderer::draw()
 
     VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFence));
 
-    std::uint32_t swapchainImageIndex{};
-
-    VK_CHECK(vkAcquireNextImageKHR(
-        device,
-        swapchain,
-        defaultTimeout,
-        currentFrame.swapchainSemaphore,
-        0,
-        &swapchainImageIndex));
+    drawExtent.width = drawImage.extent.width;
+    drawExtent.height = drawImage.extent.height;
 
     VkCommandBuffer cmd = currentFrame.mainCommandBuffer;
     VkCommandBufferBeginInfo cmdBeginInfo{
@@ -221,17 +215,33 @@ void Renderer::draw()
     };
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-    auto& image = swapchainImages[swapchainImageIndex];
-    vkutil::transitionImage(cmd, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    vkutil::
+        transitionImage(cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
-    { // clear
-        auto flash = std::abs(std::sin(frameNumber / 120.f));
-        auto clearValue = VkClearColorValue{{0.0f, 0.0f, flash, 1.0f}};
-        auto clearRange = vkinit::subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-        vkCmdClearColorImage(cmd, image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
-    }
+    drawBackground(cmd);
 
-    vkutil::transitionImage(cmd, image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    vkutil::transitionImage(
+        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    // get swapchain image
+    std::uint32_t swapchainImageIndex{};
+    VK_CHECK(vkAcquireNextImageKHR(
+        device,
+        swapchain,
+        defaultTimeout,
+        currentFrame.swapchainSemaphore,
+        0,
+        &swapchainImageIndex));
+    auto& swapchainImage = swapchainImages[swapchainImageIndex];
+
+    // copy from draw image
+    vkutil::transitionImage(
+        cmd, swapchainImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    vkutil::copyImageToImage(cmd, drawImage.image, swapchainImage, drawExtent, swapchainExtent);
+    // prepare for present
+    vkutil::transitionImage(
+        cmd, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
     VK_CHECK(vkEndCommandBuffer(cmd));
 
     { // submit
@@ -259,6 +269,15 @@ void Renderer::draw()
     }
 
     frameNumber++;
+}
+
+void Renderer::drawBackground(VkCommandBuffer cmd)
+{
+    auto flash = std::abs(std::sin(frameNumber / 120.f));
+    auto clearValue = VkClearColorValue{{0.0f, 0.0f, flash, 1.0f}};
+    auto clearRange = vkinit::subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+    vkCmdClearColorImage(
+        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 }
 
 void Renderer::cleanup()

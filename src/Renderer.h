@@ -44,7 +44,9 @@ private:
     void destroySyncStructures();
 
     FrameData& getCurrentFrame();
+
     void draw();
+    void drawBackground(VkCommandBuffer cmd);
 
     GLFWwindow* window{nullptr};
 
@@ -61,6 +63,7 @@ private:
 
     vkb::Swapchain swapchain;
     std::vector<VkImage> swapchainImages;
+    VkExtent2D swapchainExtent;
 
     AllocatedImage drawImage;
     VkExtent2D drawExtent;

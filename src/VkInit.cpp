@@ -86,7 +86,14 @@ VkImageViewCreateInfo imageViewCreateInfo(
         .image = image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = format,
-        .subresourceRange = subresourceRange(aspectFlags),
+        .subresourceRange =
+            VkImageSubresourceRange{
+                .aspectMask = aspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
 }
 
