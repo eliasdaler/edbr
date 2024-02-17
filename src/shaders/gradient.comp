@@ -12,7 +12,7 @@ void main() {
         vec4 color = vec4(0.0);
         if (gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0) {
             color.x = float(texelCoord.x) / size.x;
-            color.x = float(texelCoord.y) / size.y;
+            color.y = float(texelCoord.y) / size.y;
         }
 
         imageStore(image, texelCoord, color);

@@ -6,7 +6,7 @@ function (target_shaders target shaders)
   set(SHADERS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
   foreach (SHADER_PATH ${SHADERS})
     get_filename_component(SHADER_FILENAME "${SHADER_PATH}" NAME)
-    set(SHADER_SPIRV_PATH "${SHADERS_BUILD_DIR}/${SHADER_FILENAME}.spirv")
+    set(SHADER_SPIRV_PATH "${SHADERS_BUILD_DIR}/${SHADER_FILENAME}.spv")
     add_custom_command(
       COMMENT "Building ${SHADER_FILENAME}"
       OUTPUT "${SHADER_SPIRV_PATH}"

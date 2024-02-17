@@ -1,9 +1,12 @@
 #include "Renderer.h"
 
 #include <VkInit.h>
+#include <VkPipelines.h>
 #include <VkUtil.h>
 
+#include <array>
 #include <cmath>
+#include <iostream>
 #include <limits>
 
 #include <vulkan/vulkan.h>
@@ -18,8 +21,8 @@
 
 namespace
 {
-static constexpr std::uint32_t SCREEN_WIDTH = 1024;
-static constexpr std::uint32_t SCREEN_HEIGHT = 768;
+static constexpr std::uint32_t SCREEN_WIDTH = 1920;
+static constexpr std::uint32_t SCREEN_HEIGHT = 1080;
 }
 
 void Renderer::init()
@@ -28,6 +31,8 @@ void Renderer::init()
     createSwapchain(SCREEN_WIDTH, SCREEN_HEIGHT);
     createCommandBuffers();
     initSyncStructures();
+    initDescriptors();
+    initPipelines();
 }
 
 void Renderer::initVulkan()
@@ -164,6 +169,83 @@ void Renderer::initSyncStructures()
     }
 }
 
+void Renderer::initDescriptors()
+{
+    const auto sizes = std::array{
+        DescriptorAllocator::PoolSizeRatio{
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .ratio = 1.f,
+        },
+    };
+
+    descriptorAllocator.initPool(device, 10, sizes);
+
+    DescriptorLayoutBuilder builder{};
+    builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    drawImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_COMPUTE_BIT);
+
+    drawImageDescriptors = descriptorAllocator.allocate(device, drawImageDescriptorLayout);
+
+    const auto imgInfo = VkDescriptorImageInfo{
+        .imageView = drawImage.imageView,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    const auto drawImageWrite = VkWriteDescriptorSet{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = drawImageDescriptors,
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &imgInfo,
+    };
+
+    vkUpdateDescriptorSets(device, 1, &drawImageWrite, 0, nullptr);
+}
+
+void Renderer::initPipelines()
+{
+    initBackgroundPipelines();
+}
+
+void Renderer::initBackgroundPipelines()
+{
+    auto layout = VkPipelineLayoutCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &drawImageDescriptorLayout,
+    };
+
+    VK_CHECK(vkCreatePipelineLayout(device, &layout, 0, &gradientPipelineLayout));
+
+    VkShaderModule shader;
+    if (!vkutil::loadShaderModule("shaders/gradient.comp.spv", device, &shader)) {
+        std::cout << "Error while building compute shader" << std::endl;
+        assert(false);
+    }
+
+    auto pipelineCreateInfo = VkComputePipelineCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage =
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                .module = shader,
+                .pName = "main",
+            },
+        .layout = gradientPipelineLayout,
+    };
+
+    VK_CHECK(vkCreateComputePipelines(
+        device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, 0, &gradientPipeline));
+
+    vkDestroyShaderModule(device, shader, nullptr);
+    deletionQueue.pushFunction([this]() {
+        vkDestroyPipelineLayout(device, gradientPipelineLayout, nullptr);
+        vkDestroyPipeline(device, gradientPipeline, nullptr);
+    });
+}
+
 void Renderer::destroyCommandBuffers()
 {
     vkDeviceWaitIdle(device);
@@ -273,11 +355,25 @@ void Renderer::draw()
 
 void Renderer::drawBackground(VkCommandBuffer cmd)
 {
-    auto flash = std::abs(std::sin(frameNumber / 120.f));
+    /* auto flash = std::abs(std::sin(frameNumber / 120.f));
     auto clearValue = VkClearColorValue{{0.0f, 0.0f, flash, 1.0f}};
     auto clearRange = vkinit::subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
     vkCmdClearColorImage(
-        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange); */
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientPipeline);
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        gradientPipelineLayout,
+        0,
+        1,
+        &drawImageDescriptors,
+        0,
+        nullptr);
+
+    vkCmdDispatch(
+        cmd, std::ceil(drawExtent.width / 16.f), std::ceil(drawExtent.height / 16.f), 1.f);
 }
 
 void Renderer::cleanup()

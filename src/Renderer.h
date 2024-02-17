@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <DeletionQueue.h>
+#include <VkDescriptors.h>
 #include <VkTypes.h>
 
 #include <VkBootstrap.h>
@@ -39,6 +40,9 @@ private:
     void createSwapchain(std::uint32_t width, std::uint32_t height);
     void createCommandBuffers();
     void initSyncStructures();
+    void initDescriptors();
+    void initPipelines();
+    void initBackgroundPipelines();
 
     void destroyCommandBuffers();
     void destroySyncStructures();
@@ -70,4 +74,11 @@ private:
 
     std::array<FrameData, FRAME_OVERLAP> frames{};
     std::uint32_t frameNumber{0};
+
+    DescriptorAllocator descriptorAllocator;
+    VkDescriptorSet drawImageDescriptors;
+    VkDescriptorSetLayout drawImageDescriptorLayout;
+
+    VkPipeline gradientPipeline;
+    VkPipelineLayout gradientPipelineLayout;
 };
