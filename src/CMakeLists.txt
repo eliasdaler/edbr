@@ -1,7 +1,9 @@
 add_executable(game
   DeletionQueue.cpp
-  Renderer.cpp
+  VkInit.cpp
   VkUtil.cpp
+
+  Renderer.cpp
 
   main.cpp
 )

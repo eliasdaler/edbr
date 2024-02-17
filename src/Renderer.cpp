@@ -1,5 +1,6 @@
 #include "Renderer.h"
 
+#include <VkInit.h>
 #include <VkUtil.h>
 
 #include <cmath>
@@ -47,15 +48,22 @@ void Renderer::initVulkan()
 
     VK_CHECK(glfwCreateWindowSurface(instance, window, 0, &surface));
 
+    VkPhysicalDeviceVulkan12Features features12{};
+    features12.bufferDeviceAddress = true;
+
+    VkPhysicalDeviceVulkan13Features features13{};
+    features13.synchronization2 = true;
+
     vkb::PhysicalDeviceSelector selector{instance};
-    auto physicalDevice = selector.set_minimum_version(1, 3).set_surface(surface).select().value();
+    auto physicalDevice = selector.set_minimum_version(1, 3)
+                              .set_required_features_12(features12)
+                              .set_required_features_13(features13)
+                              .set_surface(surface)
+                              .select()
+                              .value();
 
     vkb::DeviceBuilder device_builder{physicalDevice};
-    VkPhysicalDeviceSynchronization2Features enabledFeatures{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
-        .synchronization2 = true,
-    };
-    device = device_builder.add_pNext(&enabledFeatures).build().value();
+    device = device_builder.build().value();
 
     graphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
     graphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
@@ -82,6 +90,39 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
                     .value();
 
     swapchainImages = vkutil::getSwapchainImages(device, swapchain);
+
+    const auto extent = VkExtent3D{
+        .width = width,
+        .height = height,
+        .depth = 1,
+    };
+    drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    drawImage.extent = extent;
+
+    VkImageUsageFlags usages{};
+    usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    usages |= VK_IMAGE_USAGE_STORAGE_BIT;
+    usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    VkImageCreateInfo imgCreateInfo = vkinit::imageCreateInfo(drawImage.format, usages, extent);
+
+    VmaAllocationCreateInfo imgAllocInfo{
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    };
+
+    vmaCreateImage(
+        allocator, &imgCreateInfo, &imgAllocInfo, &drawImage.image, &drawImage.allocation, nullptr);
+
+    const auto imageViewCreateInfo =
+        vkinit::imageViewCreateInfo(drawImage.format, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+    VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, 0, &drawImage.imageView));
+
+    deletionQueue.pushFunction([this]() {
+        vkDestroyImageView(device, drawImage.imageView, nullptr);
+        vmaDestroyImage(allocator, drawImage.image, drawImage.allocation);
+    });
 }
 
 void Renderer::createCommandBuffers()
@@ -186,7 +227,7 @@ void Renderer::draw()
     { // clear
         auto flash = std::abs(std::sin(frameNumber / 120.f));
         auto clearValue = VkClearColorValue{{0.0f, 0.0f, flash, 1.0f}};
-        auto clearRange = vkutil::makeSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+        auto clearRange = vkinit::subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
         vkCmdClearColorImage(cmd, image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
     }
 
@@ -194,13 +235,13 @@ void Renderer::draw()
     VK_CHECK(vkEndCommandBuffer(cmd));
 
     { // submit
-        auto cmdinfo = vkutil::commandBufferSubmitInfo(cmd);
-        auto waitInfo = vkutil::semaphoreSubmitInfo(
+        auto cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
+        auto waitInfo = vkinit::semaphoreSubmitInfo(
             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currentFrame.swapchainSemaphore);
-        auto signalInfo = vkutil::
+        auto signalInfo = vkinit::
             semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currentFrame.renderSemaphore);
 
-        auto submit = vkutil::submitInfo(&cmdinfo, &signalInfo, &waitInfo);
+        auto submit = vkinit::submitInfo(&cmdinfo, &signalInfo, &waitInfo);
         VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, currentFrame.renderFence));
     }
 
