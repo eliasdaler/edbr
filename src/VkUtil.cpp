@@ -7,17 +7,6 @@
 namespace vkutil
 {
 
-std::vector<VkImage> getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain)
-{
-    std::uint32_t swapchainImageCount{};
-    VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr));
-
-    std::vector<VkImage> swapchainImages(swapchainImageCount);
-    VK_CHECK(
-        vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages.data()));
-    return swapchainImages;
-}
-
 void transitionImage(
     VkCommandBuffer cmd,
     VkImage image,
@@ -36,7 +25,7 @@ void transitionImage(
         .oldLayout = currentLayout,
         .newLayout = newLayout,
         .image = image,
-        .subresourceRange = vkinit::subresourceRange(aspectMask),
+        .subresourceRange = vkinit::imageSubresourceRange(aspectMask),
     };
 
     VkDependencyInfo depInfo{

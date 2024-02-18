@@ -19,10 +19,15 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.cpp>
+#include <imgui_impl_vulkan.cpp>
+
 namespace
 {
 static constexpr std::uint32_t SCREEN_WIDTH = 1920;
 static constexpr std::uint32_t SCREEN_HEIGHT = 1080;
+static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 }
 
 void Renderer::init()
@@ -33,6 +38,8 @@ void Renderer::init()
     initSyncStructures();
     initDescriptors();
     initPipelines();
+
+    initImGui();
 }
 
 void Renderer::initVulkan()
@@ -51,21 +58,22 @@ void Renderer::initVulkan()
     window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Vulkan app", nullptr, nullptr);
     assert(window);
 
-    VK_CHECK(glfwCreateWindowSurface(instance, window, 0, &surface));
+    VK_CHECK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
 
     VkPhysicalDeviceVulkan12Features features12{};
     features12.bufferDeviceAddress = true;
 
     VkPhysicalDeviceVulkan13Features features13{};
     features13.synchronization2 = true;
+    features13.dynamicRendering = true;
 
     vkb::PhysicalDeviceSelector selector{instance};
-    auto physicalDevice = selector.set_minimum_version(1, 3)
-                              .set_required_features_12(features12)
-                              .set_required_features_13(features13)
-                              .set_surface(surface)
-                              .select()
-                              .value();
+    physicalDevice = selector.set_minimum_version(1, 3)
+                         .set_required_features_12(features12)
+                         .set_required_features_13(features13)
+                         .set_surface(surface)
+                         .select()
+                         .value();
 
     vkb::DeviceBuilder device_builder{physicalDevice};
     device = device_builder.build().value();
@@ -87,7 +95,11 @@ void Renderer::initVulkan()
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
 {
     vkb::SwapchainBuilder swapchainBuilder{device};
-    swapchain = swapchainBuilder.use_default_format_selection()
+
+    swapchain = swapchainBuilder
+                    .set_desired_format(VkSurfaceFormatKHR{
+                        .format = VK_FORMAT_B8G8R8A8_UNORM,
+                        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
                     .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
                     .set_desired_extent(width, height)
@@ -95,7 +107,8 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
                     .value();
     swapchainExtent = VkExtent2D{.width = width, .height = height};
 
-    swapchainImages = vkutil::getSwapchainImages(device, swapchain);
+    swapchainImages = swapchain.get_images().value();
+    swapchainImageViews = swapchain.get_image_views().value();
 
     const auto extent = VkExtent3D{
         .width = width,
@@ -123,7 +136,7 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
 
     const auto imageViewCreateInfo =
         vkinit::imageViewCreateInfo(drawImage.format, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
-    VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, 0, &drawImage.imageView));
+    VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &drawImage.imageView));
 
     deletionQueue.pushFunction([this]() {
         vkDestroyImageView(device, drawImage.imageView, nullptr);
@@ -133,21 +146,14 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
 
 void Renderer::createCommandBuffers()
 {
-    VkCommandPoolCreateInfo createInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = graphicsQueueFamily,
-    };
+    const auto poolCreateInfo = vkinit::
+        commandPoolCreateInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamily);
+
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
         auto& commandPool = frames[i].commandPool;
-        VK_CHECK(vkCreateCommandPool(device, &createInfo, 0, &commandPool));
-        VkCommandBufferAllocateInfo cmdAllocInfo{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = commandPool,
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-        };
+        VK_CHECK(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &commandPool));
 
+        const auto cmdAllocInfo = vkinit::commandBufferAllocateInfo(commandPool, 1);
         auto& mainCommandBuffer = frames[i].mainCommandBuffer;
         VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &mainCommandBuffer));
     }
@@ -155,17 +161,16 @@ void Renderer::createCommandBuffers()
 
 void Renderer::initSyncStructures()
 {
-    const auto fenceCreateInfo = VkFenceCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
+    const auto fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     const auto semaphoreCreateInfo = VkSemaphoreCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
-        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, 0, &frames[i].renderFence));
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, 0, &frames[i].swapchainSemaphore));
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, 0, &frames[i].renderSemaphore));
+        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i].renderFence));
+        VK_CHECK(vkCreateSemaphore(
+            device, &semaphoreCreateInfo, nullptr, &frames[i].swapchainSemaphore));
+        VK_CHECK(
+            vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i].renderSemaphore));
     }
 }
 
@@ -219,7 +224,7 @@ void Renderer::initBackgroundPipelines()
         .pSetLayouts = &drawImageDescriptorLayout,
     };
 
-    VK_CHECK(vkCreatePipelineLayout(device, &layout, 0, &gradientPipelineLayout));
+    VK_CHECK(vkCreatePipelineLayout(device, &layout, nullptr, &gradientPipelineLayout));
 
     VkShaderModule shader;
     if (!vkutil::loadShaderModule("shaders/gradient.comp.spv", device, &shader)) {
@@ -249,6 +254,80 @@ void Renderer::initBackgroundPipelines()
     });
 }
 
+void Renderer::initImGui()
+{
+    { // init Vulkan structures
+        const auto poolCreateInfo = vkinit::commandPoolCreateInfo(
+            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamily);
+        VK_CHECK(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &imguiCommandPool));
+
+        const auto cmdAllocInfo = vkinit::commandBufferAllocateInfo(imguiCommandPool, 1);
+        VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &imguiCommandBuffer));
+
+        deletionQueue.pushFunction(
+            [this]() { vkDestroyCommandPool(device, imguiCommandPool, nullptr); });
+
+        const auto fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &imguiFence));
+        deletionQueue.pushFunction([this]() { vkDestroyFence(device, imguiFence, nullptr); });
+    }
+
+    VkDescriptorPoolSize pool_sizes[] =
+        {{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+         {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+         {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+         {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+         {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+         {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+         {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}};
+
+    const auto poolInfo = VkDescriptorPoolCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 1000,
+        .poolSizeCount = (std::uint32_t)std::size(pool_sizes),
+        .pPoolSizes = pool_sizes,
+    };
+
+    VkDescriptorPool imguiPool;
+    VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &imguiPool));
+
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    auto initInfo = ImGui_ImplVulkan_InitInfo{
+        .Instance = instance,
+        .PhysicalDevice = physicalDevice,
+        .Device = device,
+        .QueueFamily = graphicsQueueFamily,
+        .Queue = graphicsQueue,
+        .DescriptorPool = imguiPool,
+        .MinImageCount = 3,
+        .ImageCount = 3,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+        .UseDynamicRendering = true,
+        .PipelineRenderingCreateInfo =
+            VkPipelineRenderingCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+                .colorAttachmentCount = 1,
+                .pColorAttachmentFormats = &swapchain.image_format,
+            },
+        .CheckVkResultFn = [](VkResult res) { assert(res == VK_SUCCESS); },
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo);
+
+    deletionQueue.pushFunction([this, imguiPool]() {
+        ImGui_ImplVulkan_Shutdown();
+        vkDestroyDescriptorPool(device, imguiPool, nullptr);
+    });
+}
+
 void Renderer::destroyCommandBuffers()
 {
     vkDeviceWaitIdle(device);
@@ -261,18 +340,54 @@ void Renderer::destroyCommandBuffers()
 void Renderer::destroySyncStructures()
 {
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
-        vkDestroyFence(device, frames[i].renderFence, 0);
-        vkDestroySemaphore(device, frames[i].swapchainSemaphore, 0);
-        vkDestroySemaphore(device, frames[i].renderSemaphore, 0);
+        vkDestroyFence(device, frames[i].renderFence, nullptr);
+        vkDestroySemaphore(device, frames[i].swapchainSemaphore, nullptr);
+        vkDestroySemaphore(device, frames[i].renderSemaphore, nullptr);
     }
+}
+
+void Renderer::update(float dt)
+{
+    ImGui::ShowDemoWindow();
 }
 
 void Renderer::run()
 {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        // TODO: swapchain resize
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        float dt = 0.f; // TODO: compute
+        update(dt);
+
+        ImGui::Render();
+
         draw();
     }
+}
+
+void Renderer::imGuiImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& f)
+{
+    auto& cmd = imguiCommandBuffer;
+
+    VK_CHECK(vkResetFences(device, 1, &imguiFence));
+    VK_CHECK(vkResetCommandBuffer(cmd, 0));
+
+    auto cmdBeginInfo = vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+    f(cmd);
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    auto cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
+    auto submit = vkinit::submitInfo(&cmdinfo, nullptr, nullptr);
+    VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, imguiFence));
+
+    VK_CHECK(vkWaitForFences(device, 1, &imguiFence, true, NO_TIMEOUT));
 }
 
 Renderer::FrameData& Renderer::getCurrentFrame()
@@ -282,10 +397,8 @@ Renderer::FrameData& Renderer::getCurrentFrame()
 
 void Renderer::draw()
 {
-    static constexpr auto defaultTimeout = std::numeric_limits<std::uint64_t>::max();
-
     auto& currentFrame = getCurrentFrame();
-    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFence, true, defaultTimeout));
+    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFence, true, NO_TIMEOUT));
     currentFrame.deletionQueue.flush();
 
     VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFence));
@@ -293,11 +406,9 @@ void Renderer::draw()
     drawExtent.width = drawImage.extent.width;
     drawExtent.height = drawImage.extent.height;
 
-    VkCommandBuffer cmd = currentFrame.mainCommandBuffer;
-    VkCommandBufferBeginInfo cmdBeginInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
+    auto& cmd = currentFrame.mainCommandBuffer;
+    const auto cmdBeginInfo =
+        vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
     vkutil::
@@ -313,9 +424,9 @@ void Renderer::draw()
     VK_CHECK(vkAcquireNextImageKHR(
         device,
         swapchain,
-        defaultTimeout,
+        NO_TIMEOUT,
         currentFrame.swapchainSemaphore,
-        0,
+        VK_NULL_HANDLE,
         &swapchainImageIndex));
     auto& swapchainImage = swapchainImages[swapchainImageIndex];
 
@@ -323,9 +434,20 @@ void Renderer::draw()
     vkutil::transitionImage(
         cmd, swapchainImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     vkutil::copyImageToImage(cmd, drawImage.image, swapchainImage, drawExtent, swapchainExtent);
+
+    vkutil::transitionImage(
+        cmd,
+        swapchainImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    drawImGui(cmd, swapchainImageViews[swapchainImageIndex]);
+
     // prepare for present
     vkutil::transitionImage(
-        cmd, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        cmd,
+        swapchainImage,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
@@ -379,6 +501,19 @@ void Renderer::drawBackground(VkCommandBuffer cmd)
         cmd, std::ceil(drawExtent.width / 16.f), std::ceil(drawExtent.height / 16.f), 1.f);
 }
 
+void Renderer::drawImGui(VkCommandBuffer cmd, VkImageView targetImageView)
+{
+    const auto colorAttachment =
+        vkinit::attachmentInfo(targetImageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+    const auto renderInfo = vkinit::renderingInfo(swapchainExtent, &colorAttachment, nullptr);
+
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
+    vkCmdEndRendering(cmd);
+}
+
 void Renderer::cleanup()
 {
     vkDeviceWaitIdle(device);
@@ -389,10 +524,18 @@ void Renderer::cleanup()
 
     descriptorAllocator.destroyPool(device);
 
+    for (auto imageView : swapchainImageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+    swapchainImageViews.clear();
+
     vkb::destroy_swapchain(swapchain);
     vkb::destroy_surface(instance, surface);
     vkb::destroy_device(device);
     vkb::destroy_instance(instance);
+
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glfwDestroyWindow(window);
     glfwTerminate();

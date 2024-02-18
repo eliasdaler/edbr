@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cassert>
-#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -13,7 +12,6 @@
 
 namespace vkutil
 {
-std::vector<VkImage> getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain);
 void transitionImage(
     VkCommandBuffer cmd,
     VkImage image,

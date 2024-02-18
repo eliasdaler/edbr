@@ -29,6 +29,8 @@ target_link_libraries(game PRIVATE
   Vulkan::Vulkan
   vk-bootstrap::vk-bootstrap
   GPUOpen::VulkanMemoryAllocator
+
+  imgui::imgui
 )
 
 set(SHADERS

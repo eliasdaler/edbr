@@ -44,17 +44,25 @@ private:
     void initPipelines();
     void initBackgroundPipelines();
 
+    void initImGui();
+
     void destroyCommandBuffers();
     void destroySyncStructures();
+
+    void update(float dt);
+
+    void imGuiImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& f);
 
     FrameData& getCurrentFrame();
 
     void draw();
     void drawBackground(VkCommandBuffer cmd);
+    void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
 
     GLFWwindow* window{nullptr};
 
     vkb::Instance instance;
+    vkb::PhysicalDevice physicalDevice;
     vkb::Device device;
     VmaAllocator allocator;
 
@@ -67,6 +75,7 @@ private:
 
     vkb::Swapchain swapchain;
     std::vector<VkImage> swapchainImages;
+    std::vector<VkImageView> swapchainImageViews;
     VkExtent2D swapchainExtent;
 
     AllocatedImage drawImage;
@@ -81,4 +90,8 @@ private:
 
     VkPipeline gradientPipeline;
     VkPipelineLayout gradientPipelineLayout;
+
+    VkFence imguiFence;
+    VkCommandBuffer imguiCommandBuffer;
+    VkCommandPool imguiCommandPool;
 };
