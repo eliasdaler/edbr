@@ -184,6 +184,9 @@ void Renderer::initDescriptors()
     builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
     drawImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_COMPUTE_BIT);
 
+    deletionQueue.pushFunction(
+        [this]() { vkDestroyDescriptorSetLayout(device, drawImageDescriptorLayout, nullptr); });
+
     drawImageDescriptors = descriptorAllocator.allocate(device, drawImageDescriptorLayout);
 
     const auto imgInfo = VkDescriptorImageInfo{
@@ -383,6 +386,8 @@ void Renderer::cleanup()
 
     destroyCommandBuffers();
     destroySyncStructures();
+
+    descriptorAllocator.destroyPool(device);
 
     vkb::destroy_swapchain(swapchain);
     vkb::destroy_surface(instance, surface);
