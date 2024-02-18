@@ -1,7 +1,13 @@
+# glm
+add_subdirectory(glm)
+
+# glfw
 add_subdirectory(glfw)
 add_library(glfw::glfw ALIAS glfw)
 
+# vkb
 add_subdirectory(vk-bootstrap)
+# vma
 add_subdirectory(vma)
 
 ## Dear ImGui

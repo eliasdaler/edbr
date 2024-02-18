@@ -40,6 +40,11 @@ void Renderer::init()
     initPipelines();
 
     initImGui();
+
+    gradientConstants = ComputePushConstants{
+        .data1 = glm::vec4{1, 0, 0, 1},
+        .data2 = glm::vec4{0, 0, 1, 1},
+    };
 }
 
 void Renderer::initVulkan()
@@ -218,10 +223,18 @@ void Renderer::initPipelines()
 
 void Renderer::initBackgroundPipelines()
 {
-    auto layout = VkPipelineLayoutCreateInfo{
+    const auto pushContant = VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(ComputePushConstants),
+    };
+
+    const auto layout = VkPipelineLayoutCreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1,
         .pSetLayouts = &drawImageDescriptorLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushContant,
     };
 
     VK_CHECK(vkCreatePipelineLayout(device, &layout, nullptr, &gradientPipelineLayout));
@@ -349,6 +362,22 @@ void Renderer::destroySyncStructures()
 void Renderer::update(float dt)
 {
     ImGui::ShowDemoWindow();
+
+    auto glmToArr = [](const glm::vec4& v) { return std::array<float, 4>{v.x, v.y, v.z, v.w}; };
+    auto arrToGLM = [](const std::array<float, 4>& v) { return glm::vec4{v[0], v[1], v[2], v[3]}; };
+
+    ImGui::Begin("Gradient");
+
+    auto from = glmToArr(gradientConstants.data1);
+    if (ImGui::ColorEdit3("From", from.data())) {
+        gradientConstants.data1 = arrToGLM(from);
+    }
+
+    auto to = glmToArr(gradientConstants.data2);
+    if (ImGui::ColorEdit3("To", to.data())) {
+        gradientConstants.data2 = arrToGLM(to);
+    }
+    ImGui::End();
 }
 
 void Renderer::run()
@@ -496,6 +525,14 @@ void Renderer::drawBackground(VkCommandBuffer cmd)
         &drawImageDescriptors,
         0,
         nullptr);
+
+    vkCmdPushConstants(
+        cmd,
+        gradientPipelineLayout,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        sizeof(ComputePushConstants),
+        &gradientConstants);
 
     vkCmdDispatch(
         cmd, std::ceil(drawExtent.width / 16.f), std::ceil(drawExtent.height / 16.f), 1.f);
