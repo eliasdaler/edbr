@@ -44,6 +44,8 @@ target_compile_definitions(game
 )
 
 set(SHADERS
+  colored_triangle.vert
+  colored_triangle.frag
   gradient.comp
 )
 list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")

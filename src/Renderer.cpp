@@ -25,8 +25,8 @@
 
 namespace
 {
-static constexpr std::uint32_t SCREEN_WIDTH = 1920;
-static constexpr std::uint32_t SCREEN_HEIGHT = 1080;
+static constexpr std::uint32_t SCREEN_WIDTH = 1024;
+static constexpr std::uint32_t SCREEN_HEIGHT = 768;
 static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 }
 
@@ -49,8 +49,8 @@ void Renderer::init()
 
 void Renderer::initVulkan()
 {
-    vkb::InstanceBuilder builder;
-    instance = builder.set_app_name("Vulkan app")
+    instance = vkb::InstanceBuilder{}
+                   .set_app_name("Vulkan app")
                    .request_validation_layers()
                    .use_default_debug_messenger()
                    .require_api_version(1, 3, 0)
@@ -65,33 +65,33 @@ void Renderer::initVulkan()
 
     VK_CHECK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
 
-    VkPhysicalDeviceVulkan12Features features12{};
-    features12.bufferDeviceAddress = true;
+    const auto features12 = VkPhysicalDeviceVulkan12Features{
+        .bufferDeviceAddress = true,
+    };
+    const auto features13 = VkPhysicalDeviceVulkan13Features{
+        .synchronization2 = true,
+        .dynamicRendering = true,
+    };
 
-    VkPhysicalDeviceVulkan13Features features13{};
-    features13.synchronization2 = true;
-    features13.dynamicRendering = true;
-
-    vkb::PhysicalDeviceSelector selector{instance};
-    physicalDevice = selector.set_minimum_version(1, 3)
+    physicalDevice = vkb::PhysicalDeviceSelector{instance}
+                         .set_minimum_version(1, 3)
                          .set_required_features_12(features12)
                          .set_required_features_13(features13)
                          .set_surface(surface)
                          .select()
                          .value();
 
-    vkb::DeviceBuilder device_builder{physicalDevice};
-    device = device_builder.build().value();
+    device = vkb::DeviceBuilder{physicalDevice}.build().value();
 
     graphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
     graphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
 
-    // init vma allocator
-    VmaAllocatorCreateInfo allocatorInfo = {};
-    allocatorInfo.physicalDevice = physicalDevice;
-    allocatorInfo.device = device;
-    allocatorInfo.instance = instance;
-    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    const auto allocatorInfo = VmaAllocatorCreateInfo{
+        .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+        .physicalDevice = physicalDevice,
+        .device = device,
+        .instance = instance,
+    };
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
     deletionQueue.pushFunction([&]() { vmaDestroyAllocator(allocator); });
@@ -99,29 +99,27 @@ void Renderer::initVulkan()
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
 {
-    vkb::SwapchainBuilder swapchainBuilder{device};
-
-    swapchain = swapchainBuilder
+    swapchain = vkb::SwapchainBuilder{device}
                     .set_desired_format(VkSurfaceFormatKHR{
                         .format = VK_FORMAT_B8G8R8A8_UNORM,
-                        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
+                        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+                    })
                     .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
                     .set_desired_extent(width, height)
                     .build()
                     .value();
-    swapchainExtent = VkExtent2D{.width = width, .height = height};
-
     swapchainImages = swapchain.get_images().value();
     swapchainImageViews = swapchain.get_image_views().value();
+    swapchainExtent = VkExtent2D{.width = width, .height = height};
 
-    const auto extent = VkExtent3D{
+    const auto drawImageExtent = VkExtent3D{
         .width = width,
         .height = height,
         .depth = 1,
     };
     drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
-    drawImage.extent = extent;
+    drawImage.extent = drawImageExtent;
 
     VkImageUsageFlags usages{};
     usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -129,9 +127,9 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
     usages |= VK_IMAGE_USAGE_STORAGE_BIT;
     usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    VkImageCreateInfo imgCreateInfo = vkinit::imageCreateInfo(drawImage.format, usages, extent);
+    const auto imgCreateInfo = vkinit::imageCreateInfo(drawImage.format, usages, drawImageExtent);
 
-    VmaAllocationCreateInfo imgAllocInfo{
+    const auto imgAllocInfo = VmaAllocationCreateInfo{
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
@@ -219,6 +217,7 @@ void Renderer::initDescriptors()
 void Renderer::initPipelines()
 {
     initBackgroundPipelines();
+    initTrianglePipeline();
 }
 
 void Renderer::initBackgroundPipelines()
@@ -245,7 +244,7 @@ void Renderer::initBackgroundPipelines()
         assert(false);
     }
 
-    auto pipelineCreateInfo = VkComputePipelineCreateInfo{
+    const auto pipelineCreateInfo = VkComputePipelineCreateInfo{
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .stage =
             {
@@ -264,6 +263,37 @@ void Renderer::initBackgroundPipelines()
     deletionQueue.pushFunction([this]() {
         vkDestroyPipelineLayout(device, gradientPipelineLayout, nullptr);
         vkDestroyPipeline(device, gradientPipeline, nullptr);
+    });
+}
+
+void Renderer::initTrianglePipeline()
+{
+    VkShaderModule vertexShader;
+    assert(vkutil::loadShaderModule("shaders/colored_triangle.vert.spv", device, &vertexShader));
+    VkShaderModule fragShader;
+    assert(vkutil::loadShaderModule("shaders/colored_triangle.frag.spv", device, &fragShader));
+
+    const auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
+    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &trianglePipelineLayout));
+
+    trianglePipeline = PipelineBuilder{trianglePipelineLayout}
+                           .setShaders(vertexShader, fragShader)
+                           .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                           .setPolygonMode(VK_POLYGON_MODE_FILL)
+                           .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+                           .setMultisamplingNone()
+                           .disableBlending()
+                           .disableDepthTest()
+                           .setColorAttachmentFormat(drawImage.format)
+                           .setDepthFormat(VK_FORMAT_UNDEFINED)
+                           .build(device);
+
+    vkDestroyShaderModule(device, vertexShader, nullptr);
+    vkDestroyShaderModule(device, fragShader, nullptr);
+
+    deletionQueue.pushFunction([this]() {
+        vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
+        vkDestroyPipeline(device, trianglePipeline, nullptr);
     });
 }
 
@@ -343,8 +373,6 @@ void Renderer::initImGui()
 
 void Renderer::destroyCommandBuffers()
 {
-    vkDeviceWaitIdle(device);
-
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
         vkDestroyCommandPool(device, frames[i].commandPool, 0);
     }
@@ -361,7 +389,7 @@ void Renderer::destroySyncStructures()
 
 void Renderer::update(float dt)
 {
-    ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
 
     auto glmToArr = [](const glm::vec4& v) { return std::array<float, 4>{v.x, v.y, v.z, v.w}; };
     auto arrToGLM = [](const std::array<float, 4>& v) { return glm::vec4{v[0], v[1], v[2], v[3]}; };
@@ -399,26 +427,6 @@ void Renderer::run()
     }
 }
 
-void Renderer::imGuiImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& f)
-{
-    auto& cmd = imguiCommandBuffer;
-
-    VK_CHECK(vkResetFences(device, 1, &imguiFence));
-    VK_CHECK(vkResetCommandBuffer(cmd, 0));
-
-    auto cmdBeginInfo = vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-    f(cmd);
-    VK_CHECK(vkEndCommandBuffer(cmd));
-
-    auto cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
-    auto submit = vkinit::submitInfo(&cmdinfo, nullptr, nullptr);
-    VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, imguiFence));
-
-    VK_CHECK(vkWaitForFences(device, 1, &imguiFence, true, NO_TIMEOUT));
-}
-
 Renderer::FrameData& Renderer::getCurrentFrame()
 {
     return frames[frameNumber % FRAME_OVERLAP];
@@ -446,7 +454,15 @@ void Renderer::draw()
     drawBackground(cmd);
 
     vkutil::transitionImage(
-        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    drawGeometry(cmd);
+
+    vkutil::transitionImage(
+        cmd,
+        drawImage.image,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     // get swapchain image
     std::uint32_t swapchainImageIndex{};
@@ -538,6 +554,36 @@ void Renderer::drawBackground(VkCommandBuffer cmd)
         cmd, std::ceil(drawExtent.width / 16.f), std::ceil(drawExtent.height / 16.f), 1.f);
 }
 
+void Renderer::drawGeometry(VkCommandBuffer cmd)
+{
+    const auto colorAttachment =
+        vkinit::attachmentInfo(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+    const auto renderInfo = vkinit::renderingInfo(drawExtent, &colorAttachment, nullptr);
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+
+    const auto viewport = VkViewport{
+        .x = 0,
+        .y = 0,
+        .width = (float)drawExtent.width,
+        .height = (float)drawExtent.height,
+        .minDepth = 0.f,
+        .maxDepth = 1.f,
+    };
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    const auto scissor = VkRect2D{
+        .offset = {},
+        .extent = drawExtent,
+    };
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    vkCmdDraw(cmd, 3, 1, 0, 0);
+
+    vkCmdEndRendering(cmd);
+}
+
 void Renderer::drawImGui(VkCommandBuffer cmd, VkImageView targetImageView)
 {
     const auto colorAttachment =
@@ -554,6 +600,7 @@ void Renderer::drawImGui(VkCommandBuffer cmd, VkImageView targetImageView)
 void Renderer::cleanup()
 {
     vkDeviceWaitIdle(device);
+
     deletionQueue.flush();
 
     destroyCommandBuffers();

@@ -43,8 +43,10 @@ private:
     void createCommandBuffers();
     void initSyncStructures();
     void initDescriptors();
+
     void initPipelines();
     void initBackgroundPipelines();
+    void initTrianglePipeline();
 
     void initImGui();
 
@@ -53,12 +55,11 @@ private:
 
     void update(float dt);
 
-    void imGuiImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& f);
-
     FrameData& getCurrentFrame();
 
     void draw();
     void drawBackground(VkCommandBuffer cmd);
+    void drawGeometry(VkCommandBuffer cmd);
     void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
 
     GLFWwindow* window{nullptr};
@@ -105,4 +106,7 @@ private:
     };
 
     ComputePushConstants gradientConstants;
+
+    VkPipelineLayout trianglePipelineLayout;
+    VkPipeline trianglePipeline;
 };

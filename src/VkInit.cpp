@@ -154,13 +154,32 @@ VkRenderingInfo renderingInfo(
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea =
             VkRect2D{
-                .offset = VkOffset2D{.x = 0, .y = 0},
+                .offset = {},
                 .extent = renderExtent,
             },
         .layerCount = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments = colorAttachment,
         .pDepthAttachment = depthAttachment,
+    };
+}
+
+VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo()
+{
+    return VkPipelineLayoutCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    };
+}
+
+VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo(
+    VkShaderStageFlagBits stage,
+    VkShaderModule shaderModule)
+{
+    return VkPipelineShaderStageCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = stage,
+        .module = shaderModule,
+        .pName = "main",
     };
 }
 

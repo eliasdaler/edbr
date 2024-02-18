@@ -41,4 +41,8 @@ VkRenderingInfo renderingInfo(
     const VkRenderingAttachmentInfo* colorAttachment,
     const VkRenderingAttachmentInfo* depthAttachment);
 
+VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo();
+VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo(
+    VkShaderStageFlagBits stage,
+    VkShaderModule shaderModule);
 } // end of namespace vkinit
