@@ -5,6 +5,8 @@ add_executable(game
   VkDescriptors.cpp
   VkPipelines.cpp
 
+  OSUtil.cpp
+
   Renderer.cpp
 
   main.cpp
