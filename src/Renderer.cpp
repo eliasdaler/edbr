@@ -450,6 +450,12 @@ void Renderer::destroySyncStructures()
     }
 }
 
+void Renderer::destroyMeshData()
+{
+    destroyBuffer(rectangle.indexBuffer);
+    destroyBuffer(rectangle.vertexBuffer);
+}
+
 AllocatedBuffer Renderer::createBuffer(
     std::size_t allocSize,
     VkBufferUsageFlags usage,
@@ -768,6 +774,8 @@ void Renderer::drawImGui(VkCommandBuffer cmd, VkImageView targetImageView)
 void Renderer::cleanup()
 {
     vkDeviceWaitIdle(device);
+
+    destroyMeshData();
 
     deletionQueue.flush();
 

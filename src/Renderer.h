@@ -56,6 +56,7 @@ private:
 
     void destroyCommandBuffers();
     void destroySyncStructures();
+    void destroyMeshData();
 
     AllocatedBuffer createBuffer(
         std::size_t allocSize,
