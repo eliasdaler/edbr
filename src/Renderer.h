@@ -42,16 +42,28 @@ private:
     void createSwapchain(std::uint32_t width, std::uint32_t height);
     void createCommandBuffers();
     void initSyncStructures();
+    void initImmediateStructures();
     void initDescriptors();
 
     void initPipelines();
     void initBackgroundPipelines();
     void initTrianglePipeline();
+    void initMeshPipeline();
 
     void initImGui();
 
+    void initMeshData();
+
     void destroyCommandBuffers();
     void destroySyncStructures();
+
+    AllocatedBuffer createBuffer(
+        std::size_t allocSize,
+        VkBufferUsageFlags usage,
+        VmaMemoryUsage memoryUsage);
+    void destroyBuffer(const AllocatedBuffer& buffer);
+
+    GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 
     void update(float dt);
 
@@ -61,6 +73,8 @@ private:
     void drawBackground(VkCommandBuffer cmd);
     void drawGeometry(VkCommandBuffer cmd);
     void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
+
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 
     GLFWwindow* window{nullptr};
 
@@ -94,9 +108,9 @@ private:
     VkPipeline gradientPipeline;
     VkPipelineLayout gradientPipelineLayout;
 
-    VkFence imguiFence;
-    VkCommandBuffer imguiCommandBuffer;
-    VkCommandPool imguiCommandPool;
+    VkFence immFence;
+    VkCommandBuffer immCommandBuffer;
+    VkCommandPool immCommandPool;
 
     struct ComputePushConstants {
         glm::vec4 data1;
@@ -109,4 +123,9 @@ private:
 
     VkPipelineLayout trianglePipelineLayout;
     VkPipeline trianglePipeline;
+
+    VkPipelineLayout meshPipelineLayout;
+    VkPipeline meshPipeline;
+
+    GPUMeshBuffers rectangle;
 };

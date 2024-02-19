@@ -21,7 +21,7 @@ VkCommandBufferAllocateInfo commandBufferAllocateInfo(
     std::uint32_t commandBufferCount);
 
 VkSubmitInfo2 submitInfo(
-    VkCommandBufferSubmitInfo* cmd,
+    const VkCommandBufferSubmitInfo* cmd,
     VkSemaphoreSubmitInfo* signalSemaphoreInfo,
     VkSemaphoreSubmitInfo* waitSemaphoreInfo);
 

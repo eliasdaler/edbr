@@ -36,10 +36,13 @@ void Renderer::init()
     createSwapchain(SCREEN_WIDTH, SCREEN_HEIGHT);
     createCommandBuffers();
     initSyncStructures();
+    initImmediateStructures();
     initDescriptors();
     initPipelines();
 
     initImGui();
+
+    initMeshData();
 
     gradientConstants = ComputePushConstants{
         .data1 = glm::vec4{1, 0, 0, 1},
@@ -177,6 +180,22 @@ void Renderer::initSyncStructures()
     }
 }
 
+void Renderer::initImmediateStructures()
+{
+    const auto poolCreateInfo = vkinit::
+        commandPoolCreateInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamily);
+    VK_CHECK(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &immCommandPool));
+
+    const auto cmdAllocInfo = vkinit::commandBufferAllocateInfo(immCommandPool, 1);
+    VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &immCommandBuffer));
+
+    deletionQueue.pushFunction([this]() { vkDestroyCommandPool(device, immCommandPool, nullptr); });
+
+    const auto fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &immFence));
+    deletionQueue.pushFunction([this]() { vkDestroyFence(device, immFence, nullptr); });
+}
+
 void Renderer::initDescriptors()
 {
     const auto sizes = std::array{
@@ -218,6 +237,7 @@ void Renderer::initPipelines()
 {
     initBackgroundPipelines();
     initTrianglePipeline();
+    initMeshPipeline();
 }
 
 void Renderer::initBackgroundPipelines()
@@ -297,24 +317,48 @@ void Renderer::initTrianglePipeline()
     });
 }
 
+void Renderer::initMeshPipeline()
+{
+    VkShaderModule vertexShader;
+    assert(vkutil::loadShaderModule("shaders/mesh.vert.spv", device, &vertexShader));
+    VkShaderModule fragShader;
+    assert(vkutil::loadShaderModule("shaders/mesh.frag.spv", device, &fragShader));
+
+    const auto bufferRange = VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(GPUDrawPushConstants),
+    };
+
+    auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
+
+    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &meshPipelineLayout));
+
+    meshPipeline = PipelineBuilder{meshPipelineLayout}
+                       .setShaders(vertexShader, fragShader)
+                       .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                       .setPolygonMode(VK_POLYGON_MODE_FILL)
+                       .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+                       .setMultisamplingNone()
+                       .disableBlending()
+                       .disableDepthTest()
+                       .setColorAttachmentFormat(drawImage.format)
+                       .setDepthFormat(VK_FORMAT_UNDEFINED)
+                       .build(device);
+
+    vkDestroyShaderModule(device, vertexShader, nullptr);
+    vkDestroyShaderModule(device, fragShader, nullptr);
+
+    deletionQueue.pushFunction([this]() {
+        vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
+        vkDestroyPipeline(device, meshPipeline, nullptr);
+    });
+}
+
 void Renderer::initImGui()
 {
-    { // init Vulkan structures
-        const auto poolCreateInfo = vkinit::commandPoolCreateInfo(
-            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamily);
-        VK_CHECK(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &imguiCommandPool));
-
-        const auto cmdAllocInfo = vkinit::commandBufferAllocateInfo(imguiCommandPool, 1);
-        VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &imguiCommandBuffer));
-
-        deletionQueue.pushFunction(
-            [this]() { vkDestroyCommandPool(device, imguiCommandPool, nullptr); });
-
-        const auto fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &imguiFence));
-        deletionQueue.pushFunction([this]() { vkDestroyFence(device, imguiFence, nullptr); });
-    }
-
     VkDescriptorPoolSize pool_sizes[] =
         {{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
          {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
@@ -371,6 +415,25 @@ void Renderer::initImGui()
     });
 }
 
+void Renderer::initMeshData()
+{
+    std::array<Vertex, 4> rectVertices;
+
+    rectVertices[0].position = {0.5, -0.5, 0};
+    rectVertices[1].position = {0.5, 0.5, 0};
+    rectVertices[2].position = {-0.5, -0.5, 0};
+    rectVertices[3].position = {-0.5, 0.5, 0};
+
+    rectVertices[0].color = {0, 0, 0, 1};
+    rectVertices[1].color = {0.5, 0.5, 0.5, 1};
+    rectVertices[2].color = {1, 0, 0, 1};
+    rectVertices[3].color = {0, 1, 0, 1};
+
+    std::array<std::uint32_t, 6> rectIndices{0, 1, 2, 2, 1, 3};
+
+    rectangle = uploadMesh(rectIndices, rectVertices);
+}
+
 void Renderer::destroyCommandBuffers()
 {
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
@@ -385,6 +448,91 @@ void Renderer::destroySyncStructures()
         vkDestroySemaphore(device, frames[i].swapchainSemaphore, nullptr);
         vkDestroySemaphore(device, frames[i].renderSemaphore, nullptr);
     }
+}
+
+AllocatedBuffer Renderer::createBuffer(
+    std::size_t allocSize,
+    VkBufferUsageFlags usage,
+    VmaMemoryUsage memoryUsage)
+{
+    const auto bufferInfo = VkBufferCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = allocSize,
+        .usage = usage,
+    };
+
+    const auto allocInfo = VmaAllocationCreateInfo{
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .usage = memoryUsage,
+    };
+
+    AllocatedBuffer buffer{};
+    VK_CHECK(vmaCreateBuffer(
+        allocator, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.info));
+
+    return buffer;
+}
+
+void Renderer::destroyBuffer(const AllocatedBuffer& buffer)
+{
+    vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
+}
+
+GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices)
+{
+    GPUMeshBuffers mesh;
+
+    // create index buffer
+    const auto indexBufferSize = indices.size() * sizeof(std::uint32_t);
+    mesh.indexBuffer = createBuffer(
+        indexBufferSize,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+
+    // create vertex buffer
+    const auto vertexBufferSize = vertices.size() * sizeof(Vertex);
+    mesh.vertexBuffer = createBuffer(
+        vertexBufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+
+    // find the adress of the vertex buffer
+    const auto deviceAdressInfo = VkBufferDeviceAddressInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = mesh.vertexBuffer.buffer,
+    };
+    mesh.vertexBufferAddress = vkGetBufferDeviceAddress(device, &deviceAdressInfo);
+
+    const auto staging = createBuffer(
+        vertexBufferSize + indexBufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_ONLY);
+
+    // copy data
+    void* data = staging.allocation->GetMappedData();
+    memcpy(data, vertices.data(), vertexBufferSize);
+    memcpy((char*)data + vertexBufferSize, indices.data(), indexBufferSize);
+
+    immediateSubmit([&](VkCommandBuffer cmd) {
+        const auto vertexCopy = VkBufferCopy{
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = vertexBufferSize,
+        };
+        vkCmdCopyBuffer(cmd, staging.buffer, mesh.vertexBuffer.buffer, 1, &vertexCopy);
+
+        const auto indexCopy = VkBufferCopy{
+            .srcOffset = vertexBufferSize,
+            .dstOffset = 0,
+            .size = indexBufferSize,
+        };
+        vkCmdCopyBuffer(cmd, staging.buffer, mesh.indexBuffer.buffer, 1, &indexCopy);
+    });
+
+    destroyBuffer(staging);
+
+    return mesh;
 }
 
 void Renderer::update(float dt)
@@ -561,8 +709,6 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     const auto renderInfo = vkinit::renderingInfo(drawExtent, &colorAttachment, nullptr);
     vkCmdBeginRendering(cmd, &renderInfo);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-
     const auto viewport = VkViewport{
         .x = 0,
         .y = 0,
@@ -579,7 +725,29 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+    { // draw triangle
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        vkCmdDraw(cmd, 3, 1, 0, 0);
+    }
+
+    { // draw rect
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
+
+        const auto pushConstants = GPUDrawPushConstants{
+            .worldMatrix = glm::mat4{1.f},
+            .vertexBuffer = rectangle.vertexBufferAddress,
+        };
+        vkCmdPushConstants(
+            cmd,
+            meshPipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(GPUDrawPushConstants),
+            &pushConstants);
+        vkCmdBindIndexBuffer(cmd, rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    }
 
     vkCmdEndRendering(cmd);
 }
@@ -623,4 +791,25 @@ void Renderer::cleanup()
 
     glfwDestroyWindow(window);
     glfwTerminate();
+}
+
+void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function)
+{
+    VK_CHECK(vkResetFences(device, 1, &immFence));
+    VK_CHECK(vkResetCommandBuffer(immCommandBuffer, 0));
+
+    auto cmd = immCommandBuffer;
+    const auto cmdBeginInfo =
+        vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+    function(cmd);
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    const auto cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
+    const auto submit = vkinit::submitInfo(&cmdinfo, nullptr, nullptr);
+
+    VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, immFence));
+
+    VK_CHECK(vkWaitForFences(device, 1, &immFence, true, NO_TIMEOUT));
 }
