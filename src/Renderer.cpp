@@ -86,7 +86,8 @@ void Renderer::init()
     {
         Scene scene;
         util::SceneLoader loader;
-        loader.loadScene(loadContext, scene, "assets/levels/house/house.gltf");
+        // loader.loadScene(loadContext, scene, "assets/levels/house/house.gltf");
+        loader.loadScene(loadContext, scene, "assets/levels/city/city.gltf");
         createEntitiesFromScene(scene);
     }
 
