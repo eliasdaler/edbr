@@ -45,6 +45,9 @@ public:
     void setProjection(const glm::mat4& proj) { projection = proj; }
     const glm::mat4& getProjection() const { return projection; }
 
+    void setUseInverseDepth(bool b) { useInverseDepth = b; }
+    void setClipSpaceYDown(bool b) { clipSpaceYDown = b; }
+
     bool isOrthographic() const { return orthographic; }
 
     float getZFar() const { return zFar; };
@@ -58,6 +61,9 @@ private:
 
     glm::mat4 projection;
     bool orthographic{false};
+
+    bool useInverseDepth{false};
+    bool clipSpaceYDown{false};
 
     float zNear{1.f};
     float zFar{75.f};

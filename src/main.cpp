@@ -1,13 +1,10 @@
 #include <Renderer.h>
 
-#include <OSUtil.h>
-
-#include <filesystem>
+#include <util/OSUtil.h>
 
 int main()
 {
-    const auto exeDir = osutil::getExecutableDir();
-    std::filesystem::current_path(exeDir);
+    util::setCurrentDirToExeDir();
 
     Renderer renderer;
     renderer.init();

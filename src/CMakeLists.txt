@@ -6,6 +6,8 @@ add_executable(game
   VkPipelines.cpp
 
   util/GltfLoader.cpp
+  util/InputUtil.cpp
+  util/OSUtil.cpp
 
   Math/Transform.cpp
   Math/Util.cpp
@@ -16,10 +18,11 @@ add_executable(game
   Graphics/SkeletonAnimator.cpp
   Graphics/Texture.cpp
 
-  OSUtil.cpp
 
   MeshCache.cpp
   MaterialCache.cpp
+
+  FreeCameraController.cpp
 
   Renderer.cpp
 

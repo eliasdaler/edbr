@@ -14,7 +14,19 @@ void Camera::init(float fovX, float zNear, float zFar, float aspectRatio)
     this->zNear = zNear;
     this->aspectRatio = aspectRatio;
 
-    projection = glm::perspective(fovY, aspectRatio, zNear, zFar);
+    // TODO #ifdef VULKAN
+    setUseInverseDepth(true);
+    setClipSpaceYDown(true);
+
+    if (useInverseDepth) {
+        projection = glm::perspective(fovY, aspectRatio, zFar, zNear);
+    } else {
+        projection = glm::perspective(fovY, aspectRatio, zNear, zFar);
+    }
+
+    if (clipSpaceYDown) {
+        projection[1][1] *= -1;
+    }
 }
 
 void Camera::initOrtho(float scale, float zNear, float zFar)
