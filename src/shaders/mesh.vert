@@ -1,5 +1,9 @@
 #version 460
+
+#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_buffer_reference : require
+
+#include "input_structures.glsl"
 
 layout (location = 0) out vec3 outPos;
 layout (location = 1) out vec2 outUV;
@@ -16,16 +20,6 @@ struct Vertex {
 layout (buffer_reference, std430) readonly buffer VertexBuffer{
 	Vertex vertices[];
 };
-
-layout (set = 0, binding = 0) uniform SceneData{
-	mat4 view;
-	mat4 proj;
-	mat4 viewProj;
-    vec4 cameraPos;
-	vec4 ambientColor; // w - ambient intensity
-	vec4 sunlightDirection;
-	vec4 sunlightColor; // w - sun intensity
-} sceneData;
 
 layout (push_constant) uniform constants
 {
