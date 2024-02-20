@@ -138,4 +138,14 @@ private:
     MeshCache meshCache;
 
     Scene scene;
+
+    bool isRunning{false};
+    bool vSync{true};
+    bool frameLimit{true};
+    float frameTime{0.f};
+    float avgFPS{0.f};
+
+    // only display update FPS every 1 seconds, otherwise it's too noisy
+    float displayedFPS{0.f};
+    float displayFPSDelay{1.f};
 };
