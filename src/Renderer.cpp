@@ -185,7 +185,7 @@ void Renderer::initVulkan()
     deletionQueue.pushFunction([&]() { vmaDestroyAllocator(allocator); });
 
     sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
-    sunlightColorAndIntensity = glm::vec4{1.f, 1.f, 1.f, 1.f};
+    sunlightColorAndIntensity = glm::vec4{213.f / 255.f, 136.f / 255.f, 49.f / 255.f, 0.6f};
     ambientColorAndIntensity = glm::vec4{0.20784314, 0.592156887, 0.56078434, 0.05f};
 }
 
@@ -790,6 +790,13 @@ void Renderer::update(float dt)
 {
     cameraController.update(camera, dt);
     updateEntityTransforms();
+    updateDevTools(dt);
+}
+
+void Renderer::updateDevTools(float dt)
+{
+    auto glmToArr = [](const glm::vec4& v) { return std::array<float, 4>{v.x, v.y, v.z, v.w}; };
+    auto arrToGLM = [](const std::array<float, 4>& v) { return glm::vec4{v[0], v[1], v[2], v[3]}; };
 
     // ImGui::ShowDemoWindow();
     if (displayFPSDelay > 0.f) {
@@ -812,14 +819,21 @@ void Renderer::update(float dt)
     const auto pitch = cameraController.getPitch();
     ImGui::Text("Camera rotation: (yaw) %.2f, (pitch) %.2f", yaw, pitch);
 
+    auto ambient = glmToArr(ambientColorAndIntensity);
+    if (ImGui::ColorEdit3("Ambient", ambient.data())) {
+        ambientColorAndIntensity = arrToGLM(ambient);
+    }
+    ImGui::DragFloat("Ambient intensity", &ambientColorAndIntensity.w, 1.f, 0.f, 1.f);
+
+    auto sunlight = glmToArr(sunlightColorAndIntensity);
+    if (ImGui::ColorEdit3("Sunlight", sunlight.data())) {
+        sunlightColorAndIntensity = arrToGLM(sunlight);
+    }
+    ImGui::DragFloat("Sunlight intensity", &sunlightColorAndIntensity.w, 1.f, 0.f, 1.f);
+
     ImGui::End();
 
     {
-        auto glmToArr = [](const glm::vec4& v) { return std::array<float, 4>{v.x, v.y, v.z, v.w}; };
-        auto arrToGLM = [](const std::array<float, 4>& v) {
-            return glm::vec4{v[0], v[1], v[2], v[3]};
-        };
-
         ImGui::Begin("Gradient");
 
         auto from = glmToArr(gradientConstants.data1);
@@ -1036,6 +1050,7 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
             .view = camera.getView(),
             .proj = camera.getProjection(),
             .viewProj = camera.getViewProj(),
+            .cameraPos = glm::vec4{camera.getPosition(), 1.f},
             .ambientColorAndIntensity = ambientColorAndIntensity,
             .sunlightDirection = sunlightDir,
             .sunlightColorAndIntensity = sunlightColorAndIntensity,

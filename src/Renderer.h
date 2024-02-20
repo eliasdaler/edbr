@@ -136,6 +136,8 @@ private:
     void handleInput(float dt);
     void update(float dt);
 
+    void updateDevTools(float dt);
+
     FrameData& getCurrentFrame();
 
     void draw();
