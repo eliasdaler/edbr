@@ -1082,6 +1082,7 @@ void Renderer::cleanup()
     vkDeviceWaitIdle(device);
 
     meshCache.cleanup(*this);
+    materialCache.cleanup(*this);
 
     deletionQueue.flush();
 

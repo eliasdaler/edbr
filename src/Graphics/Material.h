@@ -19,4 +19,6 @@ struct Material {
 
     AllocatedImage diffuseTexture;
     glm::vec4 baseColor{1.f, 1.f, 1.f, 1.f};
+
+    bool hasDiffuseTexture{false};
 };

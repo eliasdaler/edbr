@@ -1,5 +1,7 @@
 #include "MaterialCache.h"
 
+#include "Renderer.h"
+
 MaterialId MaterialCache::addMaterial(Material material)
 {
     // TODO: check if all properties of the material are same and return
@@ -12,4 +14,14 @@ MaterialId MaterialCache::addMaterial(Material material)
 const Material& MaterialCache::getMaterial(MaterialId id) const
 {
     return materials.at(id);
+}
+
+void MaterialCache::cleanup(const Renderer& renderer)
+{
+    for (const auto& material : materials) {
+        if (material.hasDiffuseTexture) {
+            renderer.destroyImage(material.diffuseTexture);
+        }
+    }
+    materials.clear();
 }

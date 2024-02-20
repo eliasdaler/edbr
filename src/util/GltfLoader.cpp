@@ -289,6 +289,7 @@ void loadMaterial(
             VK_FORMAT_R8G8B8A8_SRGB,
             VK_IMAGE_USAGE_SAMPLED_BIT,
             false);
+        material.hasDiffuseTexture = true;
 
     } else {
         material.diffuseTexture = ctx.whiteTexture;
