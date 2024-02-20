@@ -13,15 +13,15 @@
 
 #include <VkBootstrap.h>
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
 #include <imgui.h>
-#include <imgui_impl_glfw.cpp>
-#include <imgui_impl_vulkan.cpp>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_vulkan.h>
 
 #include <Graphics/Scene.h>
 #include <util/GltfLoader.h>
@@ -69,13 +69,28 @@ void Renderer::initVulkan()
                    .build()
                    .value();
 
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Vulkan app", nullptr, nullptr);
-    assert(window);
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0) {
+        printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+        std::exit(1);
+    }
 
-    VK_CHECK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
+    window = SDL_CreateWindow(
+        "Vulkan app",
+        // pos
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        // size
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
+        SDL_WINDOW_VULKAN);
+
+    if (!window) {
+        std::cout << "Failed to create window. SDL Error: " << SDL_GetError();
+        std::exit(1);
+    }
+
+    assert(SDL_Vulkan_CreateSurface(window, instance, &surface));
 
     const auto features12 = VkPhysicalDeviceVulkan12Features{
         .bufferDeviceAddress = true,
@@ -435,7 +450,7 @@ void Renderer::initImGui()
 
     ImGui::CreateContext();
 
-    ImGui_ImplGlfw_InitForVulkan(window, true);
+    ImGui_ImplSDL2_InitForVulkan(window);
 
     auto initInfo = ImGui_ImplVulkan_InitInfo{
         .Instance = instance,
@@ -591,12 +606,19 @@ void Renderer::update(float dt)
 
 void Renderer::run()
 {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+    while (true) {
         // TODO: swapchain resize
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+            if (event.type == SDL_QUIT) {
+                std::exit(0);
+            }
+            ImGui_ImplSDL2_ProcessEvent(&event);
+        }
 
         ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
         float dt = 0.f; // TODO: compute
@@ -835,11 +857,11 @@ void Renderer::cleanup()
     vkb::destroy_device(device);
     vkb::destroy_instance(instance);
 
-    ImGui_ImplGlfw_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
 void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const

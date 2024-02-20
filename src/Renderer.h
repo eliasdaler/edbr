@@ -21,7 +21,7 @@
 #include <Graphics/Mesh.h>
 #include <Graphics/Scene.h>
 
-class GLFWwindow;
+class SDL_Window;
 
 class Renderer {
 public:
@@ -82,7 +82,7 @@ private:
 
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
-    GLFWwindow* window{nullptr};
+    SDL_Window* window{nullptr};
 
     vkb::Instance instance;
     vkb::PhysicalDevice physicalDevice;

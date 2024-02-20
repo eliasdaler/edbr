@@ -1,9 +1,13 @@
 # glm
 add_subdirectory(glm)
 
-# glfw
-add_subdirectory(glfw)
-add_library(glfw::glfw ALIAS glfw)
+### SDL
+if (NOT BUILD_SHARED_LIBS)
+  set(SDL_SHARED_ENABLED_BY_DEFAULT OFF CACHE BOOL "Don't build SDL as shared lib")
+endif()
+option(SDL_TEST "Build the SDL2_test library" OFF)
+option(SDL_AUDIO_ENABLED_BY_DEFAULT "Enable the Audio subsystem" OFF)
+add_subdirectory(SDL)
 
 # vkb
 add_subdirectory(vk-bootstrap)
@@ -21,7 +25,7 @@ set(IMGUI_SOURCES
   "misc/cpp/imgui_stdlib.cpp"
   # backend
   "backends/imgui_impl_vulkan.cpp"
-  "backends/imgui_impl_glfw.cpp"
+  "backends/imgui_impl_sdl2.cpp"
 )
 
 list(TRANSFORM IMGUI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/imgui/")
@@ -35,12 +39,23 @@ target_include_directories(imgui
     "imgui/backends"
 )
 
-find_package(Vulkan REQUIRED)
+if(BUILD_SHARED_LIBS)
+  target_link_libraries(imgui
+    PUBLIC
+      SDL2::SDL2
+  )
+else()
+  target_link_libraries(imgui
+    PUBLIC
+      SDL2::SDL2-static
+  )
+endif()
 
+find_package(Vulkan REQUIRED)
 target_link_libraries(imgui PUBLIC
-  glfw::glfw
   Vulkan::Vulkan
 )
+
 add_library(imgui::imgui ALIAS imgui)
 
 ## tinygltf

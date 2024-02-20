@@ -38,8 +38,6 @@ target_include_directories(game PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 find_package(Vulkan REQUIRED)
 
 target_link_libraries(game PRIVATE
-  glfw::glfw
-
   Vulkan::Vulkan
   vk-bootstrap::vk-bootstrap
   GPUOpen::VulkanMemoryAllocator
@@ -49,6 +47,21 @@ target_link_libraries(game PRIVATE
 
   tinygltf::tinygltf
 )
+
+# SDL
+if(BUILD_SHARED_LIBS)
+  target_link_libraries(game PRIVATE
+    SDL2::SDL2
+  )
+else()
+  target_link_libraries(game PRIVATE
+    SDL2::SDL2-static
+  )
+endif()
+
+if(WIN32)
+  target_link_libraries(game PRIVATE SDL2::SDL2main)
+endif()
 
 # glm
 target_compile_definitions(game
