@@ -1,3 +1,4 @@
 .vim/
 build/
+build-release/
 .cache/

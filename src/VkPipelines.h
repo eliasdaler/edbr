@@ -6,7 +6,7 @@
 
 namespace vkutil
 {
-bool loadShaderModule(const char* filePath, VkDevice device, VkShaderModule* outShaderModule);
+void loadShaderModule(const char* filePath, VkDevice device, VkShaderModule* outShaderModule);
 } // end of namespace vkutil
 
 class PipelineBuilder {

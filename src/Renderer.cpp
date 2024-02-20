@@ -146,7 +146,11 @@ void Renderer::initVulkan()
         std::exit(1);
     }
 
-    assert(SDL_Vulkan_CreateSurface(window, instance, &surface));
+    auto res = SDL_Vulkan_CreateSurface(window, instance, &surface);
+    if (res != SDL_TRUE) {
+        std::cout << "Failed to create Vulkan surface: " << SDL_GetError() << std::endl;
+        std::exit(1);
+    }
 
     const auto features12 = VkPhysicalDeviceVulkan12Features{
         .bufferDeviceAddress = true,
@@ -188,7 +192,8 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
                         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
                     })
                     .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-                    .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                    .set_desired_present_mode(
+                        vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)
                     .set_desired_extent(width, height)
                     .build()
                     .value();
@@ -398,11 +403,8 @@ void Renderer::initBackgroundPipelines()
 
     VK_CHECK(vkCreatePipelineLayout(device, &layout, nullptr, &gradientPipelineLayout));
 
-    VkShaderModule shader;
-    if (!vkutil::loadShaderModule("shaders/gradient.comp.spv", device, &shader)) {
-        std::cout << "Error while building compute shader" << std::endl;
-        assert(false);
-    }
+    VkShaderModule shader{};
+    vkutil::loadShaderModule("shaders/gradient.comp.spv", device, &shader);
 
     const auto pipelineCreateInfo = VkComputePipelineCreateInfo{
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -428,10 +430,10 @@ void Renderer::initBackgroundPipelines()
 
 void Renderer::initTrianglePipeline()
 {
-    VkShaderModule vertexShader;
-    assert(vkutil::loadShaderModule("shaders/colored_triangle.vert.spv", device, &vertexShader));
-    VkShaderModule fragShader;
-    assert(vkutil::loadShaderModule("shaders/colored_triangle.frag.spv", device, &fragShader));
+    VkShaderModule vertexShader{};
+    vkutil::loadShaderModule("shaders/colored_triangle.vert.spv", device, &vertexShader);
+    VkShaderModule fragShader{};
+    vkutil::loadShaderModule("shaders/colored_triangle.frag.spv", device, &fragShader);
 
     const auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
     VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &trianglePipelineLayout));
@@ -459,10 +461,10 @@ void Renderer::initTrianglePipeline()
 
 void Renderer::initMeshPipeline()
 {
-    VkShaderModule vertexShader;
-    assert(vkutil::loadShaderModule("shaders/mesh.vert.spv", device, &vertexShader));
-    VkShaderModule fragShader;
-    assert(vkutil::loadShaderModule("shaders/mesh.frag.spv", device, &fragShader));
+    VkShaderModule vertexShader{};
+    vkutil::loadShaderModule("shaders/mesh.vert.spv", device, &vertexShader);
+    VkShaderModule fragShader{};
+    vkutil::loadShaderModule("shaders/mesh.frag.spv", device, &fragShader);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
@@ -980,12 +982,6 @@ void Renderer::draw()
 
 void Renderer::drawBackground(VkCommandBuffer cmd)
 {
-    /* auto flash = std::abs(std::sin(frameNumber / 120.f));
-    auto clearValue = VkClearColorValue{{0.0f, 0.0f, flash, 1.0f}};
-    auto clearRange = vkinit::subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-    vkCmdClearColorImage(
-        cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange); */
-
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientPipeline);
     vkCmdBindDescriptorSets(
         cmd,
