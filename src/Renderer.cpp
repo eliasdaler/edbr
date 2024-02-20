@@ -130,33 +130,74 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
         .height = height,
         .depth = 1,
     };
-    drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
-    drawImage.extent = drawImageExtent;
 
-    VkImageUsageFlags usages{};
-    usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    usages |= VK_IMAGE_USAGE_STORAGE_BIT;
-    usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    { // setup draw image
+        drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+        drawImage.extent = drawImageExtent;
 
-    const auto imgCreateInfo = vkinit::imageCreateInfo(drawImage.format, usages, drawImageExtent);
+        VkImageUsageFlags usages{};
+        usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        usages |= VK_IMAGE_USAGE_STORAGE_BIT;
+        usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    const auto imgAllocInfo = VmaAllocationCreateInfo{
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    };
+        const auto imgCreateInfo =
+            vkinit::imageCreateInfo(drawImage.format, usages, drawImageExtent);
 
-    vmaCreateImage(
-        allocator, &imgCreateInfo, &imgAllocInfo, &drawImage.image, &drawImage.allocation, nullptr);
+        const auto imgAllocInfo = VmaAllocationCreateInfo{
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+            .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        };
 
-    const auto imageViewCreateInfo =
-        vkinit::imageViewCreateInfo(drawImage.format, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
-    VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &drawImage.imageView));
+        vmaCreateImage(
+            allocator,
+            &imgCreateInfo,
+            &imgAllocInfo,
+            &drawImage.image,
+            &drawImage.allocation,
+            nullptr);
 
-    deletionQueue.pushFunction([this]() {
-        vkDestroyImageView(device, drawImage.imageView, nullptr);
-        vmaDestroyImage(allocator, drawImage.image, drawImage.allocation);
-    });
+        const auto imageViewCreateInfo = vkinit::
+            imageViewCreateInfo(drawImage.format, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &drawImage.imageView));
+
+        deletionQueue.pushFunction([this]() {
+            vkDestroyImageView(device, drawImage.imageView, nullptr);
+            vmaDestroyImage(allocator, drawImage.image, drawImage.allocation);
+        });
+    }
+
+    { // setup draw image (depth)
+        depthImage.format = VK_FORMAT_D32_SFLOAT;
+        depthImage.extent = drawImageExtent;
+
+        const auto usages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+        const auto imgCreateInfo =
+            vkinit::imageCreateInfo(depthImage.format, usages, drawImageExtent);
+
+        const auto imgAllocInfo = VmaAllocationCreateInfo{
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+            .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        };
+
+        vmaCreateImage(
+            allocator,
+            &imgCreateInfo,
+            &imgAllocInfo,
+            &depthImage.image,
+            &depthImage.allocation,
+            nullptr);
+
+        const auto imageViewCreateInfo = vkinit::
+            imageViewCreateInfo(depthImage.format, depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &depthImage.imageView));
+
+        deletionQueue.pushFunction([this]() {
+            vkDestroyImageView(device, depthImage.imageView, nullptr);
+            vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
+        });
+    }
 }
 
 void Renderer::createCommandBuffers()
@@ -352,9 +393,9 @@ void Renderer::initMeshPipeline()
                        .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
                        .setMultisamplingNone()
                        .disableBlending()
-                       .disableDepthTest()
                        .setColorAttachmentFormat(drawImage.format)
-                       .setDepthFormat(VK_FORMAT_UNDEFINED)
+                       .setDepthFormat(depthImage.format)
+                       .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
                        .build(device);
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
@@ -595,6 +636,8 @@ void Renderer::draw()
 
     vkutil::transitionImage(
         cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkutil::transitionImage(
+        cmd, depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     drawGeometry(cmd);
 
@@ -698,8 +741,12 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
 {
     const auto colorAttachment =
         vkinit::attachmentInfo(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
-    const auto renderInfo = vkinit::renderingInfo(drawExtent, &colorAttachment, nullptr);
+    const auto depthAttachment =
+        vkinit::depthAttachmentInfo(depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    const auto renderInfo = vkinit::renderingInfo(drawExtent, &colorAttachment, &depthAttachment);
     vkCmdBeginRendering(cmd, &renderInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
     const auto viewport = VkViewport{
         .x = 0,
@@ -717,18 +764,24 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    { // draw triangle
+    /* { // draw triangle
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
         vkCmdDraw(cmd, 3, 1, 0, 0);
-    }
+    } */
 
     { // draw rect
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
         const auto& mesh = meshCache.getMesh(scene.nodes[0]->meshIndex);
         const auto tm = glm::rotate(glm::mat4{1.f}, glm::radians(45.f), glm::vec3{0.f, 1.f, 0.f});
+        const auto view = glm::translate(glm::mat4{1.f}, glm::vec3{0.f, 0.f, -5.f});
+
+        // use reverse depth
+        auto proj = glm::perspective(
+            glm::radians(70.f), (float)drawExtent.width / (float)drawExtent.height, 1000.f, 0.1f);
+        proj[1][1] *= -1; // Y is down in Vulkan's clip space
+
         const auto pushConstants = GPUDrawPushConstants{
-            .worldMatrix = tm,
+            .worldMatrix = proj * view * tm,
             .vertexBuffer = mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(

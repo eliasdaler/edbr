@@ -102,6 +102,7 @@ private:
     VkExtent2D swapchainExtent;
 
     AllocatedImage drawImage;
+    AllocatedImage depthImage;
     VkExtent2D drawExtent;
 
     std::array<FrameData, FRAME_OVERLAP> frames{};

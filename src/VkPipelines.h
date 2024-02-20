@@ -22,6 +22,7 @@ public:
     PipelineBuilder& disableBlending();
     PipelineBuilder& setColorAttachmentFormat(VkFormat format);
     PipelineBuilder& setDepthFormat(VkFormat format);
+    PipelineBuilder& enableDepthTest(bool depthWriteEnable, VkCompareOp op);
     PipelineBuilder& disableDepthTest();
 
 private:
