@@ -194,6 +194,8 @@ private:
     VkPipelineLayout trianglePipelineLayout;
     VkPipeline trianglePipeline;
 
+    VkDescriptorSetLayout sceneDataDescriptorLayout;
+
     VkPipelineLayout meshPipelineLayout;
     VkPipeline meshPipeline;
     VkDescriptorSetLayout meshMaterialLayout;
@@ -235,4 +237,8 @@ private:
 
     void generateDrawList();
     void sortDrawList();
+
+    glm::vec4 ambientColorAndIntensity;
+    glm::vec4 sunlightDir;
+    glm::vec4 sunlightColorAndIntensity;
 };

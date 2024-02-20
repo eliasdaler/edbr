@@ -183,6 +183,10 @@ void Renderer::initVulkan()
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
     deletionQueue.pushFunction([&]() { vmaDestroyAllocator(allocator); });
+
+    sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
+    sunlightColorAndIntensity = glm::vec4{1.f, 1.f, 1.f, 1.f};
+    ambientColorAndIntensity = glm::vec4{0.20784314, 0.592156887, 0.56078434, 0.05f};
 }
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
@@ -371,6 +375,16 @@ void Renderer::initDescriptors()
 
     {
         DescriptorLayoutBuilder builder;
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        sceneDataDescriptorLayout =
+            builder.build(device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        deletionQueue.pushFunction(
+            [this]() { vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr); });
+    }
+
+    {
+        DescriptorLayoutBuilder builder;
         builder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         meshMaterialLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
 
@@ -476,8 +490,10 @@ void Renderer::initMeshPipeline()
     auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &meshMaterialLayout;
+
+    const auto layouts = std::array{sceneDataDescriptorLayout, meshMaterialLayout};
+    pipelineLayoutInfo.setLayoutCount = layouts.size();
+    pipelineLayoutInfo.pSetLayouts = layouts.data();
 
     VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &meshPipelineLayout));
 
@@ -1008,6 +1024,36 @@ void Renderer::drawBackground(VkCommandBuffer cmd)
 
 void Renderer::drawGeometry(VkCommandBuffer cmd)
 {
+    VkDescriptorSet sceneDescriptor;
+    {
+        auto gpuSceneDataBuffer = createBuffer(
+            sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        getCurrentFrame().deletionQueue.pushFunction(
+            [this, gpuSceneDataBuffer]() { destroyBuffer(gpuSceneDataBuffer); });
+        auto* sceneData = (GPUSceneData*)gpuSceneDataBuffer.allocation->GetMappedData();
+
+        *sceneData = GPUSceneData{
+            .view = camera.getView(),
+            .proj = camera.getProjection(),
+            .viewProj = camera.getViewProj(),
+            .ambientColorAndIntensity = ambientColorAndIntensity,
+            .sunlightDirection = sunlightDir,
+            .sunlightColorAndIntensity = sunlightColorAndIntensity,
+        };
+
+        sceneDescriptor =
+            getCurrentFrame().frameDescriptors.allocate(device, sceneDataDescriptorLayout);
+
+        DescriptorWriter writer;
+        writer.writeBuffer(
+            0,
+            gpuSceneDataBuffer.buffer,
+            sizeof(GPUSceneData),
+            0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        writer.updateSet(device, sceneDescriptor);
+    }
+
     const auto colorAttachment =
         vkinit::attachmentInfo(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
     const auto depthAttachment =
@@ -1016,6 +1062,16 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     vkCmdBeginRendering(cmd, &renderInfo);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
+
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        meshPipelineLayout,
+        0,
+        1,
+        &sceneDescriptor,
+        0,
+        nullptr);
 
     const auto viewport = VkViewport{
         .x = 0,
@@ -1064,7 +1120,7 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 meshPipelineLayout,
-                0,
+                1,
                 1,
                 &imageSet,
                 0,
@@ -1077,7 +1133,7 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
         }
 
         const auto pushConstants = GPUDrawPushConstants{
-            .worldMatrix = camera.getViewProj() * dc.transformMatrix,
+            .transform = dc.transformMatrix,
             .vertexBuffer = dc.mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(
@@ -1110,6 +1166,10 @@ void Renderer::drawImGui(VkCommandBuffer cmd, VkImageView targetImageView)
 void Renderer::cleanup()
 {
     vkDeviceWaitIdle(device);
+
+    for (auto& frameData : frames) {
+        frameData.deletionQueue.flush();
+    }
 
     meshCache.cleanup(*this);
     materialCache.cleanup(*this);

@@ -6,23 +6,28 @@ layout (location = 2) in vec3 inNormal;
 
 layout (location = 0) out vec4 outFragColor;
 
-layout (set = 0, binding = 0) uniform sampler2D diffuseTex;
+layout (set = 0, binding = 0) uniform SceneData{
+	mat4 view;
+	mat4 proj;
+	mat4 viewProj;
+	vec4 ambientColor; // w - ambient intensity
+	vec4 sunlightDirection;
+	vec4 sunlightColor; // w - sun intensity
+} sceneData;
+
+layout (set = 1, binding = 0) uniform sampler2D diffuseTex;
 
 void main()
 {
-    vec3 sunlightDir = vec3(0.371477008, 0.470861048, 0.80018419);
-    vec3 ambient = vec3(0.20784314, 0.592156887, 0.56078434);
-    float ambientIntensity = 0.05f;
-
     vec3 diffuseColor = inColor * texture(diffuseTex, inUV).rgb;
 
-    vec3 l = sunlightDir;
+    vec3 l = sceneData.sunlightDirection.xyz;
     float NoL = clamp(dot(inNormal, l), 0, 1);
 
     vec3 fragColor = diffuseColor * NoL;
 
     // ambient
-    fragColor += diffuseColor * ambient * ambientIntensity;
+    fragColor += diffuseColor * sceneData.ambientColor.xyz * sceneData.ambientColor.w;
 
     // fake gamma correction
     fragColor = pow(fragColor, vec3(1.f/2.2f));
