@@ -42,3 +42,10 @@ target_link_libraries(imgui PUBLIC
   Vulkan::Vulkan
 )
 add_library(imgui::imgui ALIAS imgui)
+
+## tinygltf
+option(TINYGLTF_BUILD_LOADER_EXAMPLE "Build loader_example(load glTF and dump infos)" OFF)
+option(TINYGLTF_INSTALL "Install tinygltf files during install step." OFF)
+option(TINYGLTF_HEADER_ONLY "On: header-only mode. Off: create tinygltf library(No TINYGLTF_IMPLEMENTATION required in your project)" ON)
+add_subdirectory(tinygltf)
+add_library(tinygltf::tinygltf ALIAS tinygltf)

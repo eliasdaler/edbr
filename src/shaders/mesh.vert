@@ -3,6 +3,7 @@
 
 layout (location = 0) out vec3 outColor;
 layout (location = 1) out vec2 outUV;
+layout (location = 2) out vec3 outNormal;
 
 struct Vertex {
 	vec3 position;
@@ -26,7 +27,11 @@ void main()
 {
     Vertex v = PushConstants.vertexBuffer.vertices[gl_VertexIndex];
 
-    gl_Position = PushConstants.render_matrix * vec4(v.position, 1.0f);
+    vec3 pos = v.position;
+    pos.y = -pos.y + 0.75;
+
+    gl_Position = PushConstants.render_matrix * vec4(pos, 1.0f);
 	outColor = v.color.xyz;
     outUV = vec2(v.uv_x, v.uv_y);
+    outNormal = v.normal;
 }

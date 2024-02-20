@@ -15,6 +15,12 @@
 
 #include <glm/vec4.hpp>
 
+#include "MaterialCache.h"
+#include "MeshCache.h"
+
+#include <Graphics/Mesh.h>
+#include <Graphics/Scene.h>
+
 class GLFWwindow;
 
 class Renderer {
@@ -37,6 +43,11 @@ public:
     void run();
     void cleanup();
 
+    GPUMeshBuffers uploadMesh(
+        std::span<const std::uint32_t> indices,
+        std::span<const Mesh::Vertex> vertices) const;
+    void destroyBuffer(const AllocatedBuffer& buffer) const;
+
 private:
     void initVulkan();
     void createSwapchain(std::uint32_t width, std::uint32_t height);
@@ -52,19 +63,13 @@ private:
 
     void initImGui();
 
-    void initMeshData();
-
     void destroyCommandBuffers();
     void destroySyncStructures();
-    void destroyMeshData();
 
     AllocatedBuffer createBuffer(
         std::size_t allocSize,
         VkBufferUsageFlags usage,
-        VmaMemoryUsage memoryUsage);
-    void destroyBuffer(const AllocatedBuffer& buffer);
-
-    GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+        VmaMemoryUsage memoryUsage) const;
 
     void update(float dt);
 
@@ -75,7 +80,7 @@ private:
     void drawGeometry(VkCommandBuffer cmd);
     void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
 
-    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
     GLFWwindow* window{nullptr};
 
@@ -128,5 +133,8 @@ private:
     VkPipelineLayout meshPipelineLayout;
     VkPipeline meshPipeline;
 
-    GPUMeshBuffers rectangle;
+    MaterialCache materialCache;
+    MeshCache meshCache;
+
+    Scene scene;
 };

@@ -23,6 +23,9 @@
 #include <imgui_impl_glfw.cpp>
 #include <imgui_impl_vulkan.cpp>
 
+#include <Graphics/Scene.h>
+#include <util/GltfLoader.h>
+
 namespace
 {
 static constexpr std::uint32_t SCREEN_WIDTH = 1024;
@@ -42,12 +45,18 @@ void Renderer::init()
 
     initImGui();
 
-    initMeshData();
-
     gradientConstants = ComputePushConstants{
         .data1 = glm::vec4{1, 0, 0, 1},
         .data2 = glm::vec4{0, 0, 1, 1},
     };
+
+    util::LoadContext loadContext{
+        .renderer = *this,
+        .materialCache = materialCache,
+        .meshCache = meshCache,
+    };
+    util::SceneLoader loader;
+    loader.loadScene(loadContext, scene, "assets/models/yae.gltf");
 }
 
 void Renderer::initVulkan()
@@ -415,25 +424,6 @@ void Renderer::initImGui()
     });
 }
 
-void Renderer::initMeshData()
-{
-    std::array<Vertex, 4> rectVertices;
-
-    rectVertices[0].position = {0.5, -0.5, 0};
-    rectVertices[1].position = {0.5, 0.5, 0};
-    rectVertices[2].position = {-0.5, -0.5, 0};
-    rectVertices[3].position = {-0.5, 0.5, 0};
-
-    rectVertices[0].color = {0, 0, 0, 1};
-    rectVertices[1].color = {0.5, 0.5, 0.5, 1};
-    rectVertices[2].color = {1, 0, 0, 1};
-    rectVertices[3].color = {0, 1, 0, 1};
-
-    std::array<std::uint32_t, 6> rectIndices{0, 1, 2, 2, 1, 3};
-
-    rectangle = uploadMesh(rectIndices, rectVertices);
-}
-
 void Renderer::destroyCommandBuffers()
 {
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
@@ -450,16 +440,10 @@ void Renderer::destroySyncStructures()
     }
 }
 
-void Renderer::destroyMeshData()
-{
-    destroyBuffer(rectangle.indexBuffer);
-    destroyBuffer(rectangle.vertexBuffer);
-}
-
 AllocatedBuffer Renderer::createBuffer(
     std::size_t allocSize,
     VkBufferUsageFlags usage,
-    VmaMemoryUsage memoryUsage)
+    VmaMemoryUsage memoryUsage) const
 {
     const auto bufferInfo = VkBufferCreateInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -479,12 +463,14 @@ AllocatedBuffer Renderer::createBuffer(
     return buffer;
 }
 
-void Renderer::destroyBuffer(const AllocatedBuffer& buffer)
+void Renderer::destroyBuffer(const AllocatedBuffer& buffer) const
 {
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
 }
 
-GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices)
+GPUMeshBuffers Renderer::uploadMesh(
+    std::span<const std::uint32_t> indices,
+    std::span<const Mesh::Vertex> vertices) const
 {
     GPUMeshBuffers mesh;
 
@@ -496,7 +482,7 @@ GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices, std::span<Verte
         VMA_MEMORY_USAGE_GPU_ONLY);
 
     // create vertex buffer
-    const auto vertexBufferSize = vertices.size() * sizeof(Vertex);
+    const auto vertexBufferSize = vertices.size() * sizeof(Mesh::Vertex);
     mesh.vertexBuffer = createBuffer(
         vertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
@@ -739,9 +725,11 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     { // draw rect
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
+        const auto& mesh = meshCache.getMesh(scene.nodes[0]->meshIndex);
+        const auto tm = glm::rotate(glm::mat4{1.f}, glm::radians(45.f), glm::vec3{0.f, 1.f, 0.f});
         const auto pushConstants = GPUDrawPushConstants{
-            .worldMatrix = glm::mat4{1.f},
-            .vertexBuffer = rectangle.vertexBufferAddress,
+            .worldMatrix = tm,
+            .vertexBuffer = mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(
             cmd,
@@ -750,9 +738,9 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
             0,
             sizeof(GPUDrawPushConstants),
             &pushConstants);
-        vkCmdBindIndexBuffer(cmd, rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmd, mesh.numIndices, 1, 0, 0, 0);
     }
 
     vkCmdEndRendering(cmd);
@@ -775,7 +763,7 @@ void Renderer::cleanup()
 {
     vkDeviceWaitIdle(device);
 
-    destroyMeshData();
+    meshCache.cleanup(*this);
 
     deletionQueue.flush();
 
@@ -801,7 +789,7 @@ void Renderer::cleanup()
     glfwTerminate();
 }
 
-void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function)
+void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const
 {
     VK_CHECK(vkResetFences(device, 1, &immFence));
     VK_CHECK(vkResetCommandBuffer(immCommandBuffer, 0));
