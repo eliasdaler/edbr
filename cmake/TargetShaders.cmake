@@ -7,10 +7,11 @@ function (target_shaders target shaders)
   foreach (SHADER_PATH ${SHADERS})
     get_filename_component(SHADER_FILENAME "${SHADER_PATH}" NAME)
     set(SHADER_SPIRV_PATH "${SHADERS_BUILD_DIR}/${SHADER_FILENAME}.spv")
+    # FIXME: don't emit debug info in Release
     add_custom_command(
       COMMENT "Building ${SHADER_FILENAME}"
       OUTPUT "${SHADER_SPIRV_PATH}"
-      COMMAND ${GLSL_VALIDATOR} -V "${SHADER_PATH}" -o "${SHADER_SPIRV_PATH}" --quiet
+      COMMAND ${GLSL_VALIDATOR} -V "${SHADER_PATH}" -o "${SHADER_SPIRV_PATH}" -g --quiet
       DEPENDS "${SHADER_PATH}"
     )
     list(APPEND SPIRV_BINARY_FILES ${SHADER_SPIRV_PATH})

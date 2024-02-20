@@ -13,11 +13,11 @@ struct Vertex {
 	vec4 color;
 };
 
-layout(buffer_reference, std430) readonly buffer VertexBuffer{
+layout (buffer_reference, std430) readonly buffer VertexBuffer{
 	Vertex vertices[];
 };
 
-layout( push_constant ) uniform constants
+layout (push_constant) uniform constants
 {
 	mat4 render_matrix;
 	VertexBuffer vertexBuffer;

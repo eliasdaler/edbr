@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <numeric> // iota
 
 #include <vulkan/vulkan.h>
 
@@ -24,6 +25,7 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 
+#include <Graphics/FrustumCulling.h>
 #include <Graphics/Scene.h>
 #include <util/GltfLoader.h>
 
@@ -49,8 +51,8 @@ void Renderer::init()
     { // init nearest sampler
         auto samplerCreateInfo = VkSamplerCreateInfo{
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_LINEAR,
-            .minFilter = VK_FILTER_LINEAR,
+            .magFilter = VK_FILTER_NEAREST,
+            .minFilter = VK_FILTER_NEAREST,
         };
         VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultSamplerNearest));
         deletionQueue.pushFunction(
@@ -80,8 +82,24 @@ void Renderer::init()
         .meshCache = meshCache,
         .whiteTexture = whiteTexture,
     };
-    util::SceneLoader loader;
-    loader.loadScene(loadContext, scene, "assets/models/yae.gltf");
+
+    {
+        Scene scene;
+        util::SceneLoader loader;
+        loader.loadScene(loadContext, scene, "assets/levels/house/house.gltf");
+        createEntitiesFromScene(scene);
+    }
+
+    {
+        Scene scene;
+        util::SceneLoader loader;
+        loader.loadScene(loadContext, scene, "assets/models/cato.gltf");
+        createEntitiesFromScene(scene);
+
+        const glm::vec3 catoPos{1.4f, 0.f, 0.f};
+        auto& cato = findEntityByName("Cato");
+        cato.transform.position = catoPos;
+    }
 
     {
         static const float zNear = 1.f;
@@ -91,10 +109,9 @@ void Renderer::init()
 
         camera.init(fovX, zNear, zFar, aspectRatio);
 
-        // camera.setPosition({1.2f, 2.3f, 3.18f});
-        // camera.setYawPitch(-2.75f, 0.45f);
-        camera.setPosition({2.68f, 2.29f, 3.27f});
-        cameraController.setYawPitch(-2.45f, 0.33f);
+        const auto startPos = glm::vec3{8.9f, 4.09f, 8.29f};
+        cameraController.setYawPitch(-2.5f, 0.2f);
+        camera.setPosition(startPos);
     }
 }
 
@@ -753,6 +770,7 @@ void Renderer::handleInput(float dt)
 void Renderer::update(float dt)
 {
     cameraController.update(camera, dt);
+    updateEntityTransforms();
 
     // ImGui::ShowDemoWindow();
     if (displayFPSDelay > 0.f) {
@@ -848,6 +866,7 @@ void Renderer::run()
             ImGui::Render();
         }
 
+        generateDrawList();
         draw();
 
         if (frameLimit) {
@@ -1001,25 +1020,6 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
-    { // bind texture
-        auto imageSet = getCurrentFrame().frameDescriptors.allocate(device, meshMaterialLayout);
-        {
-            const auto& material = materialCache.getMaterial(0);
-
-            DescriptorWriter writer;
-            writer.writeImage(
-                0,
-                material.diffuseTexture.imageView,
-                defaultSamplerNearest,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-            writer.updateSet(device, imageSet);
-        }
-        vkCmdBindDescriptorSets(
-            cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
-    }
-
     const auto viewport = VkViewport{
         .x = 0,
         .y = 0,
@@ -1036,18 +1036,52 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    /* { // draw triangle
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-        vkCmdDraw(cmd, 3, 1, 0, 0);
-    } */
+    auto prevMaterialIdx = NULL_MATERIAL_ID;
+    auto prevMeshId = NULL_MESH_ID;
 
-    { // draw rect
+    const auto frustum = edge::createFrustumFromCamera(camera);
 
-        const auto& mesh = meshCache.getMesh(scene.nodes[0]->meshIndex);
-        const auto tm = glm::mat4{1.f};
+    for (const auto& dcIdx : sortedDrawCommands) {
+        const auto& dc = drawCommands[dcIdx];
+        if (!edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
+            continue;
+        }
+
+        if (dc.mesh.materialId != prevMaterialIdx) {
+            prevMaterialIdx = dc.mesh.materialId;
+
+            const auto& material = materialCache.getMaterial(dc.mesh.materialId);
+            auto imageSet = getCurrentFrame().frameDescriptors.allocate(device, meshMaterialLayout);
+            {
+                DescriptorWriter writer;
+                writer.writeImage(
+                    0,
+                    material.diffuseTexture.imageView,
+                    defaultSamplerNearest,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+                writer.updateSet(device, imageSet);
+            }
+            vkCmdBindDescriptorSets(
+                cmd,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                meshPipelineLayout,
+                0,
+                1,
+                &imageSet,
+                0,
+                nullptr);
+        }
+
+        if (dc.meshId != prevMeshId) {
+            prevMeshId = dc.meshId;
+            vkCmdBindIndexBuffer(cmd, dc.mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        }
+
         const auto pushConstants = GPUDrawPushConstants{
-            .worldMatrix = camera.getViewProj() * tm,
-            .vertexBuffer = mesh.buffers.vertexBufferAddress,
+            .worldMatrix = camera.getViewProj() * dc.transformMatrix,
+            .vertexBuffer = dc.mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(
             cmd,
@@ -1056,9 +1090,8 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
             0,
             sizeof(GPUDrawPushConstants),
             &pushConstants);
-        vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdDrawIndexed(cmd, mesh.numIndices, 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmd, dc.mesh.numIndices, 1, 0, 0, 0);
     }
 
     vkCmdEndRendering(cmd);
@@ -1127,4 +1160,141 @@ void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& functi
     VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, immFence));
 
     VK_CHECK(vkWaitForFences(device, 1, &immFence, true, NO_TIMEOUT));
+}
+
+void Renderer::createEntitiesFromScene(const Scene& scene)
+{
+    for (const auto& nodePtr : scene.nodes) {
+        if (nodePtr) {
+            createEntitiesFromNode(scene, *nodePtr);
+        }
+    }
+}
+
+Renderer::EntityId Renderer::createEntitiesFromNode(
+    const Scene& scene,
+    const SceneNode& node,
+    EntityId parentId)
+{
+    auto& e = makeNewEntity();
+    e.tag = node.name;
+
+    // transform
+    {
+        e.transform = node.transform;
+        if (parentId == NULL_ENTITY_ID) {
+            e.worldTransform = e.transform.asMatrix();
+        } else {
+            const auto& parent = entities[parentId];
+            e.worldTransform = parent->worldTransform * node.transform.asMatrix();
+        }
+    }
+
+    { // mesh
+        e.meshes = scene.meshes[node.meshIndex].primitives;
+        // TODO: skeleton
+    }
+
+    { // hierarchy
+        e.parentId = parentId;
+        for (const auto& childPtr : node.children) {
+            if (childPtr) {
+                const auto childId = createEntitiesFromNode(scene, *childPtr, e.id);
+                e.children.push_back(childId);
+            }
+        }
+    }
+
+    return e.id;
+}
+
+Renderer::Entity& Renderer::makeNewEntity()
+{
+    entities.push_back(std::make_unique<Entity>());
+    auto& e = *entities.back();
+    e.id = entities.size() - 1;
+    return e;
+}
+
+Renderer::Entity& Renderer::findEntityByName(std::string_view name) const
+{
+    for (const auto& ePtr : entities) {
+        if (ePtr->tag == name) {
+            return *ePtr;
+        }
+    }
+
+    throw std::runtime_error(std::string{"failed to find entity with name "} + std::string{name});
+}
+
+void Renderer::updateEntityTransforms()
+{
+    const auto I = glm::mat4{1.f};
+    for (auto& ePtr : entities) {
+        auto& e = *ePtr;
+        if (e.parentId == NULL_MESH_ID) {
+            updateEntityTransforms(e, I);
+        }
+    }
+}
+
+void Renderer::updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransform)
+{
+    const auto prevTransform = e.worldTransform;
+    e.worldTransform = parentWorldTransform * e.transform.asMatrix();
+    if (e.worldTransform == prevTransform) {
+        return;
+    }
+
+    for (const auto& childId : e.children) {
+        auto& child = *entities[childId];
+        updateEntityTransforms(child, e.worldTransform);
+    }
+}
+
+void Renderer::generateDrawList()
+{
+    drawCommands.clear();
+
+    for (const auto& ePtr : entities) {
+        const auto& e = *ePtr;
+        const auto transformMat = e.worldTransform;
+
+        for (std::size_t meshIdx = 0; meshIdx < e.meshes.size(); ++meshIdx) {
+            const auto& mesh = meshCache.getMesh(e.meshes[meshIdx]);
+            // TODO: draw frustum culling here
+            const auto& material = materialCache.getMaterial(mesh.materialId);
+
+            const auto worldBoundingSphere =
+                edge::calculateBoundingSphereWorld(transformMat, mesh.boundingSphere, false);
+
+            drawCommands.push_back(DrawCommand{
+                .mesh = mesh,
+                .meshId = e.meshes[meshIdx],
+                .transformMatrix = transformMat,
+                .worldBoundingSphere = worldBoundingSphere,
+            });
+        }
+    }
+
+    sortDrawList();
+}
+
+void Renderer::sortDrawList()
+{
+    sortedDrawCommands.clear();
+    sortedDrawCommands.resize(drawCommands.size());
+    std::iota(sortedDrawCommands.begin(), sortedDrawCommands.end(), 0);
+
+    std::sort(
+        sortedDrawCommands.begin(),
+        sortedDrawCommands.end(),
+        [this](const auto& i1, const auto& i2) {
+            const auto& dc1 = drawCommands[i1];
+            const auto& dc2 = drawCommands[i2];
+            if (dc1.mesh.materialId == dc2.mesh.materialId) {
+                return dc1.meshId < dc2.meshId;
+            }
+            return dc1.mesh.materialId < dc2.mesh.materialId;
+        });
 }

@@ -1,0 +1,9 @@
+{
+  "bgm": "res/music/forest_birds_ambient_inside.ogg",
+  "default_camera": "Camera.TrackRotation",
+  "ambient_light": {
+    "color": [161, 131, 108 ],
+    "strength": 0.05
+  }
+}
+

@@ -547,6 +547,9 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
             // load on CPU
             Mesh cpuMesh;
             loadPrimitive(gltfModel, gltfMesh.name, gltfPrimitive, cpuMesh);
+            if (cpuMesh.indices.empty()) {
+                continue;
+            }
 
             // load to GPU
             GPUMesh gpuMesh;
