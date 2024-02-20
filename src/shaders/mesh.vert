@@ -25,15 +25,15 @@ layout (push_constant) uniform constants
 {
 	mat4 transform;
 	VertexBuffer vertexBuffer;
-} PushConstants;
+} pushConstants;
 
 void main()
 {
-    Vertex v = PushConstants.vertexBuffer.vertices[gl_VertexIndex];
+    Vertex v = pushConstants.vertexBuffer.vertices[gl_VertexIndex];
 
-    vec4 worldPos = PushConstants.transform * vec4(v.position, 1.0f);
+    vec4 worldPos = pushConstants.transform * vec4(v.position, 1.0f);
+
     gl_Position = sceneData.viewProj * worldPos;
-
 	outPos = worldPos.xyz;
     outUV = vec2(v.uv_x, v.uv_y);
     outNormal = v.normal;

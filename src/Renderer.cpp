@@ -31,8 +31,8 @@
 
 namespace
 {
-static constexpr std::uint32_t SCREEN_WIDTH = 1024;
-static constexpr std::uint32_t SCREEN_HEIGHT = 768;
+static constexpr std::uint32_t SCREEN_WIDTH = 1280;
+static constexpr std::uint32_t SCREEN_HEIGHT = 960;
 static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 }
 
