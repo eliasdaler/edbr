@@ -9,6 +9,8 @@
 #include <Graphics/Skeleton.h>
 #include <Math/Util.h>
 
+#include <util/ImageLoader.h>
+
 #include <MaterialCache.h>
 #include <MeshCache.h>
 
@@ -271,7 +273,27 @@ void loadMaterial(
     const util::LoadContext& ctx,
     Material& material,
     const std::filesystem::path& diffusePath)
-{}
+{
+    if (!diffusePath.empty()) {
+        // TODO: use texture cache and don't load same textures
+        auto data = util::loadImage(diffusePath);
+        assert(data.pixels);
+
+        material.diffuseTexture = ctx.renderer.createImage(
+            data.pixels,
+            VkExtent3D{
+                .width = (std::uint32_t)data.width,
+                .height = (std::uint32_t)data.height,
+                .depth = 1,
+            },
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_IMAGE_USAGE_SAMPLED_BIT,
+            false);
+
+    } else {
+        material.diffuseTexture = ctx.whiteTexture;
+    }
+}
 
 void loadGPUMesh(const util::LoadContext ctx, const Mesh& cpuMesh, GPUMesh& gpuMesh)
 {

@@ -46,6 +46,29 @@ void Renderer::init()
 
     initImGui();
 
+    { // init nearest sampler
+        auto samplerCreateInfo = VkSamplerCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_LINEAR,
+            .minFilter = VK_FILTER_LINEAR,
+        };
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultSamplerNearest));
+        deletionQueue.pushFunction(
+            [this]() { vkDestroySampler(device, defaultSamplerNearest, nullptr); });
+    }
+
+    { // create white texture
+        std::uint32_t white = 0xFFFFFFFF;
+        whiteTexture = createImage(
+            (void*)&white,
+            VkExtent3D{1, 1, 1},
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_SAMPLED_BIT,
+            false);
+
+        deletionQueue.pushFunction([this]() { destroyImage(whiteTexture); });
+    }
+
     gradientConstants = ComputePushConstants{
         .data1 = glm::vec4{239.f / 255.f, 157.f / 255.f, 8.f / 255.f, 1},
         .data2 = glm::vec4{85.f / 255.f, 18.f / 255.f, 85.f / 255.f, 1},
@@ -55,6 +78,7 @@ void Renderer::init()
         .renderer = *this,
         .materialCache = materialCache,
         .meshCache = meshCache,
+        .whiteTexture = whiteTexture,
     };
     util::SceneLoader loader;
     loader.loadScene(loadContext, scene, "assets/models/yae.gltf");
@@ -191,10 +215,7 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
             imageViewCreateInfo(drawImage.format, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
         VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &drawImage.imageView));
 
-        deletionQueue.pushFunction([this]() {
-            vkDestroyImageView(device, drawImage.imageView, nullptr);
-            vmaDestroyImage(allocator, drawImage.image, drawImage.allocation);
-        });
+        deletionQueue.pushFunction([this]() { destroyImage(drawImage); });
     }
 
     { // setup draw image (depth)
@@ -223,10 +244,7 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
             imageViewCreateInfo(depthImage.format, depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
         VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &depthImage.imageView));
 
-        deletionQueue.pushFunction([this]() {
-            vkDestroyImageView(device, depthImage.imageView, nullptr);
-            vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
-        });
+        deletionQueue.pushFunction([this]() { destroyImage(depthImage); });
     }
 }
 
@@ -278,6 +296,22 @@ void Renderer::initImmediateStructures()
 
 void Renderer::initDescriptors()
 {
+    for (std::size_t i = 0; i < FRAME_OVERLAP; i++) {
+        // create a descriptor pool
+        std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> frame_sizes = {
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
+        };
+
+        auto& fd = frames[i];
+        fd.frameDescriptors = DescriptorAllocatorGrowable{};
+        fd.frameDescriptors.init(device, 1000, frame_sizes);
+
+        deletionQueue.pushFunction([&, i]() { frames[i].frameDescriptors.destroyPools(device); });
+    }
+
     const auto sizes = std::array{
         DescriptorAllocator::PoolSizeRatio{
             .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -311,6 +345,15 @@ void Renderer::initDescriptors()
     };
 
     vkUpdateDescriptorSets(device, 1, &drawImageWrite, 0, nullptr);
+
+    {
+        DescriptorLayoutBuilder builder;
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        meshMaterialLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        deletionQueue.pushFunction(
+            [this]() { vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr); });
+    }
 }
 
 void Renderer::initPipelines()
@@ -413,6 +456,8 @@ void Renderer::initMeshPipeline()
     auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &meshMaterialLayout;
 
     VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &meshPipelineLayout));
 
@@ -534,9 +579,111 @@ AllocatedBuffer Renderer::createBuffer(
     return buffer;
 }
 
+AllocatedImage Renderer::createImage(
+    VkExtent3D size,
+    VkFormat format,
+    VkImageUsageFlags usage,
+    bool mipMap)
+{
+    AllocatedImage image{
+        .extent = size,
+        .format = format,
+    };
+
+    auto imgInfo = vkinit::imageCreateInfo(format, usage, size);
+    if (mipMap) {
+        imgInfo.mipLevels =
+            static_cast<uint32_t>(std::floor(std::log2(std::max(size.width, size.height)))) + 1;
+    }
+
+    const auto allocInfo = VmaAllocationCreateInfo{
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+    };
+
+    VK_CHECK(
+        vmaCreateImage(allocator, &imgInfo, &allocInfo, &image.image, &image.allocation, nullptr));
+
+    auto aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (format == VK_FORMAT_D32_SFLOAT) {
+        aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    auto viewInfo = vkinit::imageViewCreateInfo(format, image.image, aspectFlag);
+    viewInfo.subresourceRange.levelCount = imgInfo.mipLevels;
+
+    VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &image.imageView));
+
+    return image;
+}
+
+AllocatedImage Renderer::createImage(
+    void* data,
+    VkExtent3D size,
+    VkFormat format,
+    VkImageUsageFlags usage,
+    bool mipMap)
+{
+    size_t data_size = size.depth * size.width * size.height * 4;
+    const auto uploadbuffer =
+        createBuffer(data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    memcpy(uploadbuffer.info.pMappedData, data, data_size);
+
+    const auto image = createImage(
+        size,
+        format,
+        usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        mipMap);
+
+    immediateSubmit([&](VkCommandBuffer cmd) {
+        vkutil::transitionImage(
+            cmd, image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        const auto copyRegion = VkBufferImageCopy{
+            .bufferOffset = 0,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource =
+                {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+            .imageExtent = size,
+        };
+
+        // copy the buffer into the image
+        vkCmdCopyBufferToImage(
+            cmd,
+            uploadbuffer.buffer,
+            image.image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &copyRegion);
+
+        vkutil::transitionImage(
+            cmd,
+            image.image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    });
+
+    destroyBuffer(uploadbuffer);
+
+    return image;
+}
+
 void Renderer::destroyBuffer(const AllocatedBuffer& buffer) const
 {
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
+}
+
+void Renderer::destroyImage(const AllocatedImage& image) const
+{
+    vkDestroyImageView(device, image.imageView, nullptr);
+    vmaDestroyImage(allocator, image.image, image.allocation);
 }
 
 GPUMeshBuffers Renderer::uploadMesh(
@@ -853,6 +1000,25 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
     vkCmdBeginRendering(cmd, &renderInfo);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
+
+    { // bind texture
+        auto imageSet = getCurrentFrame().frameDescriptors.allocate(device, meshMaterialLayout);
+        {
+            const auto& material = materialCache.getMaterial(0);
+
+            DescriptorWriter writer;
+            writer.writeImage(
+                0,
+                material.diffuseTexture.imageView,
+                defaultSamplerNearest,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+            writer.updateSet(device, imageSet);
+        }
+        vkCmdBindDescriptorSets(
+            cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
+    }
 
     const auto viewport = VkViewport{
         .x = 0,

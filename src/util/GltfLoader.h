@@ -21,6 +21,7 @@ struct LoadContext {
     Renderer& renderer;
     MaterialCache& materialCache;
     MeshCache& meshCache;
+    AllocatedImage& whiteTexture;
 };
 
 class SceneLoader {

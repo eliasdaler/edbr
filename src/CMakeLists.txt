@@ -7,6 +7,7 @@ add_executable(game
 
   util/GltfLoader.cpp
   util/InputUtil.cpp
+  util/ImageLoader.cpp
   util/OSUtil.cpp
 
   Math/Transform.cpp
@@ -17,7 +18,6 @@ add_executable(game
   Graphics/Mesh.cpp
   Graphics/SkeletonAnimator.cpp
   Graphics/Texture.cpp
-
 
   MeshCache.cpp
   MaterialCache.cpp
@@ -49,6 +49,7 @@ target_link_libraries(game PRIVATE
   glm::glm
 
   tinygltf::tinygltf
+  stb::image
 )
 
 # SDL

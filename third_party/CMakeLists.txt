@@ -1,7 +1,10 @@
 # glm
 add_subdirectory(glm)
 
-### SDL
+# stb
+add_subdirectory(stb)
+
+# SDL
 if (NOT BUILD_SHARED_LIBS)
   set(SDL_SHARED_ENABLED_BY_DEFAULT OFF CACHE BOOL "Don't build SDL as shared lib")
 endif()
