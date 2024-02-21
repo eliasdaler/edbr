@@ -17,27 +17,6 @@ private:
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 };
 
-class DescriptorAllocator {
-public:
-    struct PoolSizeRatio {
-        VkDescriptorType type;
-        float ratio;
-    };
-
-public:
-    void initPool(
-        VkDevice device,
-        std::uint32_t maxSets,
-        std::span<const PoolSizeRatio> poolRatios);
-    void clearDescriptors(VkDevice device);
-    void destroyPool(VkDevice device);
-
-    VkDescriptorSet allocate(VkDevice device, VkDescriptorSetLayout layout);
-
-private:
-    VkDescriptorPool pool;
-};
-
 class DescriptorAllocatorGrowable {
 public:
     struct PoolSizeRatio {
