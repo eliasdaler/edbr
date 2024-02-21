@@ -90,11 +90,16 @@ public:
     void run();
     void cleanup();
 
-    GPUMeshBuffers uploadMesh(
+    [[nodiscard]] GPUMeshBuffers uploadMesh(
         std::span<const std::uint32_t> indices,
         std::span<const Mesh::Vertex> vertices) const;
 
-    AllocatedImage createImage(
+    [[nodiscard]] AllocatedBuffer createBuffer(
+        std::size_t allocSize,
+        VkBufferUsageFlags usage,
+        VmaMemoryUsage memoryUsage) const;
+
+    [[nodiscard]] AllocatedImage createImage(
         void* data,
         VkExtent3D size,
         VkFormat format,
@@ -104,6 +109,8 @@ public:
     void destroyBuffer(const AllocatedBuffer& buffer) const;
     void destroyImage(const AllocatedImage& image) const;
 
+    VkDescriptorSet writeMaterialData(MaterialId id, const Material& material);
+
 private:
     void initVulkan();
     void createSwapchain(std::uint32_t width, std::uint32_t height);
@@ -111,6 +118,8 @@ private:
     void initSyncStructures();
     void initImmediateStructures();
     void initDescriptors();
+
+    void allocateMaterialDataBuffer(std::size_t numMaterials);
 
     void initPipelines();
     void initBackgroundPipelines();
@@ -121,11 +130,6 @@ private:
 
     void destroyCommandBuffers();
     void destroySyncStructures();
-
-    AllocatedBuffer createBuffer(
-        std::size_t allocSize,
-        VkBufferUsageFlags usage,
-        VmaMemoryUsage memoryUsage) const;
 
     AllocatedImage createImage(
         VkExtent3D size,
@@ -173,7 +177,7 @@ private:
     std::array<FrameData, FRAME_OVERLAP> frames{};
     std::uint32_t frameNumber{0};
 
-    DescriptorAllocator descriptorAllocator;
+    DescriptorAllocatorGrowable descriptorAllocator;
     VkDescriptorSet drawImageDescriptors;
     VkDescriptorSetLayout drawImageDescriptorLayout;
 
@@ -243,4 +247,6 @@ private:
     glm::vec4 ambientColorAndIntensity;
     glm::vec4 sunlightDir;
     glm::vec4 sunlightColorAndIntensity;
+
+    AllocatedBuffer materialDataBuffer;
 };

@@ -167,7 +167,6 @@ void loadPrimitive(
     for (std::size_t i = 0; i < positions.size(); ++i) {
         mesh.positions[i] = glm::vec4(positions[i], 1.f);
         mesh.vertices[i].position = positions[i]; // TEMP
-        mesh.vertices[i].color = glm::vec4{1.f, 1.f, 1.f, 1.f}; // TEMP
     }
 
     { // get min and max pos
@@ -531,7 +530,11 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
         }
 
         loadMaterial(ctx, material, diffusePath);
-        auto materialId = ctx.materialCache.addMaterial(std::move(material));
+
+        const auto materialId = ctx.materialCache.getFreeMaterialId();
+        material.materialSet = ctx.renderer.writeMaterialData(materialId, material);
+
+        ctx.materialCache.addMaterial(materialId, std::move(material));
         materialMapping.emplace(materialIdx, materialId);
     }
 

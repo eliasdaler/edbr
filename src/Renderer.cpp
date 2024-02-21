@@ -46,6 +46,8 @@ void Renderer::init()
     initDescriptors();
     initPipelines();
 
+    allocateMaterialDataBuffer(1000);
+
     initImGui();
 
     { // init nearest sampler
@@ -86,8 +88,8 @@ void Renderer::init()
     {
         Scene scene;
         util::SceneLoader loader;
-        // loader.loadScene(loadContext, scene, "assets/levels/house/house.gltf");
-        loader.loadScene(loadContext, scene, "assets/levels/city/city.gltf");
+        loader.loadScene(loadContext, scene, "assets/levels/house/house.gltf");
+        // loader.loadScene(loadContext, scene, "assets/levels/city/city.gltf");
         createEntitiesFromScene(scene);
     }
 
@@ -191,6 +193,8 @@ void Renderer::initVulkan()
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height)
 {
+    vSync = false;
+
     swapchain = vkb::SwapchainBuilder{device}
                     .set_desired_format(VkSurfaceFormatKHR{
                         .format = VK_FORMAT_B8G8R8A8_UNORM,
@@ -339,14 +343,12 @@ void Renderer::initDescriptors()
         deletionQueue.pushFunction([&, i]() { frames[i].frameDescriptors.destroyPools(device); });
     }
 
-    const auto sizes = std::array{
-        DescriptorAllocator::PoolSizeRatio{
-            .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .ratio = 1.f,
-        },
+    const auto sizes = std::vector<DescriptorAllocatorGrowable::PoolSizeRatio>{
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
     };
 
-    descriptorAllocator.initPool(device, 10, sizes);
+    descriptorAllocator.init(device, 10, sizes);
 
     DescriptorLayoutBuilder builder{};
     builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
@@ -385,12 +387,23 @@ void Renderer::initDescriptors()
 
     {
         DescriptorLayoutBuilder builder;
-        builder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        builder.addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         meshMaterialLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
 
         deletionQueue.pushFunction(
             [this]() { vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr); });
     }
+}
+
+void Renderer::allocateMaterialDataBuffer(std::size_t numMaterials)
+{
+    materialDataBuffer = createBuffer(
+        numMaterials * sizeof(MaterialData),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    deletionQueue.pushFunction([this]() { destroyBuffer(materialDataBuffer); });
 }
 
 void Renderer::initPipelines()
@@ -720,6 +733,35 @@ void Renderer::destroyImage(const AllocatedImage& image) const
 {
     vkDestroyImageView(device, image.imageView, nullptr);
     vmaDestroyImage(allocator, image.image, image.allocation);
+}
+
+VkDescriptorSet Renderer::writeMaterialData(MaterialId id, const Material& material)
+{
+    MaterialData* data = (MaterialData*)materialDataBuffer.info.pMappedData;
+    data[id] = MaterialData{
+        .baseColor = material.baseColor,
+        .metalRoughnessFactors = glm::vec4{1.f, 0.5f, 0.f, 0.f},
+    };
+
+    const auto set = descriptorAllocator.allocate(device, meshMaterialLayout);
+
+    DescriptorWriter writer;
+    writer.writeBuffer(
+        0,
+        materialDataBuffer.buffer,
+        sizeof(MaterialData),
+        id * sizeof(MaterialData),
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.writeImage(
+        1,
+        material.diffuseTexture.imageView,
+        defaultSamplerNearest,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+    writer.updateSet(device, set);
+
+    return set;
 }
 
 GPUMeshBuffers Renderer::uploadMesh(
@@ -1119,25 +1161,13 @@ void Renderer::drawGeometry(VkCommandBuffer cmd)
             prevMaterialIdx = dc.mesh.materialId;
 
             const auto& material = materialCache.getMaterial(dc.mesh.materialId);
-            auto imageSet = getCurrentFrame().frameDescriptors.allocate(device, meshMaterialLayout);
-            {
-                DescriptorWriter writer;
-                writer.writeImage(
-                    0,
-                    material.diffuseTexture.imageView,
-                    defaultSamplerNearest,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-                writer.updateSet(device, imageSet);
-            }
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 meshPipelineLayout,
                 1,
                 1,
-                &imageSet,
+                &material.materialSet,
                 0,
                 nullptr);
         }
@@ -1194,7 +1224,7 @@ void Renderer::cleanup()
     destroyCommandBuffers();
     destroySyncStructures();
 
-    descriptorAllocator.destroyPool(device);
+    descriptorAllocator.destroyPools(device);
 
     for (auto imageView : swapchainImageViews) {
         vkDestroyImageView(device, imageView, nullptr);

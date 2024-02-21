@@ -2,13 +2,14 @@
 
 #include "Renderer.h"
 
-MaterialId MaterialCache::addMaterial(Material material)
+void MaterialCache::addMaterial(MaterialId id, Material material)
 {
-    // TODO: check if all properties of the material are same and return
-    // already cached material.
-    const auto id = materials.size();
     materials.push_back(std::move(material));
-    return id;
+}
+
+MaterialId MaterialCache::getFreeMaterialId() const
+{
+    return materials.size();
 }
 
 const Material& MaterialCache::getMaterial(MaterialId id) const

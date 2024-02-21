@@ -13,7 +13,8 @@ layout (location = 0) out vec4 outFragColor;
 
 void main()
 {
-    vec3 diffuse = texture(diffuseTex, inUV.xy).rgb;
+    vec3 baseColor = materialData.baseColor.rgb;
+    vec3 diffuse = baseColor * texture(diffuseTex, inUV.xy).rgb;
 
     vec3 cameraPos = sceneData.cameraPos.xyz;
 
