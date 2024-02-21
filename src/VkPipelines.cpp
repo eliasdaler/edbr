@@ -234,3 +234,33 @@ PipelineBuilder& PipelineBuilder::disableDepthTest()
 
     return *this;
 }
+
+ComputePipelineBuilder::ComputePipelineBuilder(VkPipelineLayout pipelineLayout) :
+    pipelineLayout(pipelineLayout)
+{}
+
+ComputePipelineBuilder& ComputePipelineBuilder::setShader(VkShaderModule shaderModule)
+{
+    this->shaderModule = shaderModule;
+    return *this;
+}
+
+VkPipeline ComputePipelineBuilder::build(VkDevice device)
+{
+    const auto pipelineCreateInfo = VkComputePipelineCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage =
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                .module = shaderModule,
+                .pName = "main",
+            },
+        .layout = pipelineLayout,
+    };
+
+    VkPipeline pipeline;
+    VK_CHECK(
+        vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, 0, &pipeline));
+    return pipeline;
+}

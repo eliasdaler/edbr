@@ -325,7 +325,7 @@ void Renderer::allocateMaterialDataBuffer(std::size_t numMaterials)
 void Renderer::initSamplers()
 {
     { // init nearest sampler
-        auto samplerCreateInfo = VkSamplerCreateInfo{
+        const auto samplerCreateInfo = VkSamplerCreateInfo{
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
             .magFilter = VK_FILTER_NEAREST,
             .minFilter = VK_FILTER_NEAREST,
@@ -360,40 +360,23 @@ void Renderer::initPipelines()
 
 void Renderer::initBackgroundPipelines()
 {
-    const auto pushContant = VkPushConstantRange{
+    const auto pushConstant = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         .offset = 0,
         .size = sizeof(ComputePushConstants),
     };
 
-    const auto layout = VkPipelineLayoutCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1,
-        .pSetLayouts = &drawImageDescriptorLayout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &pushContant,
-    };
-
-    VK_CHECK(vkCreatePipelineLayout(device, &layout, nullptr, &gradientPipelineLayout));
+    const auto pushConstants = std::array{pushConstant};
+    const auto layouts = std::array{drawImageDescriptorLayout};
+    gradientPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstants);
 
     const auto shader = vkutil::loadShaderModule("shaders/gradient.comp.spv", device);
 
-    const auto pipelineCreateInfo = VkComputePipelineCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .stage =
-            {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-                .module = shader,
-                .pName = "main",
-            },
-        .layout = gradientPipelineLayout,
-    };
-
-    VK_CHECK(vkCreateComputePipelines(
-        device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, 0, &gradientPipeline));
+    gradientPipeline =
+        ComputePipelineBuilder{gradientPipelineLayout}.setShader(shader).build(device);
 
     vkDestroyShaderModule(device, shader, nullptr);
+
     deletionQueue.pushFunction([this]() {
         vkDestroyPipelineLayout(device, gradientPipelineLayout, nullptr);
         vkDestroyPipeline(device, gradientPipeline, nullptr);

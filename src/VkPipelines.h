@@ -43,3 +43,15 @@ private:
     VkFormat colorAttachmentformat;
     VkPipelineLayout pipelineLayout;
 };
+
+class ComputePipelineBuilder {
+public:
+    ComputePipelineBuilder(VkPipelineLayout pipelineLayout);
+    ComputePipelineBuilder& setShader(VkShaderModule shaderModule);
+
+    VkPipeline build(VkDevice device);
+
+private:
+    VkPipelineLayout pipelineLayout;
+    VkShaderModule shaderModule;
+};

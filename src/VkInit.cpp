@@ -182,19 +182,6 @@ VkRenderingInfo renderingInfo(
     };
 }
 
-VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(
-    std::span<const VkDescriptorSetLayout> layouts,
-    std::span<const VkPushConstantRange> pushContantRanges)
-{
-    return VkPipelineLayoutCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = (std::uint32_t)layouts.size(),
-        .pSetLayouts = layouts.data(),
-        .pushConstantRangeCount = (std::uint32_t)pushContantRanges.size(),
-        .pPushConstantRanges = pushContantRanges.data(),
-    };
-}
-
 VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo(
     VkShaderStageFlagBits stage,
     VkShaderModule shaderModule)
