@@ -4,13 +4,48 @@
 
 #include <cstdint>
 
-void DescriptorLayoutBuilder::addBinding(std::uint32_t binding, VkDescriptorType type)
+DescriptorLayoutBuilder& DescriptorLayoutBuilder::addBinding(
+    std::uint32_t binding,
+    VkDescriptorType type)
 {
     bindings.push_back(VkDescriptorSetLayoutBinding{
         .binding = binding,
         .descriptorType = type,
         .descriptorCount = 1,
     });
+
+    return *this;
+}
+
+namespace vkutil
+{
+VkDescriptorSetLayout buildDescriptorSetLayout(
+    VkDevice device,
+    VkShaderStageFlags shaderStages,
+    std::span<const DescriptorLayoutBinding> bindings)
+{
+    std::vector<VkDescriptorSetLayoutBinding> vkBindings;
+    vkBindings.reserve(bindings.size());
+    for (const auto& b : bindings) {
+        vkBindings.push_back(VkDescriptorSetLayoutBinding{
+            .binding = b.binding,
+            .descriptorType = b.type,
+            .descriptorCount = 1,
+            .stageFlags = shaderStages,
+        });
+    }
+
+    auto info = VkDescriptorSetLayoutCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = (std::uint32_t)vkBindings.size(),
+        .pBindings = vkBindings.data(),
+    };
+
+    VkDescriptorSetLayout set;
+    VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
+    return set;
+}
+
 }
 
 void DescriptorLayoutBuilder::clear()

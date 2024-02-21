@@ -44,35 +44,15 @@ void Renderer::init(SDL_Window* window, bool vSync)
     createCommandBuffers();
     initSyncStructures();
     initImmediateStructures();
+    initDescriptorAllocators();
     initDescriptors();
     initPipelines();
+    initSamplers();
+    initDefaultTextures();
 
     allocateMaterialDataBuffer(1000);
 
     initImGui(window);
-
-    { // init nearest sampler
-        auto samplerCreateInfo = VkSamplerCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_NEAREST,
-            .minFilter = VK_FILTER_NEAREST,
-        };
-        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultSamplerNearest));
-        deletionQueue.pushFunction(
-            [this]() { vkDestroySampler(device, defaultSamplerNearest, nullptr); });
-    }
-
-    { // create white texture
-        std::uint32_t white = 0xFFFFFFFF;
-        whiteTexture = createImage(
-            (void*)&white,
-            VkExtent3D{1, 1, 1},
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_SAMPLED_BIT,
-            false);
-
-        deletionQueue.pushFunction([this]() { destroyImage(whiteTexture); });
-    }
 
     gradientConstants = ComputePushConstants{
         .data1 = glm::vec4{239.f / 255.f, 157.f / 255.f, 8.f / 255.f, 1},
@@ -264,7 +244,7 @@ void Renderer::initImmediateStructures()
     deletionQueue.pushFunction([this]() { vkDestroyFence(device, immFence, nullptr); });
 }
 
-void Renderer::initDescriptors()
+void Renderer::initDescriptorAllocators()
 {
     for (std::size_t i = 0; i < FRAME_OVERLAP; i++) {
         // create a descriptor pool
@@ -276,7 +256,6 @@ void Renderer::initDescriptors()
         };
 
         auto& fd = frames[i];
-        fd.frameDescriptors = DescriptorAllocatorGrowable{};
         fd.frameDescriptors.init(device, 1000, frame_sizes);
 
         deletionQueue.pushFunction([&, i]() { frames[i].frameDescriptors.destroyPools(device); });
@@ -288,51 +267,49 @@ void Renderer::initDescriptors()
     };
 
     descriptorAllocator.init(device, 10, sizes);
+}
 
-    DescriptorLayoutBuilder builder{};
-    builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-    drawImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_COMPUTE_BIT);
+void Renderer::initDescriptors()
+{
+    const auto drawImageBindings = std::array<vkutil::DescriptorLayoutBinding, 1>{
+        {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE},
+    };
+    drawImageDescriptorLayout =
+        vkutil::buildDescriptorSetLayout(device, VK_SHADER_STAGE_COMPUTE_BIT, drawImageBindings);
 
     deletionQueue.pushFunction(
         [this]() { vkDestroyDescriptorSetLayout(device, drawImageDescriptorLayout, nullptr); });
 
-    drawImageDescriptors = descriptorAllocator.allocate(device, drawImageDescriptorLayout);
-
-    const auto imgInfo = VkDescriptorImageInfo{
-        .imageView = drawImage.imageView,
-        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-    };
-
-    const auto drawImageWrite = VkWriteDescriptorSet{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = drawImageDescriptors,
-        .dstBinding = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &imgInfo,
-    };
-
-    vkUpdateDescriptorSets(device, 1, &drawImageWrite, 0, nullptr);
-
-    {
-        DescriptorLayoutBuilder builder;
-        builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        sceneDataDescriptorLayout =
-            builder.build(device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        deletionQueue.pushFunction(
-            [this]() { vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr); });
+    { // write descriptors
+        drawImageDescriptors = descriptorAllocator.allocate(device, drawImageDescriptorLayout);
+        DescriptorWriter writer;
+        writer.writeImage(
+            0,
+            drawImage.imageView,
+            VK_NULL_HANDLE,
+            VK_IMAGE_LAYOUT_GENERAL,
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        writer.updateSet(device, drawImageDescriptors);
     }
 
-    {
-        DescriptorLayoutBuilder builder;
-        builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        builder.addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        meshMaterialLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
+    const auto sceneDataBindings = std::array<vkutil::DescriptorLayoutBinding, 1>{{
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
+    }};
+    sceneDataDescriptorLayout = vkutil::buildDescriptorSetLayout(
+        device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sceneDataBindings);
 
-        deletionQueue.pushFunction(
-            [this]() { vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr); });
-    }
+    deletionQueue.pushFunction(
+        [this]() { vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr); });
+
+    const auto meshMaterialBindings = std::array<vkutil::DescriptorLayoutBinding, 2>{{
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
+        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
+    }};
+    meshMaterialLayout = vkutil::
+        buildDescriptorSetLayout(device, VK_SHADER_STAGE_FRAGMENT_BIT, meshMaterialBindings);
+
+    deletionQueue.pushFunction(
+        [this]() { vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr); });
 }
 
 void Renderer::allocateMaterialDataBuffer(std::size_t numMaterials)
@@ -343,6 +320,35 @@ void Renderer::allocateMaterialDataBuffer(std::size_t numMaterials)
         VMA_MEMORY_USAGE_CPU_TO_GPU);
 
     deletionQueue.pushFunction([this]() { destroyBuffer(materialDataBuffer); });
+}
+
+void Renderer::initSamplers()
+{
+    { // init nearest sampler
+        auto samplerCreateInfo = VkSamplerCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_NEAREST,
+            .minFilter = VK_FILTER_NEAREST,
+        };
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultSamplerNearest));
+        deletionQueue.pushFunction(
+            [this]() { vkDestroySampler(device, defaultSamplerNearest, nullptr); });
+    }
+}
+
+void Renderer::initDefaultTextures()
+{
+    { // create white texture
+        std::uint32_t white = 0xFFFFFFFF;
+        whiteTexture = createImage(
+            (void*)&white,
+            VkExtent3D{1, 1, 1},
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_SAMPLED_BIT,
+            false);
+
+        deletionQueue.pushFunction([this]() { destroyImage(whiteTexture); });
+    }
 }
 
 void Renderer::initPipelines()
@@ -370,8 +376,7 @@ void Renderer::initBackgroundPipelines()
 
     VK_CHECK(vkCreatePipelineLayout(device, &layout, nullptr, &gradientPipelineLayout));
 
-    VkShaderModule shader{};
-    vkutil::loadShaderModule("shaders/gradient.comp.spv", device, &shader);
+    const auto shader = vkutil::loadShaderModule("shaders/gradient.comp.spv", device);
 
     const auto pipelineCreateInfo = VkComputePipelineCreateInfo{
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -397,13 +402,10 @@ void Renderer::initBackgroundPipelines()
 
 void Renderer::initTrianglePipeline()
 {
-    VkShaderModule vertexShader{};
-    vkutil::loadShaderModule("shaders/colored_triangle.vert.spv", device, &vertexShader);
-    VkShaderModule fragShader{};
-    vkutil::loadShaderModule("shaders/colored_triangle.frag.spv", device, &fragShader);
+    const auto vertexShader = vkutil::loadShaderModule("shaders/colored_triangle.vert.spv", device);
+    const auto fragShader = vkutil::loadShaderModule("shaders/colored_triangle.frag.spv", device);
 
-    const auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
-    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &trianglePipelineLayout));
+    trianglePipelineLayout = vkutil::createPipelineLayout(device);
 
     trianglePipeline = PipelineBuilder{trianglePipelineLayout}
                            .setShaders(vertexShader, fragShader)
@@ -428,10 +430,8 @@ void Renderer::initTrianglePipeline()
 
 void Renderer::initMeshPipeline()
 {
-    VkShaderModule vertexShader{};
-    vkutil::loadShaderModule("shaders/mesh.vert.spv", device, &vertexShader);
-    VkShaderModule fragShader{};
-    vkutil::loadShaderModule("shaders/mesh.frag.spv", device, &fragShader);
+    const auto vertexShader = vkutil::loadShaderModule("shaders/mesh.vert.spv", device);
+    const auto fragShader = vkutil::loadShaderModule("shaders/mesh.frag.spv", device);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
@@ -439,15 +439,9 @@ void Renderer::initMeshPipeline()
         .size = sizeof(GPUDrawPushConstants),
     };
 
-    auto pipelineLayoutInfo = vkinit::pipelineLayoutCreateInfo();
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
-
+    const auto pushConstantRanges = std::array{bufferRange};
     const auto layouts = std::array{sceneDataDescriptorLayout, meshMaterialLayout};
-    pipelineLayoutInfo.setLayoutCount = layouts.size();
-    pipelineLayoutInfo.pSetLayouts = layouts.data();
-
-    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &meshPipelineLayout));
+    meshPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     meshPipeline = PipelineBuilder{meshPipelineLayout}
                        .setShaders(vertexShader, fragShader)

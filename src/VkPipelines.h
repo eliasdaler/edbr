@@ -1,12 +1,17 @@
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include <vulkan/vulkan.h>
 
 namespace vkutil
 {
-void loadShaderModule(const char* filePath, VkDevice device, VkShaderModule* outShaderModule);
+VkShaderModule loadShaderModule(const char* filePath, VkDevice device);
+VkPipelineLayout createPipelineLayout(
+    VkDevice device,
+    std::span<const VkDescriptorSetLayout> layouts = {},
+    std::span<const VkPushConstantRange> pushContantRanges = {});
 } // end of namespace vkutil
 
 class PipelineBuilder {

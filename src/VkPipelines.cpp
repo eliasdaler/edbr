@@ -6,10 +6,11 @@
 #include <vector>
 
 #include "VkInit.h"
+#include "VkUtil.h"
 
 namespace vkutil
 {
-void loadShaderModule(const char* filePath, VkDevice device, VkShaderModule* outShaderModule)
+VkShaderModule loadShaderModule(const char* filePath, VkDevice device)
 {
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
@@ -30,10 +31,30 @@ void loadShaderModule(const char* filePath, VkDevice device, VkShaderModule* out
         .pCode = buffer.data(),
     };
 
-    if (vkCreateShaderModule(device, &info, nullptr, outShaderModule) != VK_SUCCESS) {
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(device, &info, nullptr, &shaderModule) != VK_SUCCESS) {
         std::cout << "Failed to load " << filePath << std::endl;
         std::exit(1);
     }
+    return shaderModule;
+}
+
+VkPipelineLayout createPipelineLayout(
+    VkDevice device,
+    std::span<const VkDescriptorSetLayout> layouts,
+    std::span<const VkPushConstantRange> pushContantRanges)
+{
+    const auto createInfo = VkPipelineLayoutCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = (std::uint32_t)layouts.size(),
+        .pSetLayouts = layouts.data(),
+        .pushConstantRangeCount = (std::uint32_t)pushContantRanges.size(),
+        .pPushConstantRanges = pushContantRanges.data(),
+    };
+
+    VkPipelineLayout layout;
+    VK_CHECK(vkCreatePipelineLayout(device, &createInfo, nullptr, &layout));
+    return layout;
 }
 
 } // end of namespace vkutil

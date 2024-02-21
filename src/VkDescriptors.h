@@ -9,13 +9,27 @@
 
 class DescriptorLayoutBuilder {
 public:
-    void addBinding(std::uint32_t binding, VkDescriptorType type);
-    void clear();
+    DescriptorLayoutBuilder& addBinding(std::uint32_t binding, VkDescriptorType type);
     VkDescriptorSetLayout build(VkDevice device, VkShaderStageFlags shaderStages);
+
+    void clear();
 
 private:
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 };
+
+namespace vkutil
+{
+struct DescriptorLayoutBinding {
+    std::uint32_t binding;
+    VkDescriptorType type;
+};
+
+VkDescriptorSetLayout buildDescriptorSetLayout(
+    VkDevice device,
+    VkShaderStageFlags shaderStages,
+    std::span<const DescriptorLayoutBinding> bindings);
+}
 
 class DescriptorAllocatorGrowable {
 public:

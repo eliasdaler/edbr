@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 
 #include <vulkan/vulkan.h>
 
@@ -43,7 +44,10 @@ VkRenderingInfo renderingInfo(
     const VkRenderingAttachmentInfo* colorAttachment,
     const VkRenderingAttachmentInfo* depthAttachment);
 
-VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo();
+VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(
+    std::span<const VkDescriptorSetLayout> layouts = {},
+    std::span<const VkPushConstantRange> pushContantRanges = {});
+
 VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo(
     VkShaderStageFlagBits stage,
     VkShaderModule shaderModule);

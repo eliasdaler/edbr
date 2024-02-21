@@ -86,7 +86,10 @@ private:
     void createCommandBuffers();
     void initSyncStructures();
     void initImmediateStructures();
+    void initDescriptorAllocators();
     void initDescriptors();
+    void initSamplers();
+    void initDefaultTextures();
 
     void allocateMaterialDataBuffer(std::size_t numMaterials);
 
@@ -114,6 +117,9 @@ private:
 
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
+    void sortDrawList();
+
+private: // data
     vkb::Instance instance;
     vkb::PhysicalDevice physicalDevice;
     vkb::Device device;
@@ -121,8 +127,6 @@ private:
 
     VkQueue graphicsQueue;
     std::uint32_t graphicsQueueFamily;
-
-    DeletionQueue deletionQueue;
 
     VkSurfaceKHR surface;
 
@@ -135,12 +139,14 @@ private:
     AllocatedImage depthImage;
     VkExtent2D drawExtent;
 
+    VkDescriptorSetLayout drawImageDescriptorLayout;
+    VkDescriptorSet drawImageDescriptors;
+
     std::array<FrameData, FRAME_OVERLAP> frames{};
     std::uint32_t frameNumber{0};
 
+    DeletionQueue deletionQueue;
     DescriptorAllocatorGrowable descriptorAllocator;
-    VkDescriptorSet drawImageDescriptors;
-    VkDescriptorSetLayout drawImageDescriptorLayout;
 
     VkPipeline gradientPipeline;
     VkPipelineLayout gradientPipelineLayout;
@@ -168,19 +174,18 @@ private:
     VkDescriptorSetLayout meshMaterialLayout;
 
     MaterialCache materialCache;
+    AllocatedBuffer materialDataBuffer;
+
     MeshCache meshCache;
 
-    AllocatedImage whiteTexture;
     VkSampler defaultSamplerNearest;
+
+    AllocatedImage whiteTexture;
 
     glm::vec4 ambientColorAndIntensity;
     glm::vec4 sunlightDir;
     glm::vec4 sunlightColorAndIntensity;
 
-    AllocatedBuffer materialDataBuffer;
-
     std::vector<DrawCommand> drawCommands;
     std::vector<std::size_t> sortedDrawCommands;
-
-    void sortDrawList();
 };
