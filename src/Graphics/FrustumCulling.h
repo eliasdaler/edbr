@@ -2,11 +2,16 @@
 
 #include <array>
 
-#include <Graphics/Camera.h>
-#include <Math/Sphere.h>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+
+namespace math
+{
+struct Sphere;
+}
+class Camera;
 
 /* Mostly stolen from https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling */
-
 struct Frustum {
     struct Plane {
         Plane() = default;

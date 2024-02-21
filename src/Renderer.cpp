@@ -106,10 +106,6 @@ void Renderer::initVulkan(SDL_Window* window)
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
     deletionQueue.pushFunction([&]() { vmaDestroyAllocator(allocator); });
-
-    sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
-    sunlightColorAndIntensity = glm::vec4{213.f / 255.f, 136.f / 255.f, 49.f / 255.f, 0.6f};
-    ambientColorAndIntensity = glm::vec4{0.20784314, 0.592156887, 0.56078434, 0.05f};
 }
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
@@ -750,20 +746,6 @@ void Renderer::updateDevTools(float dt)
     auto glmToArr = [](const glm::vec4& v) { return std::array<float, 4>{v.x, v.y, v.z, v.w}; };
     auto arrToGLM = [](const std::array<float, 4>& v) { return glm::vec4{v[0], v[1], v[2], v[3]}; };
 
-    auto ambient = glmToArr(ambientColorAndIntensity);
-    if (ImGui::ColorEdit3("Ambient", ambient.data())) {
-        ambientColorAndIntensity = arrToGLM(ambient);
-    }
-    ImGui::DragFloat("Ambient intensity", &ambientColorAndIntensity.w, 1.f, 0.f, 1.f);
-
-    auto sunlight = glmToArr(sunlightColorAndIntensity);
-    if (ImGui::ColorEdit3("Sunlight", sunlight.data())) {
-        sunlightColorAndIntensity = arrToGLM(sunlight);
-    }
-    ImGui::DragFloat("Sunlight intensity", &sunlightColorAndIntensity.w, 1.f, 0.f, 1.f);
-
-    ImGui::End();
-
     {
         ImGui::Begin("Gradient");
 
@@ -776,6 +758,7 @@ void Renderer::updateDevTools(float dt)
         if (ImGui::ColorEdit3("To", to.data())) {
             gradientConstants.data2 = arrToGLM(to);
         }
+
         ImGui::End();
     }
 }
@@ -910,36 +893,7 @@ void Renderer::drawBackground(VkCommandBuffer cmd)
 
 void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
 {
-    VkDescriptorSet sceneDescriptor;
-    {
-        auto gpuSceneDataBuffer = createBuffer(
-            sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        getCurrentFrame().deletionQueue.pushFunction(
-            [this, gpuSceneDataBuffer]() { destroyBuffer(gpuSceneDataBuffer); });
-        auto* sceneData = (GPUSceneData*)gpuSceneDataBuffer.allocation->GetMappedData();
-
-        *sceneData = GPUSceneData{
-            .view = camera.getView(),
-            .proj = camera.getProjection(),
-            .viewProj = camera.getViewProj(),
-            .cameraPos = glm::vec4{camera.getPosition(), 1.f},
-            .ambientColorAndIntensity = ambientColorAndIntensity,
-            .sunlightDirection = sunlightDir,
-            .sunlightColorAndIntensity = sunlightColorAndIntensity,
-        };
-
-        sceneDescriptor =
-            getCurrentFrame().frameDescriptors.allocate(device, sceneDataDescriptorLayout);
-
-        DescriptorWriter writer;
-        writer.writeBuffer(
-            0,
-            gpuSceneDataBuffer.buffer,
-            sizeof(GPUSceneData),
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        writer.updateSet(device, sceneDescriptor);
-    }
+    const auto sceneDescriptor = uploadSceneData();
 
     const auto colorAttachment =
         vkinit::attachmentInfo(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
@@ -1025,6 +979,28 @@ void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
     vkCmdEndRendering(cmd);
 }
 
+VkDescriptorSet Renderer::uploadSceneData()
+{
+    auto& currentFrame = getCurrentFrame();
+
+    const auto gpuSceneDataBuffer = createBuffer(
+        sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    currentFrame.deletionQueue.pushFunction(
+        [this, gpuSceneDataBuffer]() { destroyBuffer(gpuSceneDataBuffer); });
+    auto* sceneData = (GPUSceneData*)gpuSceneDataBuffer.allocation->GetMappedData();
+    *sceneData = this->sceneData;
+
+    const auto sceneDescriptor =
+        currentFrame.frameDescriptors.allocate(device, sceneDataDescriptorLayout);
+
+    DescriptorWriter writer;
+    writer.writeBuffer(
+        0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.updateSet(device, sceneDescriptor);
+
+    return sceneDescriptor;
+}
+
 void Renderer::drawImGui(VkCommandBuffer cmd, VkImageView targetImageView)
 {
     const auto colorAttachment =
@@ -1093,8 +1069,9 @@ void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& functi
     VK_CHECK(vkWaitForFences(device, 1, &immFence, true, NO_TIMEOUT));
 }
 
-void Renderer::beginDrawing()
+void Renderer::beginDrawing(const GPUSceneData& sceneData)
 {
+    this->sceneData = sceneData;
     drawCommands.clear();
 }
 

@@ -86,4 +86,8 @@ private:
 
     Camera camera;
     FreeCameraController cameraController;
+
+    glm::vec4 ambientColorAndIntensity;
+    glm::vec4 sunlightDir;
+    glm::vec4 sunlightColorAndIntensity;
 };
