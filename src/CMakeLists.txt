@@ -25,6 +25,7 @@ add_executable(game
   FreeCameraController.cpp
 
   Renderer.cpp
+  Game.cpp
 
   main.cpp
 )

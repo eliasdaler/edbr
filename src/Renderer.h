@@ -4,7 +4,7 @@
 
 #include <array>
 #include <cstdint>
-#include <memory>
+#include <filesystem>
 #include <vector>
 
 #include <DeletionQueue.h>
@@ -19,15 +19,15 @@
 #include "MaterialCache.h"
 #include "MeshCache.h"
 
-#include "FreeCameraController.h"
-
-#include <Graphics/Camera.h>
 #include <Graphics/Mesh.h>
 
-class SDL_Window;
+#include "DrawCommand.h"
 
 struct Scene;
 struct SceneNode;
+class Camera;
+
+class SDL_Window;
 
 class Renderer {
 public:
@@ -46,48 +46,9 @@ public:
         DescriptorAllocatorGrowable frameDescriptors;
     };
 
-    static const std::size_t NULL_ENTITY_ID = std::numeric_limits<std::size_t>::max();
-
-    using EntityId = std::size_t;
-
-    struct Entity {
-        EntityId id{NULL_ENTITY_ID};
-        std::string tag;
-
-        // transform
-        Transform transform; // local (relative to parent)
-        glm::mat4 worldTransform{1.f};
-
-        // hierarchy
-        EntityId parentId{NULL_ENTITY_ID};
-        std::vector<EntityId> children;
-
-        // mesh (only one mesh per entity supported for now)
-        std::vector<MeshId> meshes;
-
-        // skeleton
-        // Skeleton skeleton;
-        // bool hasSkeleton{false};
-
-        // animation
-        // SkeletonAnimator skeletonAnimator;
-        // std::unordered_map<std::string, SkeletalAnimation> animations;
-
-        /* void uploadJointMatricesToGPU(
-            const wgpu::Queue& queue,
-            const std::vector<glm::mat4>& jointMatrices) const; */
-    };
-
-    struct DrawCommand {
-        const GPUMesh& mesh;
-        std::size_t meshId;
-        glm::mat4 transformMatrix;
-        math::Sphere worldBoundingSphere;
-    };
-
 public:
-    void init();
-    void run();
+    void init(SDL_Window* window, bool vSync);
+    void draw(const Camera& camera);
     void cleanup();
 
     [[nodiscard]] GPUMeshBuffers uploadMesh(
@@ -111,9 +72,17 @@ public:
 
     VkDescriptorSet writeMaterialData(MaterialId id, const Material& material);
 
+    void updateDevTools(float dt);
+
+    void beginDrawing();
+    void addDrawCommand(MeshId id, const glm::mat4& transform);
+    void endDrawing();
+
+    Scene loadScene(const std::filesystem::path& path);
+
 private:
-    void initVulkan();
-    void createSwapchain(std::uint32_t width, std::uint32_t height);
+    void initVulkan(SDL_Window* window);
+    void createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync);
     void createCommandBuffers();
     void initSyncStructures();
     void initImmediateStructures();
@@ -126,7 +95,7 @@ private:
     void initTrianglePipeline();
     void initMeshPipeline();
 
-    void initImGui();
+    void initImGui(SDL_Window* window);
 
     void destroyCommandBuffers();
     void destroySyncStructures();
@@ -137,21 +106,13 @@ private:
         VkImageUsageFlags usage,
         bool mipMap);
 
-    void handleInput(float dt);
-    void update(float dt);
-
-    void updateDevTools(float dt);
-
     FrameData& getCurrentFrame();
 
-    void draw();
     void drawBackground(VkCommandBuffer cmd);
-    void drawGeometry(VkCommandBuffer cmd);
+    void drawGeometry(VkCommandBuffer cmd, const Camera& camera);
     void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
 
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
-
-    SDL_Window* window{nullptr};
 
     vkb::Instance instance;
     vkb::PhysicalDevice physicalDevice;
@@ -209,44 +170,17 @@ private:
     MaterialCache materialCache;
     MeshCache meshCache;
 
-    bool isRunning{false};
-    bool vSync{true};
-    bool frameLimit{true};
-    float frameTime{0.f};
-    float avgFPS{0.f};
-
-    // only display update FPS every 1 seconds, otherwise it's too noisy
-    float displayedFPS{0.f};
-    float displayFPSDelay{1.f};
-
-    Camera camera;
-    FreeCameraController cameraController;
-
     AllocatedImage whiteTexture;
     VkSampler defaultSamplerNearest;
-
-    std::vector<DrawCommand> drawCommands;
-    std::vector<std::size_t> sortedDrawCommands;
-
-    void createEntitiesFromScene(const Scene& scene);
-    EntityId createEntitiesFromNode(
-        const Scene& scene,
-        const SceneNode& node,
-        EntityId parentId = NULL_ENTITY_ID);
-
-    std::vector<std::unique_ptr<Entity>> entities;
-    Entity& makeNewEntity();
-    Entity& findEntityByName(std::string_view name) const;
-
-    void updateEntityTransforms();
-    void updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransform);
-
-    void generateDrawList();
-    void sortDrawList();
 
     glm::vec4 ambientColorAndIntensity;
     glm::vec4 sunlightDir;
     glm::vec4 sunlightColorAndIntensity;
 
     AllocatedBuffer materialDataBuffer;
+
+    std::vector<DrawCommand> drawCommands;
+    std::vector<std::size_t> sortedDrawCommands;
+
+    void sortDrawList();
 };

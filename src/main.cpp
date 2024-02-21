@@ -1,13 +1,13 @@
-#include <Renderer.h>
-
 #include <util/OSUtil.h>
+
+#include <Game.h>
 
 int main()
 {
     util::setCurrentDirToExeDir();
 
-    Renderer renderer;
-    renderer.init();
-    renderer.run();
-    renderer.cleanup();
+    Game game;
+    game.init();
+    game.run();
+    game.cleanup();
 }
