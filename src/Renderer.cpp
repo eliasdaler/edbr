@@ -941,10 +941,11 @@ void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
             continue;
         }
 
-        if (dc.mesh.materialId != prevMaterialIdx) {
-            prevMaterialIdx = dc.mesh.materialId;
+        auto& mesh = meshCache.getMesh(dc.meshId);
+        if (mesh.materialId != prevMaterialIdx) {
+            prevMaterialIdx = mesh.materialId;
 
-            const auto& material = materialCache.getMaterial(dc.mesh.materialId);
+            const auto& material = materialCache.getMaterial(mesh.materialId);
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -958,12 +959,12 @@ void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
 
         if (dc.meshId != prevMeshId) {
             prevMeshId = dc.meshId;
-            vkCmdBindIndexBuffer(cmd, dc.mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         }
 
         const auto pushConstants = GPUDrawPushConstants{
             .transform = dc.transformMatrix,
-            .vertexBuffer = dc.mesh.buffers.vertexBufferAddress,
+            .vertexBuffer = mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(
             cmd,
@@ -973,7 +974,7 @@ void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
             sizeof(GPUDrawPushConstants),
             &pushConstants);
 
-        vkCmdDrawIndexed(cmd, dc.mesh.numIndices, 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmd, mesh.numIndices, 1, 0, 0, 0);
     }
 
     vkCmdEndRendering(cmd);
@@ -1082,7 +1083,6 @@ void Renderer::addDrawCommand(MeshId id, const glm::mat4& transform)
         edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
 
     drawCommands.push_back(DrawCommand{
-        .mesh = mesh,
         .meshId = id,
         .transformMatrix = transform,
         .worldBoundingSphere = worldBoundingSphere,
@@ -1106,10 +1106,12 @@ void Renderer::sortDrawList()
         [this](const auto& i1, const auto& i2) {
             const auto& dc1 = drawCommands[i1];
             const auto& dc2 = drawCommands[i2];
-            if (dc1.mesh.materialId == dc2.mesh.materialId) {
+            const auto& mesh1 = meshCache.getMesh(dc1.meshId);
+            const auto& mesh2 = meshCache.getMesh(dc2.meshId);
+            if (mesh1.materialId == mesh2.materialId) {
                 return dc1.meshId < dc2.meshId;
             }
-            return dc1.mesh.materialId < dc2.mesh.materialId;
+            return mesh1.materialId < mesh2.materialId;
         });
 }
 

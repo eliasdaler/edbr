@@ -520,8 +520,8 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
     for (std::size_t materialIdx = 0; materialIdx < gltfModel.materials.size(); ++materialIdx) {
         const auto& gltfMaterial = gltfModel.materials[materialIdx];
         Material material{
-            .name = gltfMaterial.name,
             .baseColor = getDiffuseColor(gltfMaterial),
+            .name = gltfMaterial.name,
         };
 
         std::filesystem::path diffusePath;

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include <Graphics/IdTypes.h>
 #include <Graphics/Material.h>
 
 class Renderer;
@@ -9,12 +10,11 @@ class Renderer;
 class MaterialCache {
 public:
     void addMaterial(MaterialId id, Material material);
-
     const Material& getMaterial(MaterialId id) const;
 
-    void cleanup(const Renderer& renderer);
-
     MaterialId getFreeMaterialId() const;
+
+    void cleanup(const Renderer& renderer);
 
 private:
     std::vector<Material> materials;
