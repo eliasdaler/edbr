@@ -215,7 +215,10 @@ void Renderer::createCommandBuffers()
 
 void Renderer::initSyncStructures()
 {
-    const auto fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    const auto fenceCreateInfo = VkFenceCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
     const auto semaphoreCreateInfo = VkSemaphoreCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
@@ -239,7 +242,10 @@ void Renderer::initImmediateStructures()
 
     deletionQueue.pushFunction([this]() { vkDestroyCommandPool(device, immCommandPool, nullptr); });
 
-    const auto fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    const auto fenceCreateInfo = VkFenceCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
     VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &immFence));
     deletionQueue.pushFunction([this]() { vkDestroyFence(device, immFence, nullptr); });
 }
@@ -550,30 +556,30 @@ AllocatedImage Renderer::createImage(
     VkImageUsageFlags usage,
     bool mipMap)
 {
-    AllocatedImage image{
-        .extent = size,
-        .format = format,
-    };
-
-    auto imgInfo = vkinit::imageCreateInfo(format, usage, size);
+    auto mipLevels = 1;
     if (mipMap) {
-        imgInfo.mipLevels =
+        mipMap =
             static_cast<uint32_t>(std::floor(std::log2(std::max(size.width, size.height)))) + 1;
     }
 
+    const auto imgInfo = vkinit::imageCreateInfo(format, usage, size, mipLevels);
     const auto allocInfo = VmaAllocationCreateInfo{
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
 
+    auto image = AllocatedImage{
+        .extent = size,
+        .format = format,
+    };
     VK_CHECK(
         vmaCreateImage(allocator, &imgInfo, &allocInfo, &image.image, &image.allocation, nullptr));
 
+    // create view
     auto aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
     if (format == VK_FORMAT_D32_SFLOAT) {
         aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
-
     auto viewInfo = vkinit::imageViewCreateInfo(format, image.image, aspectFlag);
     viewInfo.subresourceRange.levelCount = imgInfo.mipLevels;
 
@@ -589,7 +595,7 @@ AllocatedImage Renderer::createImage(
     VkImageUsageFlags usage,
     bool mipMap)
 {
-    size_t data_size = size.depth * size.width * size.height * 4;
+    const auto data_size = size.depth * size.width * size.height * 4;
     const auto uploadbuffer =
         createBuffer(data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
@@ -619,7 +625,6 @@ AllocatedImage Renderer::createImage(
             .imageExtent = size,
         };
 
-        // copy the buffer into the image
         vkCmdCopyBufferToImage(
             cmd,
             uploadbuffer.buffer,
@@ -656,7 +661,8 @@ VkDescriptorSet Renderer::writeMaterialData(MaterialId id, const Material& mater
     MaterialData* data = (MaterialData*)materialDataBuffer.info.pMappedData;
     data[id] = MaterialData{
         .baseColor = material.baseColor,
-        .metalRoughnessFactors = glm::vec4{1.f, 0.5f, 0.f, 0.f},
+        .metalRoughnessFactors =
+            glm::vec4{material.metallicFactor, material.roughnessFactor, 0.f, 0.f},
     };
 
     const auto set = descriptorAllocator.allocate(device, meshMaterialLayout);
@@ -790,9 +796,11 @@ void Renderer::draw(const Camera& camera)
     drawExtent.width = drawImage.extent.width;
     drawExtent.height = drawImage.extent.height;
 
-    auto& cmd = currentFrame.mainCommandBuffer;
-    const auto cmdBeginInfo =
-        vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const auto& cmd = currentFrame.mainCommandBuffer;
+    const auto cmdBeginInfo = VkCommandBufferBeginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
     vkutil::
@@ -846,13 +854,16 @@ void Renderer::draw(const Camera& camera)
     VK_CHECK(vkEndCommandBuffer(cmd));
 
     { // submit
-        auto cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
-        auto waitInfo = vkinit::semaphoreSubmitInfo(
+        const auto submitInfo = VkCommandBufferSubmitInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = cmd,
+        };
+        const auto waitInfo = vkinit::semaphoreSubmitInfo(
             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currentFrame.swapchainSemaphore);
-        auto signalInfo = vkinit::
+        const auto signalInfo = vkinit::
             semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currentFrame.renderSemaphore);
 
-        auto submit = vkinit::submitInfo(&cmdinfo, &signalInfo, &waitInfo);
+        const auto submit = vkinit::submitInfo(&submitInfo, &signalInfo, &waitInfo);
         VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, currentFrame.renderFence));
     }
 
@@ -1065,8 +1076,10 @@ void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& functi
     VK_CHECK(vkResetCommandBuffer(immCommandBuffer, 0));
 
     auto cmd = immCommandBuffer;
-    const auto cmdBeginInfo =
-        vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const auto cmdBeginInfo = VkCommandBufferBeginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
     function(cmd);
@@ -1088,9 +1101,6 @@ void Renderer::beginDrawing()
 void Renderer::addDrawCommand(MeshId id, const glm::mat4& transform)
 {
     const auto& mesh = meshCache.getMesh(id);
-    // TODO: draw frustum culling here
-    const auto& material = materialCache.getMaterial(mesh.materialId);
-
     const auto worldBoundingSphere =
         edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
 

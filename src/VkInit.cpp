@@ -14,22 +14,6 @@ VkImageSubresourceRange imageSubresourceRange(VkImageAspectFlags aspectMask)
     };
 }
 
-VkFenceCreateInfo fenceCreateInfo(VkFenceCreateFlags flags)
-{
-    return VkFenceCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = flags,
-    };
-}
-
-VkCommandBufferBeginInfo commandBufferBeginInfo(VkCommandBufferUsageFlags flags)
-{
-    return VkCommandBufferBeginInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = flags,
-    };
-}
-
 VkSemaphoreSubmitInfo semaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
 {
     return VkSemaphoreSubmitInfo{
@@ -69,14 +53,13 @@ VkCommandBufferSubmitInfo commandBufferSubmitInfo(VkCommandBuffer cmd)
     return VkCommandBufferSubmitInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .commandBuffer = cmd,
-        .deviceMask = 0,
     };
 }
 
 VkSubmitInfo2 submitInfo(
     const VkCommandBufferSubmitInfo* cmd,
-    VkSemaphoreSubmitInfo* signalSemaphoreInfo,
-    VkSemaphoreSubmitInfo* waitSemaphoreInfo)
+    const VkSemaphoreSubmitInfo* signalSemaphoreInfo,
+    const VkSemaphoreSubmitInfo* waitSemaphoreInfo)
 {
     return VkSubmitInfo2{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
@@ -89,14 +72,18 @@ VkSubmitInfo2 submitInfo(
     };
 }
 
-VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
+VkImageCreateInfo imageCreateInfo(
+    VkFormat format,
+    VkImageUsageFlags usageFlags,
+    VkExtent3D extent,
+    std::uint32_t mipLevels)
 {
     return VkImageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = format,
         .extent = extent,
-        .mipLevels = 1,
+        .mipLevels = mipLevels,
         .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,

@@ -25,6 +25,8 @@ struct Material {
     VkDescriptorSet materialSet;
 
     glm::vec4 baseColor{1.f, 1.f, 1.f, 1.f};
+    float metallicFactor{0.f};
+    float roughnessFactor{0.5f};
 
     bool hasDiffuseTexture{false};
 };

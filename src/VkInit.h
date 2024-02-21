@@ -1,21 +1,18 @@
 #pragma once
 
 #include <cstdint>
-#include <span>
 
 #include <vulkan/vulkan.h>
 
 namespace vkinit
 {
 VkImageSubresourceRange imageSubresourceRange(VkImageAspectFlags aspectMask);
-VkFenceCreateInfo fenceCreateInfo(VkFenceCreateFlags flags = 0);
 VkSemaphoreSubmitInfo semaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore);
 
 VkCommandPoolCreateInfo commandPoolCreateInfo(
     VkCommandPoolCreateFlags flags,
     std::uint32_t queueFamilyIndex);
 
-VkCommandBufferBeginInfo commandBufferBeginInfo(VkCommandBufferUsageFlags flags);
 VkCommandBufferSubmitInfo commandBufferSubmitInfo(VkCommandBuffer cmd);
 VkCommandBufferAllocateInfo commandBufferAllocateInfo(
     VkCommandPool commandPool,
@@ -23,10 +20,14 @@ VkCommandBufferAllocateInfo commandBufferAllocateInfo(
 
 VkSubmitInfo2 submitInfo(
     const VkCommandBufferSubmitInfo* cmd,
-    VkSemaphoreSubmitInfo* signalSemaphoreInfo,
-    VkSemaphoreSubmitInfo* waitSemaphoreInfo);
+    const VkSemaphoreSubmitInfo* signalSemaphoreInfo,
+    const VkSemaphoreSubmitInfo* waitSemaphoreInfo);
 
-VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
+VkImageCreateInfo imageCreateInfo(
+    VkFormat format,
+    VkImageUsageFlags usageFlags,
+    VkExtent3D extent,
+    std::uint32_t mipLevels = 1);
 VkImageViewCreateInfo imageViewCreateInfo(
     VkFormat format,
     VkImage image,
