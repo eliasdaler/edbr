@@ -284,7 +284,18 @@ void loadMaterial(
 void loadGPUMesh(const util::LoadContext ctx, const Mesh& cpuMesh, GPUMesh& gpuMesh)
 {
     gpuMesh.buffers = ctx.renderer.uploadMesh(cpuMesh.indices, cpuMesh.vertices);
+    gpuMesh.numVertices = cpuMesh.vertices.size();
     gpuMesh.numIndices = cpuMesh.indices.size();
+
+    if (cpuMesh.hasSkeleton) {
+        gpuMesh.skinnedVertexBuffer = ctx.renderer.createBuffer(
+            cpuMesh.vertices.size() * sizeof(Mesh::Vertex),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY);
+        gpuMesh.skinnedVertexBufferAddress =
+            ctx.renderer.getBufferAddress(gpuMesh.skinnedVertexBuffer);
+    }
 }
 
 bool shouldSkipNode(const tinygltf::Node& node)

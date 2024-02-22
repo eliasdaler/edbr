@@ -115,6 +115,7 @@ void Renderer::initVulkan(SDL_Window* window)
 
 void Renderer::loadExtensionFunctions()
 {
+    // FIXME: use volk
     pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)
         vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT");
     pfnQueueBeginDebugUtilsLabelEXT = (PFN_vkQueueBeginDebugUtilsLabelEXT)
@@ -378,6 +379,7 @@ void Renderer::initDefaultTextures()
 void Renderer::initPipelines()
 {
     initBackgroundPipelines();
+    initSkinningPipeline();
     initTrianglePipeline();
     initMeshPipeline();
 }
@@ -405,6 +407,31 @@ void Renderer::initBackgroundPipelines()
     deletionQueue.pushFunction([this]() {
         vkDestroyPipelineLayout(device, gradientPipelineLayout, nullptr);
         vkDestroyPipeline(device, gradientPipeline, nullptr);
+    });
+}
+
+void Renderer::initSkinningPipeline()
+{
+    const auto pushConstant = VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(SkinningPushConstants),
+    };
+
+    const auto pushConstants = std::array{pushConstant};
+    skinningPipelineLayout = vkutil::createPipelineLayout(device, {}, pushConstants);
+
+    const auto shader = vkutil::loadShaderModule("shaders/skinning.comp.spv", device);
+    addDebugLabel(shader, "skinning");
+
+    skinningPipeline =
+        ComputePipelineBuilder{skinningPipelineLayout}.setShader(shader).build(device);
+
+    vkDestroyShaderModule(device, shader, nullptr);
+
+    deletionQueue.pushFunction([this]() {
+        vkDestroyPipelineLayout(device, skinningPipelineLayout, nullptr);
+        vkDestroyPipeline(device, skinningPipeline, nullptr);
     });
 }
 
@@ -571,6 +598,15 @@ AllocatedBuffer Renderer::createBuffer(
         allocator, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.info));
 
     return buffer;
+}
+
+[[nodiscard]] VkDeviceAddress Renderer::getBufferAddress(const AllocatedBuffer& buffer) const
+{
+    const auto deviceAdressInfo = VkBufferDeviceAddressInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = buffer.buffer,
+    };
+    return vkGetBufferDeviceAddress(device, &deviceAdressInfo);
 }
 
 AllocatedImage Renderer::createImage(
@@ -820,13 +856,7 @@ GPUMeshBuffers Renderer::uploadMesh(
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
-
-    // find the adress of the vertex buffer
-    const auto deviceAdressInfo = VkBufferDeviceAddressInfo{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = mesh.vertexBuffer.buffer,
-    };
-    mesh.vertexBufferAddress = vkGetBufferDeviceAddress(device, &deviceAdressInfo);
+    mesh.vertexBufferAddress = getBufferAddress(mesh.vertexBuffer);
 
     const auto staging = createBuffer(
         vertexBufferSize + indexBufferSize,
@@ -906,6 +936,15 @@ void Renderer::draw(const Camera& camera)
 
     vkutil::
         transitionImage(cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+    beginCmdLabel(cmd, "Skinning");
+    for (const auto& dc : drawCommands) {
+        auto& mesh = meshCache.getMesh(dc.meshId);
+        if (mesh.hasSkeleton) {
+            doSkinning(cmd, mesh);
+        }
+    }
+    endCmdLabel(cmd);
 
     beginCmdLabel(cmd, "Draw background");
     drawBackground(cmd);
@@ -989,6 +1028,26 @@ void Renderer::draw(const Camera& camera)
     }
 
     frameNumber++;
+}
+
+void Renderer::doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh)
+{
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, skinningPipeline);
+    const auto cs = SkinningPushConstants{
+        .numVertices = mesh.numVertices,
+        .inputBuffer = mesh.buffers.vertexBufferAddress,
+        .outputBuffer = mesh.skinnedVertexBufferAddress,
+    };
+    vkCmdPushConstants(
+        cmd,
+        skinningPipelineLayout,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        sizeof(SkinningPushConstants),
+        &cs);
+
+    static const auto workgroupSize = 256;
+    vkCmdDispatch(cmd, std::ceil(mesh.numVertices / (float)workgroupSize), 1, 1);
 }
 
 void Renderer::drawBackground(VkCommandBuffer cmd)

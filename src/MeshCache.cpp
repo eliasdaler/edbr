@@ -19,5 +19,8 @@ void MeshCache::cleanup(const Renderer& renderer)
     for (const auto& mesh : meshes) {
         renderer.destroyBuffer(mesh.buffers.indexBuffer);
         renderer.destroyBuffer(mesh.buffers.vertexBuffer);
+        if (mesh.hasSkeleton) {
+            renderer.destroyBuffer(mesh.skinnedVertexBuffer);
+        }
     }
 }

@@ -58,6 +58,8 @@ public:
         VkBufferUsageFlags usage,
         VmaMemoryUsage memoryUsage) const;
 
+    [[nodiscard]] VkDeviceAddress getBufferAddress(const AllocatedBuffer& buffer) const;
+
     [[nodiscard]] AllocatedImage createImage(
         void* data,
         VkExtent3D size,
@@ -108,6 +110,7 @@ private:
 
     void initPipelines();
     void initBackgroundPipelines();
+    void initSkinningPipeline();
     void initTrianglePipeline();
     void initMeshPipeline();
 
@@ -124,6 +127,7 @@ private:
 
     FrameData& getCurrentFrame();
 
+    void doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh);
     void drawBackground(VkCommandBuffer cmd);
 
     void drawGeometry(VkCommandBuffer cmd, const Camera& camera);
@@ -177,6 +181,14 @@ private: // data
         glm::vec4 data4;
     };
     ComputePushConstants gradientConstants;
+
+    VkPipeline skinningPipeline;
+    VkPipelineLayout skinningPipelineLayout;
+    struct SkinningPushConstants {
+        std::uint32_t numVertices;
+        VkDeviceAddress inputBuffer;
+        VkDeviceAddress outputBuffer;
+    };
 
     VkPipelineLayout trianglePipelineLayout;
     VkPipeline trianglePipeline;

@@ -82,6 +82,7 @@ target_compile_definitions(game
 set(SHADERS
   colored_triangle.vert
   colored_triangle.frag
+  skinning.comp
   mesh.vert
   mesh.frag
   gradient.comp

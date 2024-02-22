@@ -1,0 +1,31 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
+
+#include "vertex.glsl"
+
+layout (buffer_reference, std430) readonly buffer VertexBuffer{
+	Vertex vertices[];
+};
+
+layout (push_constant) uniform constants
+{
+    uint numVertices;
+	VertexBuffer inputBuffer;
+	VertexBuffer outputBuffer;
+} pushConstants;
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+    if (index > pushConstants.numVertices) {
+        return;
+    }
+
+    Vertex v = pushConstants.inputBuffer.vertices[index];
+    VertexBuffer outputBuffer = pushConstants.outputBuffer;
+    outputBuffer.vertices[index] = v; // TODO: skinning will be here
+}

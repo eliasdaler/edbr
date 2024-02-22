@@ -10,6 +10,7 @@
 
 struct GPUMesh {
     GPUMeshBuffers buffers;
+    std::uint32_t numVertices{0};
     std::uint32_t numIndices{0};
 
     MaterialId materialId{NULL_MATERIAL_ID};
@@ -20,4 +21,7 @@ struct GPUMesh {
     math::Sphere boundingSphere;
 
     bool hasSkeleton{false};
+    // skinned meshes only
+    AllocatedBuffer skinnedVertexBuffer;
+    VkDeviceAddress skinnedVertexBufferAddress;
 };
