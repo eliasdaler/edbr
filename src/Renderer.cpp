@@ -17,7 +17,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 
-#define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
 #include <imgui.h>
@@ -26,7 +25,9 @@
 
 #include <Graphics/FrustumCulling.h>
 #include <Graphics/Scene.h>
+
 #include <util/GltfLoader.h>
+#include <util/ImageLoader.h>
 
 namespace
 {
@@ -70,6 +71,8 @@ void Renderer::initVulkan(SDL_Window* window)
                    .build()
                    .value();
 
+    loadExtensionFunctions();
+
     auto res = SDL_Vulkan_CreateSurface(window, instance, &surface);
     if (res != SDL_TRUE) {
         std::cout << "Failed to create Vulkan surface: " << SDL_GetError() << std::endl;
@@ -92,6 +95,8 @@ void Renderer::initVulkan(SDL_Window* window)
                          .select()
                          .value();
 
+    std::vector<const char*> enabledExtensions = {"VK_EXT_DEBUG_MARKER_EXTENSION_NAME"};
+    VkDeviceCreateInfo deviceInfo = {};
     device = vkb::DeviceBuilder{physicalDevice}.build().value();
 
     graphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
@@ -106,6 +111,22 @@ void Renderer::initVulkan(SDL_Window* window)
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
     deletionQueue.pushFunction([&]() { vmaDestroyAllocator(allocator); });
+}
+
+void Renderer::loadExtensionFunctions()
+{
+    pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)
+        vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT");
+    pfnQueueBeginDebugUtilsLabelEXT = (PFN_vkQueueBeginDebugUtilsLabelEXT)
+        vkGetInstanceProcAddr(instance, "vkQueueBeginDebugUtilsLabelEXT");
+    pfnQueueEndDebugUtilsLabelEXT = (PFN_vkQueueEndDebugUtilsLabelEXT)
+        vkGetInstanceProcAddr(instance, "vkQueueEndDebugUtilsLabelEXT");
+    pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)
+        vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT");
+    pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)
+        vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT");
+    pfnCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)
+        vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT");
 }
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
@@ -320,6 +341,7 @@ void Renderer::allocateMaterialDataBuffer(std::size_t numMaterials)
         numMaterials * sizeof(MaterialData),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU);
+    addDebugLabel(materialDataBuffer, "material data");
 
     deletionQueue.pushFunction([this]() { destroyBuffer(materialDataBuffer); });
 }
@@ -373,6 +395,7 @@ void Renderer::initBackgroundPipelines()
     gradientPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstants);
 
     const auto shader = vkutil::loadShaderModule("shaders/gradient.comp.spv", device);
+    addDebugLabel(shader, "gradient");
 
     gradientPipeline =
         ComputePipelineBuilder{gradientPipelineLayout}.setShader(shader).build(device);
@@ -418,6 +441,9 @@ void Renderer::initMeshPipeline()
     const auto vertexShader = vkutil::loadShaderModule("shaders/mesh.vert.spv", device);
     const auto fragShader = vkutil::loadShaderModule("shaders/mesh.frag.spv", device);
 
+    addDebugLabel(vertexShader, "mesh.vert");
+    addDebugLabel(vertexShader, "mesh.frag");
+
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
         .offset = 0,
@@ -439,6 +465,7 @@ void Renderer::initMeshPipeline()
                        .setDepthFormat(depthImage.format)
                        .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
                        .build(device);
+    addDebugLabel(meshPipeline, "mesh pipeline");
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
@@ -641,6 +668,79 @@ AllocatedImage Renderer::createImage(
     return image;
 }
 
+AllocatedImage Renderer::loadImageFromFile(
+    const std::filesystem::path& path,
+    VkFormat format,
+    VkImageUsageFlags usage,
+    bool mipMap)
+{
+    auto data = util::loadImage(path);
+    assert(data.pixels);
+
+    auto image = createImage(
+        data.pixels,
+        VkExtent3D{
+            .width = (std::uint32_t)data.width,
+            .height = (std::uint32_t)data.height,
+            .depth = 1,
+        },
+        format,
+        usage,
+        false);
+
+    addDebugLabel(image, path.c_str());
+
+    return image;
+}
+
+void Renderer::addDebugLabel(const AllocatedImage& image, const char* label)
+{
+    assert(pfnSetDebugUtilsObjectNameEXT);
+    const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE,
+        .objectHandle = (std::uint64_t)image.image,
+        .pObjectName = label,
+    };
+    pfnSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+
+void Renderer::addDebugLabel(const VkShaderModule& shader, const char* label)
+{
+    assert(pfnSetDebugUtilsObjectNameEXT);
+    const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_SHADER_MODULE,
+        .objectHandle = (std::uint64_t)shader,
+        .pObjectName = label,
+    };
+    pfnSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+
+void Renderer::addDebugLabel(const VkPipeline& pipeline, const char* label)
+{
+    assert(pfnSetDebugUtilsObjectNameEXT);
+    const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_PIPELINE,
+        .objectHandle = (std::uint64_t)pipeline,
+        .pObjectName = label,
+    };
+    pfnSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+
+void Renderer::addDebugLabel(const AllocatedBuffer& buffer, const char* label)
+{
+    assert(pfnSetDebugUtilsObjectNameEXT);
+    const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_BUFFER,
+        .objectHandle = (std::uint64_t)buffer.buffer,
+        .pObjectName = label,
+    };
+    pfnSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+
 void Renderer::destroyBuffer(const AllocatedBuffer& buffer) const
 {
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
@@ -650,6 +750,24 @@ void Renderer::destroyImage(const AllocatedImage& image) const
 {
     vkDestroyImageView(device, image.imageView, nullptr);
     vmaDestroyImage(allocator, image.image, image.allocation);
+}
+
+void Renderer::beginCmdLabel(VkCommandBuffer cmd, const char* label)
+{
+    const VkDebugUtilsLabelEXT houseLabel = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pLabelName = label,
+        .color = {1.0f, 1.0f, 1.0f, 1.0f},
+    };
+
+    assert(pfnCmdBeginDebugUtilsLabelEXT);
+    pfnCmdBeginDebugUtilsLabelEXT(cmd, &houseLabel);
+}
+
+void Renderer::endCmdLabel(VkCommandBuffer cmd)
+{
+    assert(pfnCmdEndDebugUtilsLabelEXT);
+    pfnCmdEndDebugUtilsLabelEXT(cmd);
 }
 
 VkDescriptorSet Renderer::writeMaterialData(MaterialId id, const Material& material)
@@ -716,7 +834,7 @@ GPUMeshBuffers Renderer::uploadMesh(
         VMA_MEMORY_USAGE_CPU_ONLY);
 
     // copy data
-    void* data = staging.allocation->GetMappedData();
+    void* data = staging.info.pMappedData;
     memcpy(data, vertices.data(), vertexBufferSize);
     memcpy((char*)data + vertexBufferSize, indices.data(), indexBufferSize);
 
@@ -789,14 +907,18 @@ void Renderer::draw(const Camera& camera)
     vkutil::
         transitionImage(cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
+    beginCmdLabel(cmd, "Draw background");
     drawBackground(cmd);
+    endCmdLabel(cmd);
 
     vkutil::transitionImage(
         cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     vkutil::transitionImage(
         cmd, depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
+    beginCmdLabel(cmd, "Draw geometry");
     drawGeometry(cmd, camera);
+    endCmdLabel(cmd);
 
     vkutil::transitionImage(
         cmd,
@@ -825,7 +947,10 @@ void Renderer::draw(const Camera& camera)
         swapchainImage,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    beginCmdLabel(cmd, "Draw Dear ImGui");
     drawImGui(cmd, swapchainImageViews[swapchainImageIndex]);
+    endCmdLabel(cmd);
 
     // prepare for present
     vkutil::transitionImage(
@@ -986,9 +1111,11 @@ VkDescriptorSet Renderer::uploadSceneData()
 
     const auto gpuSceneDataBuffer = createBuffer(
         sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    addDebugLabel(gpuSceneDataBuffer, "scene data");
+
     currentFrame.deletionQueue.pushFunction(
         [this, gpuSceneDataBuffer]() { destroyBuffer(gpuSceneDataBuffer); });
-    auto* sceneData = (GPUSceneData*)gpuSceneDataBuffer.allocation->GetMappedData();
+    auto* sceneData = (GPUSceneData*)gpuSceneDataBuffer.info.pMappedData;
     *sceneData = this->sceneData;
 
     const auto sceneDescriptor =

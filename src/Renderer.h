@@ -65,6 +65,20 @@ public:
         VkImageUsageFlags usage,
         bool mipMap);
 
+    [[nodiscard]] AllocatedImage loadImageFromFile(
+        const std::filesystem::path& path,
+        VkFormat format,
+        VkImageUsageFlags usage,
+        bool mipMap);
+
+    void addDebugLabel(const AllocatedImage& image, const char* label);
+    void addDebugLabel(const VkShaderModule& shader, const char* label);
+    void addDebugLabel(const VkPipeline& pipeline, const char* label);
+    void addDebugLabel(const AllocatedBuffer& buffer, const char* label);
+
+    void beginCmdLabel(VkCommandBuffer cmd, const char* label);
+    void endCmdLabel(VkCommandBuffer cmd);
+
     void destroyBuffer(const AllocatedBuffer& buffer) const;
     void destroyImage(const AllocatedImage& image) const;
 
@@ -80,6 +94,7 @@ public:
 
 private:
     void initVulkan(SDL_Window* window);
+    void loadExtensionFunctions();
     void createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync);
     void createCommandBuffers();
     void initSyncStructures();
@@ -181,4 +196,11 @@ private: // data
 
     std::vector<DrawCommand> drawCommands;
     std::vector<std::size_t> sortedDrawCommands;
+
+    PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
+    PFN_vkQueueBeginDebugUtilsLabelEXT pfnQueueBeginDebugUtilsLabelEXT;
+    PFN_vkQueueEndDebugUtilsLabelEXT pfnQueueEndDebugUtilsLabelEXT;
+    PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
+    PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
+    PFN_vkCmdInsertDebugUtilsLabelEXT pfnCmdInsertDebugUtilsLabelEXT;
 };

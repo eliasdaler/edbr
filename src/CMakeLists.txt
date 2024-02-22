@@ -4,6 +4,7 @@ add_executable(game
   VkUtil.cpp
   VkDescriptors.cpp
   VkPipelines.cpp
+  VmaImpl.cpp
 
   util/GltfLoader.cpp
   util/InputUtil.cpp

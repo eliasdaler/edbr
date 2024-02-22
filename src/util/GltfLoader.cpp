@@ -9,8 +9,6 @@
 #include <Graphics/Skeleton.h>
 #include <Math/Util.h>
 
-#include <util/ImageLoader.h>
-
 #include <MaterialCache.h>
 #include <MeshCache.h>
 
@@ -275,21 +273,9 @@ void loadMaterial(
 {
     if (!diffusePath.empty()) {
         // TODO: use texture cache and don't load same textures
-        auto data = util::loadImage(diffusePath);
-        assert(data.pixels);
-
-        material.diffuseTexture = ctx.renderer.createImage(
-            data.pixels,
-            VkExtent3D{
-                .width = (std::uint32_t)data.width,
-                .height = (std::uint32_t)data.height,
-                .depth = 1,
-            },
-            VK_FORMAT_R8G8B8A8_SRGB,
-            VK_IMAGE_USAGE_SAMPLED_BIT,
-            false);
+        material.diffuseTexture = ctx.renderer.loadImageFromFile(
+            diffusePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, false);
         material.hasDiffuseTexture = true;
-
     } else {
         material.diffuseTexture = ctx.whiteTexture;
     }
