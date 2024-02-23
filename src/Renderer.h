@@ -90,8 +90,8 @@ public:
     void beginDrawing(const GPUSceneData& sceneData);
     void addDrawCommand(MeshId id, const glm::mat4& transform);
     void addDrawSkinnedMeshCommand(
-        MeshId id,
-        const SkinnedMesh& skinnedMesh,
+        std::span<const MeshId> meshes,
+        std::span<const SkinnedMesh> skinnedMeshes,
         const glm::mat4& transform,
         std::span<const glm::mat4> jointMatrices);
     void endDrawing();

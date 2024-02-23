@@ -51,11 +51,38 @@ void Game::init()
 
     {
         const auto scene = renderer.loadScene("assets/models/cato.gltf");
-        createEntitiesFromScene(scene);
 
-        const glm::vec3 catoPos{1.4f, 0.f, 0.f};
-        auto& cato = findEntityByName("Cato");
-        cato.transform.position = catoPos;
+        { // create player
+            createEntitiesFromScene(scene);
+
+            const glm::vec3 catoPos{1.4f, 0.f, 0.f};
+            auto& cato = findEntityByName("Cato");
+            cato.tag = "Player";
+            cato.transform.position = catoPos;
+            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Run"));
+        }
+
+        { // create second cato
+            createEntitiesFromScene(scene);
+
+            const glm::vec3 catoPos{1.4f, 0.f, 2.f};
+            auto& cato = findEntityByName("Cato");
+            cato.tag = "Cato2";
+            cato.transform.position = catoPos;
+
+            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Walk"));
+        }
+
+        { // create third cato
+            createEntitiesFromScene(scene);
+
+            const glm::vec3 catoPos{1.4f, 0.f, -2.f};
+            auto& cato = findEntityByName("Cato");
+            cato.tag = "Cato3";
+            cato.transform.position = catoPos;
+
+            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
+        }
     }
 
     {
@@ -258,7 +285,6 @@ Game::EntityId Game::createEntitiesFromNode(
             // and not copy animations everywhere
             e.animations = scene.animations;
 
-            e.skeletonAnimator.setAnimation(e.skeleton, e.animations.at("Run"));
             e.skinnedMeshes.reserve(e.meshes.size());
             for (const auto meshId : e.meshes) {
                 e.skinnedMeshes.push_back(renderer.createSkinnedMeshBuffer(meshId));
@@ -338,15 +364,16 @@ void Game::generateDrawList()
 
     for (const auto& ePtr : entities) {
         const auto& e = *ePtr;
-        for (std::size_t i = 0; i < e.meshes.size(); ++i) {
-            if (e.hasSkeleton) {
-                renderer.addDrawSkinnedMeshCommand(
-                    e.meshes[i],
-                    e.skinnedMeshes[i],
-                    e.worldTransform,
-                    e.skeletonAnimator.getJointMatrices());
-            } else {
-                renderer.addDrawCommand(e.meshes[i], e.worldTransform);
+        if (e.hasSkeleton) {
+            // This interface is not perfect:
+            // 1. Not all meshes for the entity might be skinned
+            // 2. Different meshes can have different joint matrices sets
+            // But right now it's better to group meshes to not waste memory
+            renderer.addDrawSkinnedMeshCommand(
+                e.meshes, e.skinnedMeshes, e.worldTransform, e.skeletonAnimator.getJointMatrices());
+        } else {
+            for (const auto id : e.meshes) {
+                renderer.addDrawCommand(id, e.worldTransform);
             }
         }
     }

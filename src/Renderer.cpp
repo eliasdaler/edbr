@@ -1339,30 +1339,32 @@ void Renderer::addDrawCommand(MeshId id, const glm::mat4& transform)
 }
 
 void Renderer::addDrawSkinnedMeshCommand(
-    MeshId id,
-    const SkinnedMesh& skinnedMesh,
+    std::span<const MeshId> meshes,
+    std::span<const SkinnedMesh> skinnedMeshes,
     const glm::mat4& transform,
     std::span<const glm::mat4> jointMatrices)
 {
-    const auto& mesh = meshCache.getMesh(id);
-
-    // TODO: can calculate worldBounding sphere after skinning!
-    const auto worldBoundingSphere =
-        edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, true);
-
     const auto startIndex = jointMatrixBufferCurrentIndex;
     auto buffer = (glm::mat4*)jointMatricesBuffer.info.pMappedData;
     memcpy(
         (void*)&buffer[startIndex], jointMatrices.data(), jointMatrices.size() * sizeof(glm::mat4));
     jointMatrixBufferCurrentIndex += jointMatrices.size();
 
-    drawCommands.push_back(DrawCommand{
-        .meshId = id,
-        .transformMatrix = transform,
-        .worldBoundingSphere = worldBoundingSphere,
-        .skinnedMesh = &skinnedMesh,
-        .jointMatricesStartIndex = (std::uint32_t)startIndex,
-    });
+    assert(meshes.size() == skinnedMeshes.size());
+    for (std::size_t i = 0; i < meshes.size(); ++i) {
+        const auto& mesh = meshCache.getMesh(meshes[i]);
+
+        // TODO: can calculate worldBounding sphere after skinning!
+        const auto worldBoundingSphere =
+            edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, true);
+        drawCommands.push_back(DrawCommand{
+            .meshId = meshes[i],
+            .transformMatrix = transform,
+            .worldBoundingSphere = worldBoundingSphere,
+            .skinnedMesh = &skinnedMeshes[i],
+            .jointMatricesStartIndex = (std::uint32_t)startIndex,
+        });
+    }
 }
 
 void Renderer::endDrawing()
