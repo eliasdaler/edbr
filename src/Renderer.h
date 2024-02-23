@@ -91,6 +91,7 @@ public:
     void addDrawCommand(MeshId id, const glm::mat4& transform);
     void addDrawSkinnedMeshCommand(
         MeshId id,
+        const SkinnedMesh& skinnedMesh,
         const glm::mat4& transform,
         std::span<const glm::mat4> jointMatrices);
     void endDrawing();
@@ -130,7 +131,11 @@ private:
 
     FrameData& getCurrentFrame();
 
-    void doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh, const SkinnedMesh& skinnedMesh);
+    void doSkinning(
+        VkCommandBuffer cmd,
+        const GPUMesh& mesh,
+        const SkinnedMesh& skinnedMesh,
+        std::uint32_t jointMatricesStartIndex);
     void drawBackground(VkCommandBuffer cmd);
 
     void drawGeometry(VkCommandBuffer cmd, const Camera& camera);
@@ -188,10 +193,16 @@ private: // data
     VkPipeline skinningPipeline;
     VkPipelineLayout skinningPipelineLayout;
     struct SkinningPushConstants {
+        VkDeviceAddress jointMatricesBuffer;
+        std::uint32_t jointMatricesStartIndex;
         std::uint32_t numVertices;
         VkDeviceAddress inputBuffer;
+        VkDeviceAddress skinningData;
         VkDeviceAddress outputBuffer;
     };
+    AllocatedBuffer jointMatricesBuffer;
+    VkDeviceAddress jointMatricesBufferAddress;
+    std::size_t jointMatrixBufferCurrentIndex; // current offset in the frame
 
     VkPipelineLayout trianglePipelineLayout;
     VkPipeline trianglePipeline;

@@ -429,9 +429,19 @@ void Renderer::initSkinningPipeline()
 
     vkDestroyShaderModule(device, shader, nullptr);
 
+    const auto maxJointMatrices = 5000;
+    jointMatricesBuffer = createBuffer(
+        maxJointMatrices * sizeof(glm::mat4),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    jointMatricesBufferAddress = getBufferAddress(jointMatricesBuffer);
+
+    memset(jointMatricesBuffer.info.pMappedData, 0, maxJointMatrices * sizeof(glm::mat4));
+
     deletionQueue.pushFunction([this]() {
         vkDestroyPipelineLayout(device, skinningPipelineLayout, nullptr);
         vkDestroyPipeline(device, skinningPipeline, nullptr);
+        destroyBuffer(jointMatricesBuffer);
     });
 }
 
@@ -980,10 +990,15 @@ void Renderer::draw(const Camera& camera)
         transitionImage(cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     beginCmdLabel(cmd, "Skinning");
-    for (const auto& dc : drawCommands) {
-        auto& mesh = meshCache.getMesh(dc.meshId);
-        if (dc.skinnedMesh) {
-            doSkinning(cmd, mesh, *dc.skinnedMesh);
+
+    static bool doOnce = true;
+    if (doOnce || true) {
+        for (const auto& dc : drawCommands) {
+            auto& mesh = meshCache.getMesh(dc.meshId);
+            if (dc.skinnedMesh) {
+                doSkinning(cmd, mesh, *dc.skinnedMesh, dc.jointMatricesStartIndex);
+            }
+            doOnce = false;
         }
     }
     endCmdLabel(cmd);
@@ -1072,12 +1087,20 @@ void Renderer::draw(const Camera& camera)
     frameNumber++;
 }
 
-void Renderer::doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh, const SkinnedMesh& skinnedMesh)
+void Renderer::doSkinning(
+    VkCommandBuffer cmd,
+    const GPUMesh& mesh,
+    const SkinnedMesh& skinnedMesh,
+    std::uint32_t jointMatricesStartIndex)
 {
+    assert(mesh.hasSkeleton);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, skinningPipeline);
     const auto cs = SkinningPushConstants{
+        .jointMatricesBuffer = jointMatricesBufferAddress,
+        .jointMatricesStartIndex = jointMatricesStartIndex,
         .numVertices = mesh.numVertices,
         .inputBuffer = mesh.buffers.vertexBufferAddress,
+        .skinningData = mesh.skinningDataBufferAddress,
         .outputBuffer = skinnedMesh.skinnedVertexBufferAddress,
     };
     vkCmdPushConstants(
@@ -1303,6 +1326,7 @@ void Renderer::beginDrawing(const GPUSceneData& sceneData)
 {
     this->sceneData = sceneData;
     drawCommands.clear();
+    jointMatrixBufferCurrentIndex = 0;
 }
 
 void Renderer::addDrawCommand(MeshId id, const glm::mat4& transform)
@@ -1320,17 +1344,33 @@ void Renderer::addDrawCommand(MeshId id, const glm::mat4& transform)
 
 void Renderer::addDrawSkinnedMeshCommand(
     MeshId id,
+    const SkinnedMesh& skinnedMesh,
     const glm::mat4& transform,
     std::span<const glm::mat4> jointMatrices)
 {
     const auto& mesh = meshCache.getMesh(id);
+
+    // TODO: can calculate worldBounding sphere after skinning!
     const auto worldBoundingSphere =
-        edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
+        edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, true);
+
+    const auto startIndex = jointMatrixBufferCurrentIndex;
+
+    std::vector<glm::mat4> testMatrices(jointMatrices.size());
+    for (std::size_t i = 0; i < jointMatrices.size(); ++i) {
+        testMatrices[i] = glm::mat4{(float)(startIndex + i)};
+    }
+    auto buffer = (glm::mat4*)jointMatricesBuffer.info.pMappedData;
+    memcpy(
+        (void*)&buffer[startIndex], jointMatrices.data(), jointMatrices.size() * sizeof(glm::mat4));
+    jointMatrixBufferCurrentIndex += jointMatrices.size();
 
     drawCommands.push_back(DrawCommand{
         .meshId = id,
         .transformMatrix = transform,
         .worldBoundingSphere = worldBoundingSphere,
+        .skinnedMesh = &skinnedMesh,
+        .jointMatricesStartIndex = (std::uint32_t)startIndex,
     });
 }
 

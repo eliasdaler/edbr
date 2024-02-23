@@ -207,9 +207,6 @@ void loadPrimitive(
 
     // load jointIds and weights
     if (hasAccessor(primitive, GLTF_JOINTS_ACCESSOR)) {
-        mesh.hasSkeleton = true;
-        mesh.skinningData.resize(numVertices);
-
         const auto joints =
             getPackedBufferSpan<std::uint8_t[4]>(model, primitive, GLTF_JOINTS_ACCESSOR);
         const auto weights = getPackedBufferSpan<float[4]>(model, primitive, GLTF_WEIGHTS_ACCESSOR);
@@ -217,18 +214,19 @@ void loadPrimitive(
         assert(joints.size() == numVertices);
         assert(weights.size() == numVertices);
 
+        mesh.hasSkeleton = true;
+        mesh.skinningData.resize(numVertices);
+
         for (std::size_t i = 0; i < joints.size(); ++i) {
-            mesh.skinningData[i].jointIds[0] = joints[i][0];
-            mesh.skinningData[i].jointIds[1] = joints[i][1];
-            mesh.skinningData[i].jointIds[2] = joints[i][2];
-            mesh.skinningData[i].jointIds[3] = joints[i][3];
+            for (std::size_t j = 0; j < 4; ++j) {
+                mesh.skinningData[i].jointIds[j] = joints[i][j];
+            }
         }
 
         for (std::size_t i = 0; i < weights.size(); ++i) {
-            mesh.skinningData[i].weights[0] = weights[i][0];
-            mesh.skinningData[i].weights[1] = weights[i][1];
-            mesh.skinningData[i].weights[2] = weights[i][2];
-            mesh.skinningData[i].weights[3] = weights[i][3];
+            for (std::size_t j = 0; j < 4; ++j) {
+                mesh.skinningData[i].weights[j] = weights[i][j];
+            }
         }
     }
 }

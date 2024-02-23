@@ -10,7 +10,7 @@ layout (location = 0) out vec3 outPos;
 layout (location = 1) out vec2 outUV;
 layout (location = 2) out vec3 outNormal;
 
-layout (buffer_reference, std430) readonly buffer VertexBuffer{
+layout (buffer_reference, std430) readonly buffer VertexBuffer {
 	Vertex vertices[];
 };
 

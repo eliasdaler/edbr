@@ -12,5 +12,7 @@ struct DrawCommand {
     MeshId meshId;
     glm::mat4 transformMatrix;
     math::Sphere worldBoundingSphere;
-    SkinnedMesh* skinnedMesh{nullptr};
+
+    const SkinnedMesh* skinnedMesh{nullptr};
+    std::uint32_t jointMatricesStartIndex;
 };

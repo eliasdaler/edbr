@@ -2,6 +2,10 @@ find_program(GLSLC glslc
   HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/bin/ $ENV{VULKAN_SDK}/bin32/
 )
 
+find_program(GLSLVALIDATOR glslangValidator
+  HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/bin/ $ENV{VULKAN_SDK}/bin32/
+)
+
 function (target_shaders target shaders)
   cmake_policy(PUSH)
 	cmake_policy(SET CMP0116 NEW)
@@ -16,6 +20,7 @@ function (target_shaders target shaders)
       COMMENT "Building ${SHADER_FILENAME}"
       OUTPUT "${SHADER_SPIRV_PATH}"
       COMMAND ${GLSLC} "${SHADER_PATH}" -o "${SHADER_SPIRV_PATH}" -MD -MF ${DEPFILE} -g
+      # COMMAND ${GLSLVALIDATOR} -V "${SHADER_PATH}" -o "${SHADER_SPIRV_PATH}" -g -gVS
       DEPENDS "${SHADER_PATH}"
       DEPFILE "${DEPFILE}"
     )

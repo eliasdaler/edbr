@@ -338,12 +338,15 @@ void Game::generateDrawList()
 
     for (const auto& ePtr : entities) {
         const auto& e = *ePtr;
-        for (const auto& mesh : e.meshes) {
+        for (std::size_t i = 0; i < e.meshes.size(); ++i) {
             if (e.hasSkeleton) {
                 renderer.addDrawSkinnedMeshCommand(
-                    mesh, e.worldTransform, e.skeletonAnimator.getJointMatrices());
+                    e.meshes[i],
+                    e.skinnedMeshes[i],
+                    e.worldTransform,
+                    e.skeletonAnimator.getJointMatrices());
             } else {
-                renderer.addDrawCommand(mesh, e.worldTransform);
+                renderer.addDrawCommand(e.meshes[i], e.worldTransform);
             }
         }
     }
