@@ -22,6 +22,9 @@ struct GPUMesh {
 
     bool hasSkeleton{false};
     // skinned meshes only
+    AllocatedBuffer skinningDataBuffer;
+    VkDeviceAddress skinningDataBufferAddress;
+
     AllocatedBuffer skinnedVertexBuffer;
     VkDeviceAddress skinnedVertexBufferAddress;
 };

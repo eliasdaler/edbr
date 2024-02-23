@@ -836,27 +836,25 @@ VkDescriptorSet Renderer::writeMaterialData(MaterialId id, const Material& mater
     return set;
 }
 
-GPUMeshBuffers Renderer::uploadMesh(
-    std::span<const std::uint32_t> indices,
-    std::span<const Mesh::Vertex> vertices) const
+void Renderer::uploadMesh(const Mesh& cpuMesh, GPUMesh& mesh) const
 {
-    GPUMeshBuffers mesh;
+    GPUMeshBuffers buffers;
 
     // create index buffer
-    const auto indexBufferSize = indices.size() * sizeof(std::uint32_t);
-    mesh.indexBuffer = createBuffer(
+    const auto indexBufferSize = cpuMesh.indices.size() * sizeof(std::uint32_t);
+    buffers.indexBuffer = createBuffer(
         indexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
 
     // create vertex buffer
-    const auto vertexBufferSize = vertices.size() * sizeof(Mesh::Vertex);
-    mesh.vertexBuffer = createBuffer(
+    const auto vertexBufferSize = cpuMesh.vertices.size() * sizeof(Mesh::Vertex);
+    buffers.vertexBuffer = createBuffer(
         vertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
-    mesh.vertexBufferAddress = getBufferAddress(mesh.vertexBuffer);
+    buffers.vertexBufferAddress = getBufferAddress(buffers.vertexBuffer);
 
     const auto staging = createBuffer(
         vertexBufferSize + indexBufferSize,
@@ -865,8 +863,8 @@ GPUMeshBuffers Renderer::uploadMesh(
 
     // copy data
     void* data = staging.info.pMappedData;
-    memcpy(data, vertices.data(), vertexBufferSize);
-    memcpy((char*)data + vertexBufferSize, indices.data(), indexBufferSize);
+    memcpy(data, cpuMesh.vertices.data(), vertexBufferSize);
+    memcpy((char*)data + vertexBufferSize, cpuMesh.indices.data(), indexBufferSize);
 
     immediateSubmit([&](VkCommandBuffer cmd) {
         const auto vertexCopy = VkBufferCopy{
@@ -874,19 +872,58 @@ GPUMeshBuffers Renderer::uploadMesh(
             .dstOffset = 0,
             .size = vertexBufferSize,
         };
-        vkCmdCopyBuffer(cmd, staging.buffer, mesh.vertexBuffer.buffer, 1, &vertexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, buffers.vertexBuffer.buffer, 1, &vertexCopy);
 
         const auto indexCopy = VkBufferCopy{
             .srcOffset = vertexBufferSize,
             .dstOffset = 0,
             .size = indexBufferSize,
         };
-        vkCmdCopyBuffer(cmd, staging.buffer, mesh.indexBuffer.buffer, 1, &indexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
     });
 
     destroyBuffer(staging);
 
-    return mesh;
+    mesh.buffers = buffers;
+    mesh.numVertices = cpuMesh.vertices.size();
+    mesh.numIndices = cpuMesh.indices.size();
+
+    if (mesh.hasSkeleton) {
+        // create skinning data buffer
+        const auto skinningDataSize = cpuMesh.vertices.size() * sizeof(Mesh::SkinningData);
+        mesh.skinningDataBuffer = createBuffer(
+            skinningDataSize,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh.skinningDataBufferAddress = getBufferAddress(mesh.skinningDataBuffer);
+
+        const auto staging = createBuffer(
+            skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+        // copy data
+        void* data = staging.info.pMappedData;
+        memcpy(data, cpuMesh.skinningData.data(), vertexBufferSize);
+
+        immediateSubmit([&](VkCommandBuffer cmd) {
+            const auto vertexCopy = VkBufferCopy{
+                .srcOffset = 0,
+                .dstOffset = 0,
+                .size = skinningDataSize,
+            };
+            vkCmdCopyBuffer(cmd, staging.buffer, mesh.skinningDataBuffer.buffer, 1, &vertexCopy);
+        });
+
+        destroyBuffer(staging);
+
+        // create skinned vertex buffer
+        mesh.skinnedVertexBuffer = createBuffer(
+            cpuMesh.vertices.size() * sizeof(Mesh::Vertex),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh.skinnedVertexBufferAddress = getBufferAddress(mesh.skinnedVertexBuffer);
+    }
 }
 
 void Renderer::updateDevTools(float dt)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <span>
 
 #include <glm/vec4.hpp>
 
@@ -8,5 +8,5 @@
 
 namespace util
 {
-math::Sphere calculateBoundingSphere(const std::vector<glm::vec4>& positions);
+math::Sphere calculateBoundingSphere(std::span<glm::vec3> positions);
 }

@@ -160,11 +160,9 @@ void loadPrimitive(
     // load positions
     const auto positions =
         getPackedBufferSpan<glm::vec3>(model, primitive, GLTF_POSITIONS_ACCESSOR);
-    mesh.positions.resize(positions.size());
-    mesh.vertices.resize(positions.size()); // TEMP
+    mesh.vertices.resize(positions.size());
     for (std::size_t i = 0; i < positions.size(); ++i) {
-        mesh.positions[i] = glm::vec4(positions[i], 1.f);
-        mesh.vertices[i].position = positions[i]; // TEMP
+        mesh.vertices[i].position = positions[i];
     }
 
     { // get min and max pos
@@ -175,10 +173,7 @@ void loadPrimitive(
         mesh.maxPos = tg2glm(posAccessor.maxValues);
     }
 
-    auto numVertices = positions.size();
-    mesh.uvs.resize(numVertices);
-    mesh.normals.resize(numVertices);
-    mesh.tangents.resize(numVertices);
+    const auto numVertices = positions.size();
 
     // load normals
     if (hasAccessor(primitive, GLTF_NORMALS_ACCESSOR)) {
@@ -186,7 +181,6 @@ void loadPrimitive(
             getPackedBufferSpan<glm::vec3>(model, primitive, GLTF_NORMALS_ACCESSOR);
         assert(normals.size() == numVertices);
         for (std::size_t i = 0; i < normals.size(); ++i) {
-            mesh.normals[i] = glm::vec4(normals[i], 1.f);
             mesh.vertices[i].normal = normals[i]; // TEMP
         }
     }
@@ -197,7 +191,7 @@ void loadPrimitive(
             getPackedBufferSpan<glm::vec4>(model, primitive, GLTF_TANGENTS_ACCESSOR);
         assert(tangents.size() == numVertices);
         for (std::size_t i = 0; i < tangents.size(); ++i) {
-            mesh.tangents[i] = tangents[i];
+            mesh.vertices[i].tangent = tangents[i];
         }
     }
 
@@ -206,7 +200,6 @@ void loadPrimitive(
         const auto uvs = getPackedBufferSpan<glm::vec2>(model, primitive, GLTF_UVS_ACCESSOR);
         assert(uvs.size() == numVertices);
         for (std::size_t i = 0; i < uvs.size(); ++i) {
-            mesh.uvs[i] = uvs[i];
             mesh.vertices[i].uv_x = uvs[i].x; // TEMP
             mesh.vertices[i].uv_y = uvs[i].y; // TEMP
         }
@@ -215,10 +208,8 @@ void loadPrimitive(
     // load jointIds and weights
     if (hasAccessor(primitive, GLTF_JOINTS_ACCESSOR)) {
         mesh.hasSkeleton = true;
-        mesh.jointIds.resize(numVertices);
-        mesh.weights.resize(numVertices);
+        mesh.skinningData.resize(numVertices);
 
-        // assume that less that 256 bones for now (TODO: fix)
         const auto joints =
             getPackedBufferSpan<std::uint8_t[4]>(model, primitive, GLTF_JOINTS_ACCESSOR);
         const auto weights = getPackedBufferSpan<float[4]>(model, primitive, GLTF_WEIGHTS_ACCESSOR);
@@ -227,19 +218,17 @@ void loadPrimitive(
         assert(weights.size() == numVertices);
 
         for (std::size_t i = 0; i < joints.size(); ++i) {
-            auto& ids = mesh.jointIds[i];
-            ids.x = (std::uint32_t)joints[i][0];
-            ids.y = (std::uint32_t)joints[i][1];
-            ids.z = (std::uint32_t)joints[i][2];
-            ids.w = (std::uint32_t)joints[i][3];
+            mesh.skinningData[i].jointIds[0] = joints[i][0];
+            mesh.skinningData[i].jointIds[1] = joints[i][1];
+            mesh.skinningData[i].jointIds[2] = joints[i][2];
+            mesh.skinningData[i].jointIds[3] = joints[i][3];
         }
 
         for (std::size_t i = 0; i < weights.size(); ++i) {
-            auto& ws = mesh.weights[i];
-            ws.x = weights[i][0];
-            ws.y = weights[i][1];
-            ws.z = weights[i][2];
-            ws.w = weights[i][3];
+            mesh.skinningData[i].weights[0] = weights[i][0];
+            mesh.skinningData[i].weights[1] = weights[i][1];
+            mesh.skinningData[i].weights[2] = weights[i][2];
+            mesh.skinningData[i].weights[3] = weights[i][3];
         }
     }
 }
@@ -278,23 +267,6 @@ void loadMaterial(
         material.hasDiffuseTexture = true;
     } else {
         material.diffuseTexture = ctx.whiteTexture;
-    }
-}
-
-void loadGPUMesh(const util::LoadContext ctx, const Mesh& cpuMesh, GPUMesh& gpuMesh)
-{
-    gpuMesh.buffers = ctx.renderer.uploadMesh(cpuMesh.indices, cpuMesh.vertices);
-    gpuMesh.numVertices = cpuMesh.vertices.size();
-    gpuMesh.numIndices = cpuMesh.indices.size();
-
-    if (cpuMesh.hasSkeleton) {
-        gpuMesh.skinnedVertexBuffer = ctx.renderer.createBuffer(
-            cpuMesh.vertices.size() * sizeof(Mesh::Vertex),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY);
-        gpuMesh.skinnedVertexBufferAddress =
-            ctx.renderer.getBufferAddress(gpuMesh.skinnedVertexBuffer);
     }
 }
 
@@ -558,9 +530,15 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
             }
             gpuMesh.minPos = cpuMesh.minPos;
             gpuMesh.maxPos = cpuMesh.maxPos;
-            gpuMesh.boundingSphere = util::calculateBoundingSphere(cpuMesh.positions);
             gpuMesh.hasSkeleton = cpuMesh.hasSkeleton;
-            loadGPUMesh(ctx, cpuMesh, gpuMesh);
+
+            std::vector<glm::vec3> positions(cpuMesh.vertices.size());
+            for (std::size_t i = 0; i < cpuMesh.vertices.size(); ++i) {
+                positions[i] = cpuMesh.vertices[i].position;
+            }
+            gpuMesh.boundingSphere = util::calculateBoundingSphere(positions);
+
+            ctx.renderer.uploadMesh(cpuMesh, gpuMesh);
 
             const auto meshId = ctx.meshCache.addMesh(std::move(gpuMesh));
             mesh.primitives[primitiveIdx] = meshId;

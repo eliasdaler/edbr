@@ -49,9 +49,7 @@ public:
     void draw(const Camera& camera);
     void cleanup();
 
-    [[nodiscard]] GPUMeshBuffers uploadMesh(
-        std::span<const std::uint32_t> indices,
-        std::span<const Mesh::Vertex> vertices) const;
+    void uploadMesh(const Mesh& cpuMesh, GPUMesh& mesh) const;
 
     [[nodiscard]] AllocatedBuffer createBuffer(
         std::size_t allocSize,
@@ -94,6 +92,8 @@ public:
 
     Scene loadScene(const std::filesystem::path& path);
 
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
+
 private:
     void initVulkan(SDL_Window* window);
     void loadExtensionFunctions();
@@ -134,8 +134,6 @@ private:
     VkDescriptorSet uploadSceneData();
 
     void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
-
-    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
     void sortDrawList();
 

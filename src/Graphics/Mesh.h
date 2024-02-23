@@ -18,18 +18,16 @@ struct Mesh {
         float uv_x;
         glm::vec3 normal;
         float uv_y;
+        glm::vec4 tangent;
     };
     // interleaved vertices: temporary
     std::vector<Vertex> vertices;
 
-    std::vector<glm::vec4> positions;
-    std::vector<glm::vec4> normals;
-    std::vector<glm::vec4> tangents;
-    std::vector<glm::vec2> uvs;
-
-    // skinned meshes only
-    std::vector<glm::vec<4, std::uint32_t>> jointIds;
-    std::vector<glm::vec4> weights;
+    struct SkinningData {
+        glm::vec<4, std::uint32_t> jointIds;
+        glm::vec4 weights;
+    };
+    std::vector<SkinningData> skinningData;
 
     bool hasSkeleton{false};
 
