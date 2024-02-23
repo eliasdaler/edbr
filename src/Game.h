@@ -1,12 +1,17 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <Graphics/Camera.h>
 
 #include "FreeCameraController.h"
 #include "Renderer.h"
+
+#include <Graphics/SkeletalAnimation.h>
+#include <Graphics/SkeletonAnimator.h>
 
 class SDL_Window;
 
@@ -28,20 +33,16 @@ public:
         EntityId parentId{NULL_ENTITY_ID};
         std::vector<EntityId> children;
 
-        // mesh (only one mesh per entity supported for now)
         std::vector<MeshId> meshes;
 
         // skeleton
-        // Skeleton skeleton;
-        // bool hasSkeleton{false};
+        Skeleton skeleton;
+        bool hasSkeleton{false};
+        std::vector<SkinnedMesh> skinnedMeshes;
 
         // animation
-        // SkeletonAnimator skeletonAnimator;
-        // std::unordered_map<std::string, SkeletalAnimation> animations;
-
-        /* void uploadJointMatricesToGPU(
-            const wgpu::Queue& queue,
-            const std::vector<glm::mat4>& jointMatrices) const; */
+        SkeletonAnimator skeletonAnimator;
+        std::unordered_map<std::string, SkeletalAnimation> animations;
     };
 
 public:

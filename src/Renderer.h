@@ -50,6 +50,7 @@ public:
     void cleanup();
 
     void uploadMesh(const Mesh& cpuMesh, GPUMesh& mesh) const;
+    SkinnedMesh createSkinnedMeshBuffer(MeshId meshId) const;
 
     [[nodiscard]] AllocatedBuffer createBuffer(
         std::size_t allocSize,
@@ -88,11 +89,13 @@ public:
 
     void beginDrawing(const GPUSceneData& sceneData);
     void addDrawCommand(MeshId id, const glm::mat4& transform);
+    void addDrawSkinnedMeshCommand(
+        MeshId id,
+        const glm::mat4& transform,
+        std::span<const glm::mat4> jointMatrices);
     void endDrawing();
 
     Scene loadScene(const std::filesystem::path& path);
-
-    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
 private:
     void initVulkan(SDL_Window* window);
@@ -127,7 +130,7 @@ private:
 
     FrameData& getCurrentFrame();
 
-    void doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh);
+    void doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh, const SkinnedMesh& skinnedMesh);
     void drawBackground(VkCommandBuffer cmd);
 
     void drawGeometry(VkCommandBuffer cmd, const Camera& camera);
@@ -136,6 +139,8 @@ private:
     void drawImGui(VkCommandBuffer cmd, VkImageView targetImageView);
 
     void sortDrawList();
+
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
 private: // data
     vkb::Instance instance;

@@ -149,6 +149,15 @@ void Game::update(float dt)
 {
     cameraController.update(camera, dt);
     updateEntityTransforms();
+
+    // animate entities with skeletons
+    for (const auto& ePtr : entities) {
+        auto& e = *ePtr;
+        if (e.hasSkeleton) {
+            e.skeletonAnimator.update(e.skeleton, dt);
+        }
+    }
+
     updateDevTools(dt);
 }
 
@@ -196,6 +205,15 @@ void Game::updateDevTools(float dt)
 
 void Game::cleanup()
 {
+    for (const auto& ePtr : entities) {
+        auto& e = *ePtr;
+        if (e.hasSkeleton) {
+            for (const auto& skinnedMesh : e.skinnedMeshes) {
+                renderer.destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+            }
+        }
+    }
+
     renderer.cleanup();
 
     SDL_DestroyWindow(window);
@@ -232,7 +250,20 @@ Game::EntityId Game::createEntitiesFromNode(
 
     { // mesh
         e.meshes = scene.meshes[node.meshIndex].primitives;
-        // TODO: skeleton
+        // skeleton
+        if (node.skinId != -1) {
+            e.hasSkeleton = true;
+            e.skeleton = scene.skeletons[node.skinId];
+            // FIXME: this is bad - we need to have some sort of cache
+            // and not copy animations everywhere
+            e.animations = scene.animations;
+
+            e.skeletonAnimator.setAnimation(e.skeleton, e.animations.at("Run"));
+            e.skinnedMeshes.reserve(e.meshes.size());
+            for (const auto meshId : e.meshes) {
+                e.skinnedMeshes.push_back(renderer.createSkinnedMeshBuffer(meshId));
+            }
+        }
     }
 
     { // hierarchy
@@ -308,7 +339,12 @@ void Game::generateDrawList()
     for (const auto& ePtr : entities) {
         const auto& e = *ePtr;
         for (const auto& mesh : e.meshes) {
-            renderer.addDrawCommand(mesh, e.worldTransform);
+            if (e.hasSkeleton) {
+                renderer.addDrawSkinnedMeshCommand(
+                    mesh, e.worldTransform, e.skeletonAnimator.getJointMatrices());
+            } else {
+                renderer.addDrawCommand(mesh, e.worldTransform);
+            }
         }
     }
 

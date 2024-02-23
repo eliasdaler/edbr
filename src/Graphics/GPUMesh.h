@@ -24,7 +24,9 @@ struct GPUMesh {
     // skinned meshes only
     AllocatedBuffer skinningDataBuffer;
     VkDeviceAddress skinningDataBufferAddress;
+};
 
+struct SkinnedMesh {
     AllocatedBuffer skinnedVertexBuffer;
     VkDeviceAddress skinnedVertexBufferAddress;
 };

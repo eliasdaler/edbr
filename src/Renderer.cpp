@@ -915,15 +915,20 @@ void Renderer::uploadMesh(const Mesh& cpuMesh, GPUMesh& mesh) const
         });
 
         destroyBuffer(staging);
-
-        // create skinned vertex buffer
-        mesh.skinnedVertexBuffer = createBuffer(
-            cpuMesh.vertices.size() * sizeof(Mesh::Vertex),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY);
-        mesh.skinnedVertexBufferAddress = getBufferAddress(mesh.skinnedVertexBuffer);
     }
+}
+
+SkinnedMesh Renderer::createSkinnedMeshBuffer(MeshId meshId) const
+{
+    const auto& mesh = meshCache.getMesh(meshId);
+    SkinnedMesh sm;
+    sm.skinnedVertexBuffer = createBuffer(
+        mesh.numVertices * sizeof(Mesh::Vertex),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+    sm.skinnedVertexBufferAddress = getBufferAddress(sm.skinnedVertexBuffer);
+    return sm;
 }
 
 void Renderer::updateDevTools(float dt)
@@ -977,8 +982,8 @@ void Renderer::draw(const Camera& camera)
     beginCmdLabel(cmd, "Skinning");
     for (const auto& dc : drawCommands) {
         auto& mesh = meshCache.getMesh(dc.meshId);
-        if (mesh.hasSkeleton) {
-            doSkinning(cmd, mesh);
+        if (dc.skinnedMesh) {
+            doSkinning(cmd, mesh, *dc.skinnedMesh);
         }
     }
     endCmdLabel(cmd);
@@ -1067,13 +1072,13 @@ void Renderer::draw(const Camera& camera)
     frameNumber++;
 }
 
-void Renderer::doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh)
+void Renderer::doSkinning(VkCommandBuffer cmd, const GPUMesh& mesh, const SkinnedMesh& skinnedMesh)
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, skinningPipeline);
     const auto cs = SkinningPushConstants{
         .numVertices = mesh.numVertices,
         .inputBuffer = mesh.buffers.vertexBufferAddress,
-        .outputBuffer = mesh.skinnedVertexBufferAddress,
+        .outputBuffer = skinnedMesh.skinnedVertexBufferAddress,
     };
     vkCmdPushConstants(
         cmd,
@@ -1185,7 +1190,8 @@ void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
 
         const auto pushConstants = GPUDrawPushConstants{
             .transform = dc.transformMatrix,
-            .vertexBuffer = mesh.buffers.vertexBufferAddress,
+            .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBufferAddress :
+                                             mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(
             cmd,
@@ -1300,6 +1306,22 @@ void Renderer::beginDrawing(const GPUSceneData& sceneData)
 }
 
 void Renderer::addDrawCommand(MeshId id, const glm::mat4& transform)
+{
+    const auto& mesh = meshCache.getMesh(id);
+    const auto worldBoundingSphere =
+        edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
+
+    drawCommands.push_back(DrawCommand{
+        .meshId = id,
+        .transformMatrix = transform,
+        .worldBoundingSphere = worldBoundingSphere,
+    });
+}
+
+void Renderer::addDrawSkinnedMeshCommand(
+    MeshId id,
+    const glm::mat4& transform,
+    std::span<const glm::mat4> jointMatrices)
 {
     const auto& mesh = meshCache.getMesh(id);
     const auto worldBoundingSphere =
