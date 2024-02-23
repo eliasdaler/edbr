@@ -198,8 +198,8 @@ private: // data
     VkCommandBuffer immCommandBuffer;
     VkCommandPool immCommandPool;
 
-    VkPipeline gradientPipeline;
     VkPipelineLayout gradientPipelineLayout;
+    VkPipeline gradientPipeline;
     struct ComputePushConstants {
         glm::vec4 data1;
         glm::vec4 data2;
@@ -208,8 +208,8 @@ private: // data
     };
     ComputePushConstants gradientConstants;
 
-    VkPipeline skinningPipeline;
     VkPipelineLayout skinningPipelineLayout;
+    VkPipeline skinningPipeline;
     struct SkinningPushConstants {
         VkDeviceAddress jointMatricesBuffer;
         std::uint32_t jointMatricesStartIndex;

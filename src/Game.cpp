@@ -65,7 +65,7 @@ void Game::init()
         { // create second cato
             createEntitiesFromScene(scene);
 
-            const glm::vec3 catoPos{1.4f, 0.f, 2.f};
+            const glm::vec3 catoPos{2.4f, 0.f, 0.f};
             auto& cato = findEntityByName("Cato");
             cato.tag = "Cato2";
             cato.transform.position = catoPos;
@@ -76,7 +76,7 @@ void Game::init()
         { // create third cato
             createEntitiesFromScene(scene);
 
-            const glm::vec3 catoPos{1.4f, 0.f, -2.f};
+            const glm::vec3 catoPos{0.4f, 0.f, 0.f};
             auto& cato = findEntityByName("Cato");
             cato.tag = "Cato3";
             cato.transform.position = catoPos;
