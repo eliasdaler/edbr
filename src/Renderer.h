@@ -31,6 +31,25 @@ class Renderer {
 public:
     static constexpr std::size_t FRAME_OVERLAP = 2;
 
+    template<typename T>
+    struct AppendableBuffer {
+        void append(std::span<const T> elements)
+        {
+            assert(size + elements.size() <= capacity);
+            auto arr = (T*)buffer.info.pMappedData;
+            memcpy((void*)&arr[size], elements.data(), elements.size() * sizeof(glm::mat4));
+            size += elements.size();
+        }
+
+        void clear() { size = 0; }
+
+        VkBuffer getVkBuffer() const { return buffer.buffer; }
+
+        AllocatedBuffer buffer;
+        std::size_t capacity{};
+        std::size_t size{0};
+    };
+
     struct FrameData {
         VkCommandPool commandPool;
         VkCommandBuffer mainCommandBuffer;
@@ -42,6 +61,9 @@ public:
         DeletionQueue deletionQueue;
 
         DescriptorAllocatorGrowable frameDescriptors;
+
+        AppendableBuffer<glm::mat4> jointMatricesBuffer;
+        VkDeviceAddress jointMatricesBufferAddress;
     };
 
 public:
@@ -131,11 +153,7 @@ private:
 
     FrameData& getCurrentFrame();
 
-    void doSkinning(
-        VkCommandBuffer cmd,
-        const GPUMesh& mesh,
-        const SkinnedMesh& skinnedMesh,
-        std::uint32_t jointMatricesStartIndex);
+    void doSkinning(VkCommandBuffer cmd);
     void drawBackground(VkCommandBuffer cmd);
 
     void drawGeometry(VkCommandBuffer cmd, const Camera& camera);
@@ -200,9 +218,7 @@ private: // data
         VkDeviceAddress skinningData;
         VkDeviceAddress outputBuffer;
     };
-    AllocatedBuffer jointMatricesBuffer;
-    VkDeviceAddress jointMatricesBufferAddress;
-    std::size_t jointMatrixBufferCurrentIndex; // current offset in the frame
+    static constexpr std::size_t MAX_JOINT_MATRICES = 5000;
 
     VkPipelineLayout trianglePipelineLayout;
     VkPipeline trianglePipeline;
