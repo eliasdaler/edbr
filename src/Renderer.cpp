@@ -991,14 +991,10 @@ void Renderer::draw(const Camera& camera)
 
     beginCmdLabel(cmd, "Skinning");
 
-    static bool doOnce = true;
-    if (doOnce || true) {
-        for (const auto& dc : drawCommands) {
-            auto& mesh = meshCache.getMesh(dc.meshId);
-            if (dc.skinnedMesh) {
-                doSkinning(cmd, mesh, *dc.skinnedMesh, dc.jointMatricesStartIndex);
-            }
-            doOnce = false;
+    for (const auto& dc : drawCommands) {
+        auto& mesh = meshCache.getMesh(dc.meshId);
+        if (dc.skinnedMesh) {
+            doSkinning(cmd, mesh, *dc.skinnedMesh, dc.jointMatricesStartIndex);
         }
     }
     endCmdLabel(cmd);
