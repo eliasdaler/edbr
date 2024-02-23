@@ -35,16 +35,13 @@ layout (push_constant) uniform constants
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 mat4 getJointMatrix(int jointId) {
-    if (jointId > 40) { // no sync copium
-        jointId = 0;
-    }
     return jointMatrices.matrices[jointMatricesStartIndex + jointId];
 }
 
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
-    if (index > numVertices) {
+    if (index >= numVertices) {
         return;
     }
 
