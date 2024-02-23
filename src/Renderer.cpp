@@ -1355,11 +1355,6 @@ void Renderer::addDrawSkinnedMeshCommand(
         edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, true);
 
     const auto startIndex = jointMatrixBufferCurrentIndex;
-
-    std::vector<glm::mat4> testMatrices(jointMatrices.size());
-    for (std::size_t i = 0; i < jointMatrices.size(); ++i) {
-        testMatrices[i] = glm::mat4{(float)(startIndex + i)};
-    }
     auto buffer = (glm::mat4*)jointMatricesBuffer.info.pMappedData;
     memcpy(
         (void*)&buffer[startIndex], jointMatrices.data(), jointMatrices.size() * sizeof(glm::mat4));
