@@ -44,8 +44,8 @@ void Game::init()
     renderer.init(window, vSync);
 
     {
-        const auto scene = renderer.loadScene("assets/levels/house/house.gltf");
-        // loader.loadScene(loadContext, scene, "assets/levels/city/city.gltf");
+        // const auto scene = renderer.loadScene("assets/levels/house/house.gltf");
+        const auto scene = renderer.loadScene("assets/levels/city/city.gltf");
         createEntitiesFromScene(scene);
     }
 

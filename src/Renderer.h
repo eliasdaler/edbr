@@ -234,6 +234,7 @@ private: // data
     MeshCache meshCache;
 
     VkSampler defaultSamplerNearest;
+    VkSampler defaultSamplerLinear;
     AllocatedImage whiteTexture;
 
     std::vector<DrawCommand> drawCommands;
