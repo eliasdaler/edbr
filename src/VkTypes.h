@@ -42,3 +42,8 @@ struct GPUSceneData {
     glm::vec4 sunlightDirection;
     glm::vec4 sunlightColorAndIntensity;
 };
+
+struct DepthOnlyPushConstants {
+    glm::mat4 mvp;
+    VkDeviceAddress vertexBuffer;
+};

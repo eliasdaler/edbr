@@ -91,12 +91,17 @@ void Game::init()
         static const float fovX = glm::radians(45.f);
         static const float aspectRatio = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
+        camera.setUseInverseDepth(true);
         camera.init(fovX, zNear, zFar, aspectRatio);
 
         const auto startPos = glm::vec3{8.9f, 4.09f, 8.29f};
         camera.setPosition(startPos);
     }
     cameraController.setYawPitch(-2.5f, 0.2f);
+
+    const auto startPos = glm::vec3{-48.8440704, 5.05302525, 5.56558323};
+    camera.setPosition(startPos);
+    cameraController.setYawPitch(3.92699075, 0.523598909);
 
     sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
     sunlightColorAndIntensity = glm::vec4{213.f / 255.f, 136.f / 255.f, 49.f / 255.f, 0.6f};

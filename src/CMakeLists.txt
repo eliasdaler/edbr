@@ -17,6 +17,7 @@ add_executable(game
   Graphics/Camera.cpp
   Graphics/FrustumCulling.cpp
   Graphics/Mesh.cpp
+  Graphics/ShadowMapping.cpp
   Graphics/SkeletonAnimator.cpp
   Graphics/Texture.cpp
 
@@ -84,6 +85,7 @@ set(SHADERS
   colored_triangle.frag
   skinning.comp
   mesh.vert
+  mesh_depth_only.vert
   mesh.frag
   gradient.comp
 )

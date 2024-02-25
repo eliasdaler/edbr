@@ -25,6 +25,8 @@
 
 #include <Graphics/FrustumCulling.h>
 #include <Graphics/Scene.h>
+#include <Graphics/ShadowMapping.h>
+#include <Graphics/Skeleton.h>
 
 #include <util/GltfLoader.h>
 #include <util/ImageLoader.h>
@@ -55,6 +57,8 @@ void Renderer::init(SDL_Window* window, bool vSync)
 
     initImGui(window);
 
+    initCSMData();
+
     gradientConstants = ComputePushConstants{
         .data1 = glm::vec4{239.f / 255.f, 157.f / 255.f, 8.f / 255.f, 1},
         .data2 = glm::vec4{85.f / 255.f, 18.f / 255.f, 85.f / 255.f, 1},
@@ -79,7 +83,10 @@ void Renderer::initVulkan(SDL_Window* window)
         std::exit(1);
     }
 
-    const auto deviceFeatures = VkPhysicalDeviceFeatures{.samplerAnisotropy = VK_TRUE};
+    const auto deviceFeatures = VkPhysicalDeviceFeatures{
+        .depthClamp = VK_TRUE,
+        .samplerAnisotropy = VK_TRUE,
+    };
 
     const auto features12 = VkPhysicalDeviceVulkan12Features{
         .bufferDeviceAddress = true,
@@ -103,7 +110,8 @@ void Renderer::initVulkan(SDL_Window* window)
     vkGetPhysicalDeviceProperties(physicalDevice, &props);
     assert(props.limits.maxSamplerAnisotropy == 16.f && "TODO: use smaller aniso values");
 
-    std::vector<const char*> enabledExtensions = {"VK_EXT_DEBUG_MARKER_EXTENSION_NAME"};
+    std::vector<const char*> enabledExtensions =
+        {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME};
     VkDeviceCreateInfo deviceInfo = {};
     device = vkb::DeviceBuilder{physicalDevice}.build().value();
 
@@ -140,6 +148,7 @@ void Renderer::loadExtensionFunctions()
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
 {
+    // vSync = false;
     swapchain = vkb::SwapchainBuilder{device}
                     .set_desired_format(VkSurfaceFormatKHR{
                         .format = VK_FORMAT_B8G8R8A8_UNORM,
@@ -405,6 +414,7 @@ void Renderer::initPipelines()
     initSkinningPipeline();
     initTrianglePipeline();
     initMeshPipeline();
+    initMeshDepthOnlyPipeline();
 }
 
 void Renderer::initBackgroundPipelines()
@@ -539,6 +549,43 @@ void Renderer::initMeshPipeline()
     });
 }
 
+void Renderer::initMeshDepthOnlyPipeline()
+{
+    const auto vertexShader = vkutil::loadShaderModule("shaders/mesh_depth_only.vert.spv", device);
+
+    addDebugLabel(vertexShader, "mesh_depth_only.vert");
+
+    const auto bufferRange = VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(DepthOnlyPushConstants),
+    };
+
+    const auto pushConstantRanges = std::array{bufferRange};
+    const auto layouts = std::array{sceneDataDescriptorLayout, meshMaterialLayout};
+    meshDepthOnlyPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+
+    meshDepthOnlyPipeline = PipelineBuilder{meshDepthOnlyPipelineLayout}
+                                .setShaders(vertexShader, VK_NULL_HANDLE)
+                                .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                                .setPolygonMode(VK_POLYGON_MODE_FILL)
+                                .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+                                .setMultisamplingNone()
+                                .disableBlending()
+                                .setDepthFormat(depthImage.format)
+                                .enableDepthClamp()
+                                .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                                .build(device);
+    addDebugLabel(meshDepthOnlyPipeline, "mesh depth only pipeline");
+
+    vkDestroyShaderModule(device, vertexShader, nullptr);
+
+    deletionQueue.pushFunction([this]() {
+        vkDestroyPipelineLayout(device, meshDepthOnlyPipelineLayout, nullptr);
+        vkDestroyPipeline(device, meshDepthOnlyPipeline, nullptr);
+    });
+}
+
 void Renderer::initImGui(SDL_Window* window)
 {
     VkDescriptorPoolSize pool_sizes[] =
@@ -597,6 +644,46 @@ void Renderer::initImGui(SDL_Window* window)
     });
 }
 
+void Renderer::initCSMData()
+{
+    // meshDepthOnly pipeline uses depthImage.format for depth
+    assert(depthImage.format == VK_FORMAT_D32_SFLOAT);
+
+    csmShadowMap = createImage(
+        VkExtent3D{(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize, 1},
+        NUM_SHADOW_CASCADES,
+        VK_FORMAT_D32_SFLOAT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        false);
+    addDebugLabel(csmShadowMap, "CSM shadow map");
+
+    for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
+        VkImageView imageView;
+        const auto createInfo = VkImageViewCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = csmShadowMap.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = csmShadowMap.format,
+            .subresourceRange =
+                VkImageSubresourceRange{
+                    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = (std::uint32_t)i,
+                    .layerCount = 1,
+                },
+        };
+        VK_CHECK(vkCreateImageView(device, &createInfo, nullptr, &csmShadowMapViews[i]));
+    }
+
+    deletionQueue.pushFunction([this]() {
+        destroyImage(csmShadowMap);
+        for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
+            vkDestroyImageView(device, csmShadowMapViews[i], nullptr);
+        }
+    });
+}
+
 void Renderer::destroyCommandBuffers()
 {
     for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
@@ -647,6 +734,7 @@ AllocatedBuffer Renderer::createBuffer(
 
 AllocatedImage Renderer::createImage(
     VkExtent3D size,
+    std::uint32_t numLayers,
     VkFormat format,
     VkImageUsageFlags usage,
     bool mipMap)
@@ -658,7 +746,17 @@ AllocatedImage Renderer::createImage(
             1;
     }
 
-    const auto imgInfo = vkinit::imageCreateInfo(format, usage, size, mipLevels);
+    const auto imgInfo = VkImageCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = size,
+        .mipLevels = mipLevels,
+        .arrayLayers = numLayers,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = usage,
+    };
     const auto allocInfo = VmaAllocationCreateInfo{
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
@@ -700,6 +798,7 @@ AllocatedImage Renderer::createImage(
 
     const auto image = createImage(
         size,
+        1,
         format,
         usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         mipMap);
@@ -1029,6 +1128,10 @@ void Renderer::draw(const Camera& camera)
     doSkinning(cmd);
     endCmdLabel(cmd);
 
+    beginCmdLabel(cmd, "Draw CSM");
+    drawShadowMaps(cmd, camera);
+    endCmdLabel(cmd);
+
     beginCmdLabel(cmd, "Draw background");
     drawBackground(cmd);
     endCmdLabel(cmd);
@@ -1163,6 +1266,118 @@ void Renderer::doSkinning(VkCommandBuffer cmd)
     vkCmdPipelineBarrier2(cmd, &dependencyInfo);
 }
 
+void Renderer::drawShadowMaps(VkCommandBuffer cmd, const Camera& camera)
+{
+    std::array<float, NUM_SHADOW_CASCADES> percents = {0.3f, 0.8f, 1.f};
+    if (camera.getZFar() > 100.f) {
+        percents = {0.01f, 0.3f, 1.f};
+    }
+
+    std::array<float, NUM_SHADOW_CASCADES> cascadeFarPlaneZs{};
+    std::array<glm::mat4, NUM_SHADOW_CASCADES> csmLightSpaceTMs{};
+
+    for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
+        float zNear = i == 0 ? camera.getZNear() : camera.getZNear() * percents[i - 1];
+        float zFar = camera.getZFar() * percents[i];
+        cascadeFarPlaneZs[i] = zFar;
+
+        // create subfustrum by copying everything about the main camera,
+        // but changing zFar
+        Camera subFrustumCamera;
+        subFrustumCamera.setPosition(camera.getPosition());
+        subFrustumCamera.setHeading(camera.getHeading());
+        subFrustumCamera.init(camera.getFOVX(), zNear, zFar, 1.f);
+        // NOTE: this camera doesn't use inverse depth because otherwise
+        // calculateFrustumCornersWorldSpace doesn't work properly
+
+        const auto corners =
+            edge::calculateFrustumCornersWorldSpace(subFrustumCamera.getViewProj());
+        const auto csmCamera = calculateCSMCamera(
+            corners, glm::vec3{sceneData.sunlightDirection}, shadowMapTextureSize);
+        csmLightSpaceTMs[i] = csmCamera.getViewProj();
+
+        const auto depthAttachment = vkinit::
+            depthAttachmentInfo(csmShadowMapViews[i], VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+        const auto renderInfo = vkinit::renderingInfo(
+            VkExtent2D{(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize},
+            nullptr,
+            &depthAttachment);
+        vkCmdBeginRendering(cmd, &renderInfo);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshDepthOnlyPipeline);
+
+        const auto viewport = VkViewport{
+            .x = 0,
+            .y = 0,
+            .width = shadowMapTextureSize,
+            .height = shadowMapTextureSize,
+            .minDepth = 0.f,
+            .maxDepth = 1.f,
+        };
+        vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+        const auto scissor = VkRect2D{
+            .offset = {},
+            .extent = {(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize},
+        };
+        vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+        const auto frustum = edge::createFrustumFromCamera(csmCamera);
+        auto prevMeshId = NULL_MESH_ID;
+
+        // FIXME: this is sorted by material first so might be not the most efficient
+        // we can store by mesh here and do many indexed draws here potentially
+        for (const auto& dcIdx : sortedDrawCommands) {
+            const auto& dc = drawCommands[dcIdx];
+            // hack: don't cull big objects, because shadows from them might disappear
+            if (dc.worldBoundingSphere.radius < 2.f &&
+                !edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
+                continue;
+            }
+
+            const auto& mesh = meshCache.getMesh(dc.meshId);
+
+            if (dc.meshId != prevMeshId) {
+                prevMeshId = dc.meshId;
+                vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            }
+
+            const auto pushConstants = DepthOnlyPushConstants{
+                .mvp = csmLightSpaceTMs[i] * dc.transformMatrix,
+                .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBufferAddress :
+                                                 mesh.buffers.vertexBufferAddress,
+            };
+            vkCmdPushConstants(
+                cmd,
+                meshDepthOnlyPipelineLayout,
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(DepthOnlyPushConstants),
+                &pushConstants);
+
+            vkCmdDrawIndexed(cmd, mesh.numIndices, 1, 0, 0, 0);
+        }
+
+        vkCmdEndRendering(cmd);
+    }
+
+    const auto memoryBarrier = VkMemoryBarrier2{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+    };
+
+    const auto dependencyInfo = VkDependencyInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .memoryBarrierCount = 1,
+        .pMemoryBarriers = &memoryBarrier,
+    };
+
+    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+}
+
 void Renderer::drawBackground(VkCommandBuffer cmd)
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientPipeline);
@@ -1238,7 +1453,7 @@ void Renderer::drawGeometry(VkCommandBuffer cmd, const Camera& camera)
             continue;
         }
 
-        auto& mesh = meshCache.getMesh(dc.meshId);
+        const auto& mesh = meshCache.getMesh(dc.meshId);
         if (mesh.materialId != prevMaterialIdx) {
             prevMaterialIdx = mesh.materialId;
 

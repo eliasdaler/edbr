@@ -163,7 +163,7 @@ VkRenderingInfo renderingInfo(
                 .extent = renderExtent,
             },
         .layerCount = 1,
-        .colorAttachmentCount = 1,
+        .colorAttachmentCount = colorAttachment ? 1u : 0u,
         .pColorAttachments = colorAttachment,
         .pDepthAttachment = depthAttachment,
     };

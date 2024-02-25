@@ -136,10 +136,14 @@ PipelineBuilder& PipelineBuilder::setShaders(
 {
     shaderStages.clear();
 
-    shaderStages.push_back(
-        vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
-    shaderStages.push_back(
-        vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
+    if (vertexShader) {
+        shaderStages.push_back(
+            vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
+    }
+    if (fragmentShader) {
+        shaderStages.push_back(
+            vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
+    }
 
     return *this;
 }
@@ -216,6 +220,13 @@ PipelineBuilder& PipelineBuilder::enableDepthTest(bool depthWriteEnable, VkCompa
 PipelineBuilder& PipelineBuilder::setDepthFormat(VkFormat format)
 {
     renderInfo.depthAttachmentFormat = format;
+
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::enableDepthClamp()
+{
+    rasterizer.depthClampEnable = true;
 
     return *this;
 }
