@@ -95,6 +95,7 @@ public:
         bool mipMap);
 
     void addDebugLabel(const AllocatedImage& image, const char* label);
+    void addDebugLabel(VkImageView imageView, const char* label);
     void addDebugLabel(const VkShaderModule& shader, const char* label);
     void addDebugLabel(const VkPipeline& pipeline, const char* label);
     void addDebugLabel(const AllocatedBuffer& buffer, const char* label);
@@ -238,8 +239,9 @@ private: // data
     AllocatedBuffer materialDataBuffer;
     MeshCache meshCache;
 
-    VkSampler defaultSamplerNearest;
-    VkSampler defaultSamplerLinear;
+    VkSampler defaultNearestSampler;
+    VkSampler defaultLinearSampler;
+    VkSampler defaultShadowMapSampler;
     AllocatedImage whiteTexture;
 
     AllocatedImage csmShadowMap;

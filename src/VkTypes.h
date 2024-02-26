@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -41,6 +43,9 @@ struct GPUSceneData {
     glm::vec4 ambientColorAndIntensity;
     glm::vec4 sunlightDirection;
     glm::vec4 sunlightColorAndIntensity;
+    glm::vec4 cascadeFarPlaneZs;
+    // FIXME use NUM_SHADOW_CASCADES instead
+    std::array<glm::mat4, 3> csmLightSpaceTMs;
 };
 
 struct DepthOnlyPushConstants {
