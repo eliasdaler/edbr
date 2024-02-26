@@ -150,7 +150,7 @@ void Renderer::loadExtensionFunctions()
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
 {
     // vSync = false;
-    std::array<VkFormat, 2> formats{{
+    const std::array<VkFormat, 2> formats{{
         VK_FORMAT_B8G8R8A8_SRGB,
         VK_FORMAT_B8G8R8A8_UNORM,
     }};
@@ -1230,9 +1230,10 @@ void Renderer::draw(const Camera& camera)
     beginCmdLabel(cmd, "Draw Dear ImGui");
     {
         VkImageView imguiImageView;
-        auto imageViewCreateInfo = vkinit::imageViewCreateInfo(
+        const auto imageViewCreateInfo = vkinit::imageViewCreateInfo(
             VK_FORMAT_B8G8R8A8_UNORM, swapchainImage, VK_IMAGE_ASPECT_COLOR_BIT);
         VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &imguiImageView));
+
         drawImGui(cmd, imguiImageView);
         currentFrame.deletionQueue.pushFunction(
             [this, imguiImageView]() { vkDestroyImageView(device, imguiImageView, nullptr); });
