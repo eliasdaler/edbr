@@ -132,7 +132,10 @@ VkRenderingAttachmentInfo attachmentInfo(
     return colorAttachment;
 }
 
-VkRenderingAttachmentInfo depthAttachmentInfo(VkImageView view, VkImageLayout layout)
+VkRenderingAttachmentInfo depthAttachmentInfo(
+    VkImageView view,
+    VkImageLayout layout,
+    float depthClearValue)
 {
     return VkRenderingAttachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -144,7 +147,7 @@ VkRenderingAttachmentInfo depthAttachmentInfo(VkImageView view, VkImageLayout la
             {
                 .depthStencil =
                     {
-                        .depth = 0.f, // reverse depth
+                        .depth = depthClearValue,
                     },
             },
     };

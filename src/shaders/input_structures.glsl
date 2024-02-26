@@ -1,5 +1,3 @@
-#define NUM_SHADOW_CASCADES 3
-
 layout (set = 0, binding = 0) uniform SceneData {
 	mat4 view;
 	mat4 proj;
@@ -9,7 +7,7 @@ layout (set = 0, binding = 0) uniform SceneData {
 	vec4 sunlightDirection;
 	vec4 sunlightColor; // w - sun intensity
     vec4 cascadeFarPlaneZs;
-    mat4 csmLightSpaceTMs[NUM_SHADOW_CASCADES];
+    mat4 csmLightSpaceTMs[3]; // 3 = NUM_SHADOW_CASCADES
 } sceneData;
 
 layout (set = 0, binding = 1) uniform sampler2DArrayShadow csmShadowMap;

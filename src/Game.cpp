@@ -44,8 +44,8 @@ void Game::init()
     renderer.init(window, vSync);
 
     {
-        const auto scene = renderer.loadScene("assets/levels/house/house.gltf");
-        // const auto scene = renderer.loadScene("assets/levels/city/city.gltf");
+        // const auto scene = renderer.loadScene("assets/levels/house/house.gltf");
+        const auto scene = renderer.loadScene("assets/levels/city/city.gltf");
         createEntitiesFromScene(scene);
     }
 
@@ -87,7 +87,7 @@ void Game::init()
 
     {
         static const float zNear = 1.f;
-        static const float zFar = 1000.f;
+        static const float zFar = 64.f;
         static const float fovX = glm::radians(45.f);
         static const float aspectRatio = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
@@ -102,6 +102,10 @@ void Game::init()
     const auto startPos = glm::vec3{-48.8440704, 5.05302525, 5.56558323};
     camera.setPosition(startPos);
     cameraController.setYawPitch(3.92699075, 0.523598909);
+
+    /* const auto startPos = glm::vec3{-48.68f, 16.39f, 17.33f};
+    camera.setPosition(startPos);
+    cameraController.setYawPitch(3.29f, 1.22f); */
 
     sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
     sunlightColorAndIntensity = glm::vec4{213.f / 255.f, 136.f / 255.f, 49.f / 255.f, 0.6f};

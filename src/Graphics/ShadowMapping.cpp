@@ -64,7 +64,7 @@ Camera calculateCSMCamera(
     camera.setPosition(frustumCenter);
     camera.setHeading(glm::quatLookAt(lightDir, math::GlobalUpAxis));
     camera.setUseInverseDepth(true);
-    float extraScale = 1.2f; // so that we don't cull the objects behind the camera
+    float extraScale = 1.5f; // so that we don't cull the objects behind the camera
     camera.initOrtho(radius, radius, -radius * extraScale, radius * extraScale);
 
     return camera;

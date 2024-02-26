@@ -38,7 +38,10 @@ VkRenderingAttachmentInfo attachmentInfo(
     const VkClearValue* clear,
     VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-VkRenderingAttachmentInfo depthAttachmentInfo(VkImageView view, VkImageLayout layout);
+VkRenderingAttachmentInfo depthAttachmentInfo(
+    VkImageView view,
+    VkImageLayout layout,
+    float depthClearValue = 0.f);
 
 VkRenderingInfo renderingInfo(
     VkExtent2D renderExtent,

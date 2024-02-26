@@ -1316,8 +1316,8 @@ void Renderer::drawShadowMaps(VkCommandBuffer cmd, const Camera& camera)
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     std::array<float, NUM_SHADOW_CASCADES> percents = {0.3f, 0.8f, 1.f};
-    if (camera.getZFar() > 100.f) {
-        percents = {0.01f, 0.04f, 0.15f};
+    if (camera.getZFar() > 500.f) {
+        percents = {0.005f, 0.01f, 0.15f};
     }
 
     std::array<float, NUM_SHADOW_CASCADES> cascadeFarPlaneZs{};
