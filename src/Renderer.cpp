@@ -98,6 +98,7 @@ void Renderer::initVulkan(SDL_Window* window)
 
     physicalDevice = vkb::PhysicalDeviceSelector{instance}
                          .set_minimum_version(1, 3)
+                         .add_required_extension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
                          .set_required_features(deviceFeatures)
                          .set_required_features_12(features12)
                          .set_required_features_13(features13)
@@ -149,11 +150,22 @@ void Renderer::loadExtensionFunctions()
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
 {
     // vSync = false;
+    std::array<VkFormat, 2> formats{{
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_FORMAT_B8G8R8A8_UNORM,
+    }};
+    auto formatList = VkImageFormatListCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
+        .viewFormatCount = 2,
+        .pViewFormats = formats.data(),
+    };
     swapchain = vkb::SwapchainBuilder{device}
+                    .add_pNext(&formatList)
                     .set_desired_format(VkSurfaceFormatKHR{
-                        .format = VK_FORMAT_B8G8R8A8_UNORM,
+                        .format = VK_FORMAT_B8G8R8A8_SRGB,
                         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
                     })
+                    .set_create_flags(VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)
                     .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .set_desired_present_mode(
                         vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)
@@ -630,6 +642,7 @@ void Renderer::initImGui(SDL_Window* window)
 
     ImGui_ImplSDL2_InitForVulkan(window);
 
+    const auto format = VK_FORMAT_B8G8R8A8_UNORM;
     auto initInfo = ImGui_ImplVulkan_InitInfo{
         .Instance = instance,
         .PhysicalDevice = physicalDevice,
@@ -645,7 +658,7 @@ void Renderer::initImGui(SDL_Window* window)
             VkPipelineRenderingCreateInfo{
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
                 .colorAttachmentCount = 1,
-                .pColorAttachmentFormats = &swapchain.image_format,
+                .pColorAttachmentFormats = &format,
             },
         .CheckVkResultFn = [](VkResult res) { assert(res == VK_SUCCESS); },
     };
@@ -1215,7 +1228,15 @@ void Renderer::draw(const Camera& camera)
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     beginCmdLabel(cmd, "Draw Dear ImGui");
-    drawImGui(cmd, swapchainImageViews[swapchainImageIndex]);
+    {
+        VkImageView imguiImageView;
+        auto imageViewCreateInfo = vkinit::imageViewCreateInfo(
+            VK_FORMAT_B8G8R8A8_UNORM, swapchainImage, VK_IMAGE_ASPECT_COLOR_BIT);
+        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &imguiImageView));
+        drawImGui(cmd, imguiImageView);
+        currentFrame.deletionQueue.pushFunction(
+            [this, imguiImageView]() { vkDestroyImageView(device, imguiImageView, nullptr); });
+    }
     endCmdLabel(cmd);
 
     // prepare for present

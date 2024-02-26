@@ -44,8 +44,5 @@ void main()
     // uint cascadeIndex = chooseCascade(inPos, cameraPos, sceneData.cascadeFarPlaneZs);
     // fragColor *= debugShadowsFactor(cascadeIndex);
 
-    // fake gamma correction
-    fragColor = pow(fragColor, vec3(1.f/2.2f));
-
 	outFragColor = vec4(fragColor, 1.0f);
 }
