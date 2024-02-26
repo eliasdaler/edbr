@@ -19,13 +19,6 @@ void main()
 
     vec3 cameraPos = sceneData.cameraPos.xyz;
 
-    vec3 sunDir = sceneData.sunlightDirection.xyz;
-    vec3 sunColor = sceneData.sunlightColor.rgb;
-    float sunIntensity = sceneData.sunlightColor.w;
-
-    vec3 ambientColor = sceneData.ambientColor.rgb;
-    float ambientIntensity = sceneData.ambientColor.w;
-
     vec3 n = normalize(inNormal);
     vec3 l = sceneData.sunlightDirection.xyz;
     vec3 v = normalize(cameraPos - inPos);
@@ -39,9 +32,13 @@ void main()
             inPos.xyz, cameraPos.xyz, NoL,
             csmShadowMap, sceneData.cascadeFarPlaneZs, sceneData.csmLightSpaceTMs);
 
+    vec3 sunColor = sceneData.sunlightColor.rgb;
+    float sunIntensity = sceneData.sunlightColor.w;
     vec3 fragColor = (fr * sunColor) * (sunIntensity * NoL * occlusion);
 
     // ambient
+    vec3 ambientColor = sceneData.ambientColor.rgb;
+    float ambientIntensity = sceneData.ambientColor.w;
     fragColor += diffuse * ambientColor.xyz * ambientIntensity;
 
     // uint cascadeIndex = chooseCascade(inPos, cameraPos, sceneData.cascadeFarPlaneZs);
