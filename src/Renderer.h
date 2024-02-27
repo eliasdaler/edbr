@@ -15,6 +15,8 @@
 
 #include <glm/vec4.hpp>
 
+#include <tracy/TracyVulkan.hpp>
+
 #include <Graphics/Camera.h>
 #include <Graphics/Mesh.h>
 
@@ -64,6 +66,8 @@ public:
 
         AppendableBuffer<glm::mat4> jointMatricesBuffer;
         VkDeviceAddress jointMatricesBufferAddress;
+
+        TracyVkCtx tracyVkCtx;
     };
 
 public:

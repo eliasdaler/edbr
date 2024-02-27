@@ -53,6 +53,12 @@ void Renderer::init(SDL_Window* window, bool vSync)
     initSamplers();
     initDefaultTextures();
 
+    for (std::size_t i = 0; i < FRAME_OVERLAP; ++i) {
+        auto& frame = frames[i];
+        frame.tracyVkCtx =
+            TracyVkContext(physicalDevice, device, graphicsQueue, frame.mainCommandBuffer);
+    }
+
     allocateMaterialDataBuffer(1000);
 
     initImGui(window);
@@ -1159,16 +1165,16 @@ Renderer::FrameData& Renderer::getCurrentFrame()
 
 void Renderer::draw(const Camera& camera)
 {
-    auto& currentFrame = getCurrentFrame();
-    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFence, true, NO_TIMEOUT));
-    currentFrame.deletionQueue.flush();
+    auto& frame = getCurrentFrame();
+    VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, NO_TIMEOUT));
+    frame.deletionQueue.flush();
 
-    VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFence));
+    VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
 
     drawExtent.width = drawImage.extent.width;
     drawExtent.height = drawImage.extent.height;
 
-    const auto& cmd = currentFrame.mainCommandBuffer;
+    const auto& cmd = frame.mainCommandBuffer;
     const auto cmdBeginInfo = VkCommandBufferBeginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
@@ -1178,13 +1184,19 @@ void Renderer::draw(const Camera& camera)
     vkutil::
         transitionImage(cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
-    beginCmdLabel(cmd, "Skinning");
-    doSkinning(cmd);
-    endCmdLabel(cmd);
+    {
+        TracyVkZoneC(frame.tracyVkCtx, cmd, "Skinning", tracy::Color::Aqua);
+        beginCmdLabel(cmd, "Skinning");
+        doSkinning(cmd);
+        endCmdLabel(cmd);
+    }
 
-    beginCmdLabel(cmd, "Draw CSM");
-    drawShadowMaps(cmd, camera);
-    endCmdLabel(cmd);
+    {
+        TracyVkZoneC(frame.tracyVkCtx, cmd, "CSM", tracy::Color::CornflowerBlue);
+        beginCmdLabel(cmd, "Draw CSM");
+        drawShadowMaps(cmd, camera);
+        endCmdLabel(cmd);
+    }
 
     beginCmdLabel(cmd, "Draw background");
     drawBackground(cmd);
@@ -1195,9 +1207,12 @@ void Renderer::draw(const Camera& camera)
     vkutil::transitionImage(
         cmd, depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    beginCmdLabel(cmd, "Draw geometry");
-    drawGeometry(cmd, camera);
-    endCmdLabel(cmd);
+    {
+        TracyVkZoneC(frame.tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
+        beginCmdLabel(cmd, "Draw geometry");
+        drawGeometry(cmd, camera);
+        endCmdLabel(cmd);
+    }
 
     vkutil::transitionImage(
         cmd,
@@ -1211,7 +1226,7 @@ void Renderer::draw(const Camera& camera)
         device,
         swapchain,
         NO_TIMEOUT,
-        currentFrame.swapchainSemaphore,
+        frame.swapchainSemaphore,
         VK_NULL_HANDLE,
         &swapchainImageIndex));
     auto& swapchainImage = swapchainImages[swapchainImageIndex];
@@ -1227,18 +1242,24 @@ void Renderer::draw(const Camera& camera)
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    beginCmdLabel(cmd, "Draw Dear ImGui");
     {
+        TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
+        beginCmdLabel(cmd, "Draw Dear ImGui");
+
         VkImageView imguiImageView;
         const auto imageViewCreateInfo = vkinit::imageViewCreateInfo(
             VK_FORMAT_B8G8R8A8_UNORM, swapchainImage, VK_IMAGE_ASPECT_COLOR_BIT);
         VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &imguiImageView));
 
         drawImGui(cmd, imguiImageView);
-        currentFrame.deletionQueue.pushFunction(
+        frame.deletionQueue.pushFunction(
             [this, imguiImageView]() { vkDestroyImageView(device, imguiImageView, nullptr); });
+
+        endCmdLabel(cmd);
     }
-    endCmdLabel(cmd);
+
+    // TODO: don't collect every frame?
+    TracyVkCollect(frame.tracyVkCtx, frame.mainCommandBuffer);
 
     // prepare for present
     vkutil::transitionImage(
@@ -1255,19 +1276,19 @@ void Renderer::draw(const Camera& camera)
             .commandBuffer = cmd,
         };
         const auto waitInfo = vkinit::semaphoreSubmitInfo(
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currentFrame.swapchainSemaphore);
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, frame.swapchainSemaphore);
         const auto signalInfo = vkinit::
-            semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currentFrame.renderSemaphore);
+            semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, frame.renderSemaphore);
 
         const auto submit = vkinit::submitInfo(&submitInfo, &signalInfo, &waitInfo);
-        VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, currentFrame.renderFence));
+        VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, frame.renderFence));
     }
 
     { // present
         auto presentInfo = VkPresentInfoKHR{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &currentFrame.renderSemaphore,
+            .pWaitSemaphores = &frame.renderSemaphore,
             .swapchainCount = 1,
             .pSwapchains = &swapchain.swapchain,
             .pImageIndices = &swapchainImageIndex,
