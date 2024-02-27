@@ -187,9 +187,11 @@ private: // data
     VkSurfaceKHR surface;
 
     vkb::Swapchain swapchain;
+    VkExtent2D swapchainExtent;
     std::vector<VkImage> swapchainImages;
     std::vector<VkImageView> swapchainImageViews;
-    VkExtent2D swapchainExtent;
+    std::vector<VkImageView> imguiSwapchainImageViews;
+    VkFormat imguiSwapchainViewFormat;
 
     DeletionQueue deletionQueue;
     DescriptorAllocatorGrowable descriptorAllocator;

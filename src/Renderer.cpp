@@ -57,6 +57,7 @@ void Renderer::init(SDL_Window* window, bool vSync)
         auto& frame = frames[i];
         frame.tracyVkCtx =
             TracyVkContext(physicalDevice, device, graphicsQueue, frame.mainCommandBuffer);
+        deletionQueue.pushFunction([this, i]() { TracyVkDestroy(frames[i].tracyVkCtx); });
     }
 
     allocateMaterialDataBuffer(1000);
@@ -178,9 +179,19 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool v
                     .set_desired_extent(width, height)
                     .build()
                     .value();
+    swapchainExtent = VkExtent2D{.width = width, .height = height};
+
     swapchainImages = swapchain.get_images().value();
     swapchainImageViews = swapchain.get_image_views().value();
-    swapchainExtent = VkExtent2D{.width = width, .height = height};
+    // setup Dear ImGui image views
+    imguiSwapchainViewFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    imguiSwapchainImageViews.resize(swapchainImages.size());
+    for (std::size_t i = 0; i < swapchainImages.size(); ++i) {
+        const auto imageViewCreateInfo = vkinit::imageViewCreateInfo(
+            imguiSwapchainViewFormat, swapchainImages[i], VK_IMAGE_ASPECT_COLOR_BIT);
+        VK_CHECK(
+            vkCreateImageView(device, &imageViewCreateInfo, nullptr, &imguiSwapchainImageViews[i]));
+    }
 
     const auto drawImageExtent = VkExtent3D{
         .width = width,
@@ -648,7 +659,6 @@ void Renderer::initImGui(SDL_Window* window)
 
     ImGui_ImplSDL2_InitForVulkan(window);
 
-    const auto format = VK_FORMAT_B8G8R8A8_UNORM;
     auto initInfo = ImGui_ImplVulkan_InitInfo{
         .Instance = instance,
         .PhysicalDevice = physicalDevice,
@@ -664,7 +674,7 @@ void Renderer::initImGui(SDL_Window* window)
             VkPipelineRenderingCreateInfo{
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
                 .colorAttachmentCount = 1,
-                .pColorAttachmentFormats = &format,
+                .pColorAttachmentFormats = &imguiSwapchainViewFormat,
             },
         .CheckVkResultFn = [](VkResult res) { assert(res == VK_SUCCESS); },
     };
@@ -1245,16 +1255,7 @@ void Renderer::draw(const Camera& camera)
     {
         TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
         beginCmdLabel(cmd, "Draw Dear ImGui");
-
-        VkImageView imguiImageView;
-        const auto imageViewCreateInfo = vkinit::imageViewCreateInfo(
-            VK_FORMAT_B8G8R8A8_UNORM, swapchainImage, VK_IMAGE_ASPECT_COLOR_BIT);
-        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &imguiImageView));
-
-        drawImGui(cmd, imguiImageView);
-        frame.deletionQueue.pushFunction(
-            [this, imguiImageView]() { vkDestroyImageView(device, imguiImageView, nullptr); });
-
+        drawImGui(cmd, imguiSwapchainImageViews[swapchainImageIndex]);
         endCmdLabel(cmd);
     }
 
@@ -1660,12 +1661,20 @@ void Renderer::cleanup()
 
     descriptorAllocator.destroyPools(device);
 
-    for (auto imageView : swapchainImageViews) {
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-    swapchainImageViews.clear();
+    { // destroy swapchain and its views
+        for (auto imageView : swapchainImageViews) {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+        swapchainImageViews.clear();
 
-    vkb::destroy_swapchain(swapchain);
+        for (auto imageView : imguiSwapchainImageViews) {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+        imguiSwapchainImageViews.clear();
+
+        vkb::destroy_swapchain(swapchain);
+    }
+
     vkb::destroy_surface(instance, surface);
     vkb::destroy_device(device);
     vkb::destroy_instance(instance);
