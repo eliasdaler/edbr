@@ -67,3 +67,9 @@ option(TINYGLTF_INSTALL "Install tinygltf files during install step." OFF)
 option(TINYGLTF_HEADER_ONLY "On: header-only mode. Off: create tinygltf library(No TINYGLTF_IMPLEMENTATION required in your project)" ON)
 add_subdirectory(tinygltf)
 add_library(tinygltf::tinygltf ALIAS tinygltf)
+
+## tracy
+option(TRACY_ENABLE "" ON)
+option(TRACY_ON_DEMAND "" ON)
+add_subdirectory(tracy)
+

@@ -11,6 +11,27 @@
 
 #include <Graphics/Scene.h>
 
+#include <tracy/Tracy.hpp>
+
+#ifdef TRACY_ENABLE
+void* operator new(std ::size_t count)
+{
+    auto ptr = malloc(count);
+    TracyAlloc(ptr, count);
+    return ptr;
+}
+void operator delete(void* ptr) noexcept
+{
+    TracyFree(ptr);
+    free(ptr);
+}
+void operator delete(void* ptr, std::size_t) noexcept
+{
+    TracyFree(ptr);
+    free(ptr);
+}
+#endif
+
 namespace
 {
 static constexpr std::uint32_t SCREEN_WIDTH = 1280;
@@ -138,6 +159,8 @@ void Game::run()
         }
 
         while (accumulator >= dt) {
+            ZoneScopedN("Tick");
+
             { // event processing
                 SDL_Event event;
                 while (SDL_PollEvent(&event)) {
@@ -163,7 +186,12 @@ void Game::run()
         }
 
         generateDrawList();
-        renderer.draw(camera);
+
+        {
+            ZoneScopedN("Render");
+            renderer.draw(camera);
+            FrameMark;
+        }
 
         if (frameLimit) {
             // Delay to not overload the CPU
@@ -183,6 +211,8 @@ void Game::handleInput(float dt)
 
 void Game::update(float dt)
 {
+    ZoneScopedN("Update");
+
     cameraController.update(camera, dt);
     updateEntityTransforms();
 
@@ -335,6 +365,8 @@ Game::Entity& Game::findEntityByName(std::string_view name) const
 
 void Game::updateEntityTransforms()
 {
+    ZoneScopedN("Update entity transforms");
+
     const auto I = glm::mat4{1.f};
     for (auto& ePtr : entities) {
         auto& e = *ePtr;
@@ -360,6 +392,8 @@ void Game::updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransfo
 
 void Game::generateDrawList()
 {
+    ZoneScopedN("Generate draw list");
+
     const auto sceneData = GPUSceneData{
         .view = camera.getView(),
         .proj = camera.getProjection(),

@@ -97,3 +97,6 @@ add_custom_command(TARGET game POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E echo "Copying game assets to $<TARGET_FILE_DIR:game>/assets"
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:game>/assets"
 )
+
+target_link_libraries(game PUBLIC Tracy::TracyClient)
+target_compile_definitions(game PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
