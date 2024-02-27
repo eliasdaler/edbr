@@ -255,9 +255,15 @@ void loadFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
 
 void loadMaterial(
     const util::LoadContext& ctx,
-    Material& material,
-    const std::filesystem::path& diffusePath)
+    const tinygltf::Model& gltfModel,
+    const std::filesystem::path& fileDir,
+    const tinygltf::Material& gltfMaterial,
+    Material& material)
 {
+    std::filesystem::path diffusePath;
+    if (hasDiffuseTexture(gltfMaterial)) {
+        diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
+    }
     if (!diffusePath.empty()) {
         // TODO: use texture cache and don't load same textures
         material.diffuseTexture = ctx.renderer.loadImageFromFile(
@@ -266,6 +272,10 @@ void loadMaterial(
     } else {
         material.diffuseTexture = ctx.whiteTexture;
     }
+
+    // TODO: load metallicRoughness texture if it exists
+    material.metallicFactor = (float)gltfMaterial.pbrMetallicRoughness.metallicFactor;
+    material.roughnessFactor = (float)gltfMaterial.pbrMetallicRoughness.roughnessFactor;
 }
 
 bool shouldSkipNode(const tinygltf::Node& node)
@@ -491,12 +501,7 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
             .name = gltfMaterial.name,
         };
 
-        std::filesystem::path diffusePath;
-        if (hasDiffuseTexture(gltfMaterial)) {
-            diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
-        }
-
-        loadMaterial(ctx, material, diffusePath);
+        loadMaterial(ctx, gltfModel, fileDir, gltfMaterial, material);
 
         const auto materialId = ctx.materialCache.getFreeMaterialId();
         material.materialSet = ctx.renderer.writeMaterialData(materialId, material);

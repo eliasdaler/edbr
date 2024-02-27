@@ -53,18 +53,16 @@ void Renderer::init(SDL_Window* window, bool vSync)
     initSamplers();
     initDefaultTextures();
 
-    for (std::size_t i = 0; i < FRAME_OVERLAP; ++i) {
-        auto& frame = frames[i];
-        frame.tracyVkCtx =
-            TracyVkContext(physicalDevice, device, graphicsQueue, frame.mainCommandBuffer);
-        deletionQueue.pushFunction([this, i]() { TracyVkDestroy(frames[i].tracyVkCtx); });
-    }
-
     allocateMaterialDataBuffer(1000);
 
-    initImGui(window);
-
     initCSMData();
+
+    initImGui(window);
+    for (std::size_t i = 0; i < FRAME_OVERLAP; ++i) {
+        frames[i].tracyVkCtx =
+            TracyVkContext(physicalDevice, device, graphicsQueue, frames[i].mainCommandBuffer);
+        deletionQueue.pushFunction([this, i]() { TracyVkDestroy(frames[i].tracyVkCtx); });
+    }
 
     gradientConstants = ComputePushConstants{
         .data1 = glm::vec4{239.f / 255.f, 157.f / 255.f, 8.f / 255.f, 1},
