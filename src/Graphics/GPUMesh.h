@@ -5,8 +5,7 @@
 #include <Math/Sphere.h>
 
 #include <Graphics/IdTypes.h>
-
-#include <VkTypes.h>
+#include <Graphics/Vulkan/Types.h>
 
 struct GPUMesh {
     GPUMeshBuffers buffers;

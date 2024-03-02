@@ -7,6 +7,19 @@
 
 #include <vulkan/vulkan.h>
 
+struct DescriptorLayoutBinding {
+    std::uint32_t binding;
+    VkDescriptorType type;
+};
+
+namespace vkutil
+{
+VkDescriptorSetLayout buildDescriptorSetLayout(
+    VkDevice device,
+    VkShaderStageFlags shaderStages,
+    std::span<const DescriptorLayoutBinding> bindings);
+}
+
 class DescriptorLayoutBuilder {
 public:
     DescriptorLayoutBuilder& addBinding(std::uint32_t binding, VkDescriptorType type);
@@ -17,19 +30,6 @@ public:
 private:
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 };
-
-namespace vkutil
-{
-struct DescriptorLayoutBinding {
-    std::uint32_t binding;
-    VkDescriptorType type;
-};
-
-VkDescriptorSetLayout buildDescriptorSetLayout(
-    VkDevice device,
-    VkShaderStageFlags shaderStages,
-    std::span<const DescriptorLayoutBinding> bindings);
-}
 
 class DescriptorAllocatorGrowable {
 public:

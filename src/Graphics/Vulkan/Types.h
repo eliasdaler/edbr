@@ -13,9 +13,11 @@ struct AllocatedImage {
     VkImage image;
     VkImageView imageView;
     VmaAllocation allocation;
-    VkExtent3D extent;
     VkFormat format;
+    VkImageUsageFlags usage;
+    VkExtent3D extent;
     std::uint32_t mipLevels{1};
+    std::uint32_t numLayers{1};
 };
 
 struct AllocatedBuffer {
@@ -36,15 +38,21 @@ struct GPUDrawPushConstants {
 };
 
 struct GPUSceneData {
+    // camera
     glm::mat4 view;
     glm::mat4 proj;
     glm::mat4 viewProj;
     glm::vec4 cameraPos;
+
+    // ambient
     glm::vec4 ambientColorAndIntensity;
+
+    // sun
     glm::vec4 sunlightDirection;
     glm::vec4 sunlightColorAndIntensity;
+
+    // CSM data
     glm::vec4 cascadeFarPlaneZs;
-    // FIXME use NUM_SHADOW_CASCADES instead
     std::array<glm::mat4, 3> csmLightSpaceTMs;
 };
 

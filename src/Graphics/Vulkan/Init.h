@@ -20,8 +20,8 @@ VkCommandBufferAllocateInfo commandBufferAllocateInfo(
 
 VkSubmitInfo2 submitInfo(
     const VkCommandBufferSubmitInfo* cmd,
-    const VkSemaphoreSubmitInfo* signalSemaphoreInfo,
-    const VkSemaphoreSubmitInfo* waitSemaphoreInfo);
+    const VkSemaphoreSubmitInfo* waitSemaphoreInfo,
+    const VkSemaphoreSubmitInfo* signalSemaphoreInfo);
 
 VkImageCreateInfo imageCreateInfo(
     VkFormat format,

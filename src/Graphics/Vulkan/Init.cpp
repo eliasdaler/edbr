@@ -1,4 +1,4 @@
-#include "VkInit.h"
+#include "Init.h"
 
 namespace vkinit
 {
@@ -22,6 +22,22 @@ VkSemaphoreSubmitInfo semaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSem
         .value = 1,
         .stageMask = stageMask,
         .deviceIndex = 0,
+    };
+}
+
+VkSubmitInfo2 submitInfo(
+    const VkCommandBufferSubmitInfo* cmd,
+    const VkSemaphoreSubmitInfo* waitSemaphoreInfo,
+    const VkSemaphoreSubmitInfo* signalSemaphoreInfo)
+{
+    return VkSubmitInfo2{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .waitSemaphoreInfoCount = waitSemaphoreInfo ? 1u : 0u,
+        .pWaitSemaphoreInfos = waitSemaphoreInfo,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = cmd,
+        .signalSemaphoreInfoCount = signalSemaphoreInfo ? 1u : 0u,
+        .pSignalSemaphoreInfos = signalSemaphoreInfo,
     };
 }
 
@@ -53,22 +69,6 @@ VkCommandBufferSubmitInfo commandBufferSubmitInfo(VkCommandBuffer cmd)
     return VkCommandBufferSubmitInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .commandBuffer = cmd,
-    };
-}
-
-VkSubmitInfo2 submitInfo(
-    const VkCommandBufferSubmitInfo* cmd,
-    const VkSemaphoreSubmitInfo* signalSemaphoreInfo,
-    const VkSemaphoreSubmitInfo* waitSemaphoreInfo)
-{
-    return VkSubmitInfo2{
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-        .waitSemaphoreInfoCount = waitSemaphoreInfo ? 1u : 0u,
-        .pWaitSemaphoreInfos = waitSemaphoreInfo,
-        .commandBufferInfoCount = 1,
-        .pCommandBufferInfos = cmd,
-        .signalSemaphoreInfoCount = signalSemaphoreInfo ? 1u : 0u,
-        .pSignalSemaphoreInfos = signalSemaphoreInfo,
     };
 }
 

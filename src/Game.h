@@ -8,12 +8,15 @@
 #include <Graphics/Camera.h>
 
 #include "FreeCameraController.h"
-#include "Renderer.h"
 
+#include <Graphics/GameRenderer.h>
 #include <Graphics/SkeletalAnimation.h>
 #include <Graphics/SkeletonAnimator.h>
 
-class SDL_Window;
+struct SDL_Window;
+
+struct Scene;
+struct SceneNode;
 
 class Game {
 public:
@@ -71,7 +74,7 @@ private:
     void generateDrawList();
     void sortDrawList();
 
-    Renderer renderer;
+    GameRenderer renderer;
 
     SDL_Window* window;
 

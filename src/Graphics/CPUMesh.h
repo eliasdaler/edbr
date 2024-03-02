@@ -10,7 +10,7 @@
 
 #include <Graphics/Skeleton.h>
 
-struct Mesh {
+struct CPUMesh {
     std::vector<std::uint32_t> indices;
 
     struct Vertex {

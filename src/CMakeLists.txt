@@ -1,10 +1,28 @@
 add_executable(game
-  DeletionQueue.cpp
-  VkInit.cpp
-  VkUtil.cpp
-  VkDescriptors.cpp
-  VkPipelines.cpp
-  VmaImpl.cpp
+  Graphics/Camera.cpp
+  Graphics/FrustumCulling.cpp
+  Graphics/MaterialCache.cpp
+  Graphics/MeshCache.cpp
+  Graphics/ShadowMapping.cpp
+  Graphics/SkeletonAnimator.cpp
+  Graphics/Texture.cpp
+
+  Graphics/Renderer.cpp
+  Graphics/GameRenderer.cpp
+
+  Graphics/Pipelines/BackgroundGradientPipeline.cpp
+  Graphics/Pipelines/SkinningPipeline.cpp
+  Graphics/Pipelines/CSMPipeline.cpp
+  Graphics/Pipelines/MeshPipeline.cpp
+
+  Graphics/Vulkan/DeletionQueue.cpp
+  Graphics/Vulkan/Descriptors.cpp
+  Graphics/Vulkan/Init.cpp
+  Graphics/Vulkan/Pipelines.cpp
+  Graphics/Vulkan/Util.cpp
+  Graphics/Vulkan/VmaImpl.cpp
+  Graphics/Vulkan/VulkanImGui.cpp
+  Graphics/Vulkan/VulkanImmediateExecutor.cpp
 
   util/GltfLoader.cpp
   util/InputUtil.cpp
@@ -14,19 +32,8 @@ add_executable(game
   Math/Transform.cpp
   Math/Util.cpp
 
-  Graphics/Camera.cpp
-  Graphics/FrustumCulling.cpp
-  Graphics/Mesh.cpp
-  Graphics/ShadowMapping.cpp
-  Graphics/SkeletonAnimator.cpp
-  Graphics/Texture.cpp
-
-  MeshCache.cpp
-  MaterialCache.cpp
-
   FreeCameraController.cpp
 
-  Renderer.cpp
   Game.cpp
 
   main.cpp
@@ -54,6 +61,12 @@ target_link_libraries(game PRIVATE
   tinygltf::tinygltf
   stb::image
 )
+
+target_compile_definitions(game
+  PUBLIC
+    VK_NO_PROTOTYPES
+)
+
 
 # SDL
 if(BUILD_SHARED_LIBS)

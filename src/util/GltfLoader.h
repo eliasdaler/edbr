@@ -3,25 +3,16 @@
 #include <filesystem>
 #include <unordered_map>
 
-#include <Graphics/GPUMesh.h>
-#include <Graphics/Material.h>
-#include <Graphics/Mesh.h>
-#include <Math/Transform.h>
+#include <Graphics/IdTypes.h>
 
-struct Model;
 struct Scene;
 
-class MaterialCache;
-class MeshCache;
 class Renderer;
 
 namespace util
 {
 struct LoadContext {
     Renderer& renderer;
-    MaterialCache& materialCache;
-    MeshCache& meshCache;
-    AllocatedImage& whiteTexture;
 };
 
 class SceneLoader {

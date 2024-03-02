@@ -1,12 +1,14 @@
-#include "VkPipelines.h"
+#include "Pipelines.h"
 
 #include <array>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-#include "VkInit.h"
-#include "VkUtil.h"
+#include <volk.h>
+
+#include "Init.h"
+#include "Util.h"
 
 namespace vkutil
 {

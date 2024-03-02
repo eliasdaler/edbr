@@ -1,21 +1,10 @@
-#include "VkDescriptors.h"
+#include "Descriptors.h"
 
-#include <VkUtil.h>
+#include <volk.h>
+
+#include "Util.h"
 
 #include <cstdint>
-
-DescriptorLayoutBuilder& DescriptorLayoutBuilder::addBinding(
-    std::uint32_t binding,
-    VkDescriptorType type)
-{
-    bindings.push_back(VkDescriptorSetLayoutBinding{
-        .binding = binding,
-        .descriptorType = type,
-        .descriptorCount = 1,
-    });
-
-    return *this;
-}
 
 namespace vkutil
 {

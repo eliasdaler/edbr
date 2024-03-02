@@ -1,6 +1,6 @@
 #include "MeshCache.h"
 
-#include <Renderer.h>
+#include <Graphics/Renderer.h>
 
 MeshId MeshCache::addMesh(GPUMesh mesh)
 {

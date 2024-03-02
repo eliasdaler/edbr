@@ -189,7 +189,13 @@ void Game::run()
 
         {
             ZoneScopedN("Render");
-            renderer.draw(camera);
+            const auto sceneData = RendererSceneData{
+                .camera = camera,
+                .ambientColorAndIntensity = ambientColorAndIntensity,
+                .sunlightDirection = sunlightDir,
+                .sunlightColorAndIntensity = sunlightColorAndIntensity,
+            };
+            renderer.draw(camera, sceneData);
             FrameMark;
         }
 
@@ -275,7 +281,7 @@ void Game::cleanup()
         auto& e = *ePtr;
         if (e.hasSkeleton) {
             for (const auto& skinnedMesh : e.skinnedMeshes) {
-                renderer.destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+                renderer.getRenderer().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
             }
         }
     }
@@ -326,7 +332,7 @@ Game::EntityId Game::createEntitiesFromNode(
 
             e.skinnedMeshes.reserve(e.meshes.size());
             for (const auto meshId : e.meshes) {
-                e.skinnedMeshes.push_back(renderer.createSkinnedMeshBuffer(meshId));
+                e.skinnedMeshes.push_back(renderer.getRenderer().createSkinnedMeshBuffer(meshId));
             }
         }
     }
@@ -394,16 +400,7 @@ void Game::generateDrawList()
 {
     ZoneScopedN("Generate draw list");
 
-    const auto sceneData = GPUSceneData{
-        .view = camera.getView(),
-        .proj = camera.getProjection(),
-        .viewProj = camera.getViewProj(),
-        .cameraPos = glm::vec4{camera.getPosition(), 1.f},
-        .ambientColorAndIntensity = ambientColorAndIntensity,
-        .sunlightDirection = sunlightDir,
-        .sunlightColorAndIntensity = sunlightColorAndIntensity,
-    };
-    renderer.beginDrawing(sceneData);
+    renderer.beginDrawing();
 
     for (const auto& ePtr : entities) {
         const auto& e = *ePtr;

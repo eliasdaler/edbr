@@ -4,15 +4,12 @@
 #include <iostream>
 #include <span>
 
+#include <Graphics/CPUMesh.h>
 #include <Graphics/GPUMesh.h>
+#include <Graphics/Renderer.h>
 #include <Graphics/Scene.h>
 #include <Graphics/Skeleton.h>
 #include <Math/Util.h>
-
-#include <MaterialCache.h>
-#include <MeshCache.h>
-
-#include <Renderer.h>
 
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE
@@ -147,7 +144,7 @@ void loadPrimitive(
     const tinygltf::Model& model,
     const std::string& meshName,
     const tinygltf::Primitive& primitive,
-    Mesh& mesh)
+    CPUMesh& mesh)
 {
     mesh.name = meshName;
 
@@ -269,8 +266,6 @@ void loadMaterial(
         material.diffuseTexture = ctx.renderer.loadImageFromFile(
             diffusePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
         material.hasDiffuseTexture = true;
-    } else {
-        material.diffuseTexture = ctx.whiteTexture;
     }
 
     // TODO: load metallicRoughness texture if it exists
@@ -503,10 +498,7 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
 
         loadMaterial(ctx, gltfModel, fileDir, gltfMaterial, material);
 
-        const auto materialId = ctx.materialCache.getFreeMaterialId();
-        material.materialSet = ctx.renderer.writeMaterialData(materialId, material);
-
-        ctx.materialCache.addMaterial(materialId, std::move(material));
+        const auto materialId = ctx.renderer.addMaterial(std::move(material));
         materialMapping.emplace(materialIdx, materialId);
     }
 
@@ -520,30 +512,18 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
             const auto& gltfPrimitive = gltfMesh.primitives[primitiveIdx];
 
             // load on CPU
-            Mesh cpuMesh;
+            CPUMesh cpuMesh;
             loadPrimitive(gltfModel, gltfMesh.name, gltfPrimitive, cpuMesh);
             if (cpuMesh.indices.empty()) {
                 continue;
             }
 
-            // load to GPU
-            GPUMesh gpuMesh;
+            // upload to GPU
+            auto materialId = NULL_MATERIAL_ID;
             if (gltfPrimitive.material != -1) {
-                gpuMesh.materialId = materialMapping.at(gltfPrimitive.material);
+                materialId = materialMapping.at(gltfPrimitive.material);
             }
-            gpuMesh.minPos = cpuMesh.minPos;
-            gpuMesh.maxPos = cpuMesh.maxPos;
-            gpuMesh.hasSkeleton = cpuMesh.hasSkeleton;
-
-            std::vector<glm::vec3> positions(cpuMesh.vertices.size());
-            for (std::size_t i = 0; i < cpuMesh.vertices.size(); ++i) {
-                positions[i] = cpuMesh.vertices[i].position;
-            }
-            gpuMesh.boundingSphere = util::calculateBoundingSphere(positions);
-
-            ctx.renderer.uploadMesh(cpuMesh, gpuMesh);
-
-            const auto meshId = ctx.meshCache.addMesh(std::move(gpuMesh));
+            const auto meshId = ctx.renderer.addMesh(cpuMesh, materialId);
             mesh.primitives[primitiveIdx] = meshId;
         }
         scene.meshes.push_back(std::move(mesh));
