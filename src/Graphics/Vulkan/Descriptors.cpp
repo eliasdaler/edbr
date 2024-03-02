@@ -37,30 +37,6 @@ VkDescriptorSetLayout buildDescriptorSetLayout(
 
 }
 
-void DescriptorLayoutBuilder::clear()
-{
-    bindings.clear();
-}
-
-VkDescriptorSetLayout DescriptorLayoutBuilder::build(
-    VkDevice device,
-    VkShaderStageFlags shaderStages)
-{
-    for (auto& b : bindings) {
-        b.stageFlags |= shaderStages;
-    }
-
-    auto info = VkDescriptorSetLayoutCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = (std::uint32_t)bindings.size(),
-        .pBindings = bindings.data(),
-    };
-
-    VkDescriptorSetLayout set;
-    VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
-    return set;
-}
-
 void DescriptorAllocatorGrowable::init(
     VkDevice device,
     std::uint32_t maxSets,

@@ -466,22 +466,23 @@ void Renderer::destroyBuffer(const AllocatedBuffer& buffer) const
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
 }
 
-AllocatedImage Renderer::createImage(const vkutil::CreateImageInfo& createInfo)
+AllocatedImage Renderer::createImage(const vkutil::CreateImageInfo& createInfo) const
 {
     return vkutil::createImage(device, allocator, createInfo);
 }
 
-void Renderer::uploadImageData(const AllocatedImage& image, void* pixelData)
+void Renderer::uploadImageData(const AllocatedImage& image, void* pixelData, std::uint32_t layer)
+    const
 {
-    vkutil::
-        uploadImageData(device, graphicsQueueFamily, graphicsQueue, allocator, image, pixelData);
+    vkutil::uploadImageData(
+        device, graphicsQueueFamily, graphicsQueue, allocator, image, pixelData, layer);
 }
 
 AllocatedImage Renderer::loadImageFromFile(
     const std::filesystem::path& path,
     VkFormat format,
     VkImageUsageFlags usage,
-    bool mipMap)
+    bool mipMap) const
 {
     return vkutil::loadImageFromFile(
         device, graphicsQueueFamily, graphicsQueue, allocator, path, format, usage, mipMap);

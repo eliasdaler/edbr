@@ -63,17 +63,20 @@ public:
     [[nodiscard]] VkDeviceAddress getBufferAddress(const AllocatedBuffer& buffer) const;
     void destroyBuffer(const AllocatedBuffer& buffer) const;
 
-    [[nodiscard]] AllocatedImage createImage(const vkutil::CreateImageInfo& createInfo);
-    void uploadImageData(const AllocatedImage& image, void* pixelData);
+    [[nodiscard]] AllocatedImage createImage(const vkutil::CreateImageInfo& createInfo) const;
+    void uploadImageData(const AllocatedImage& image, void* pixelData, std::uint32_t layer = 0)
+        const;
 
     [[nodiscard]] AllocatedImage loadImageFromFile(
         const std::filesystem::path& path,
         VkFormat format,
         VkImageUsageFlags usage,
-        bool mipMap);
+        bool mipMap) const;
     void destroyImage(const AllocatedImage& image) const;
 
     void updateDevTools(float dt);
+
+    VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
 
 public:
     VkDevice getDevice() const { return device; }

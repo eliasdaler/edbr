@@ -26,9 +26,11 @@ namespace vkutil
 struct CreateImageInfo {
     VkFormat format;
     VkImageUsageFlags usage;
+    VkImageCreateFlags flags;
     VkExtent3D extent{};
     std::uint32_t numLayers{1};
     bool mipMap{false};
+    bool isCubemap{false};
 };
 
 [[nodiscard]] AllocatedImage createImage(
@@ -44,7 +46,8 @@ void uploadImageData(
     VkQueue graphicsQueue,
     VmaAllocator allocator,
     const AllocatedImage& image,
-    void* pixelData);
+    void* pixelData,
+    std::uint32_t layer = 0);
 
 [[nodiscard]] AllocatedImage loadImageFromFile(
     VkDevice device,

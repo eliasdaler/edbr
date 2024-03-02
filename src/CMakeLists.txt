@@ -1,5 +1,6 @@
 add_executable(game
   Graphics/Camera.cpp
+  Graphics/Cubemap.cpp
   Graphics/FrustumCulling.cpp
   Graphics/MaterialCache.cpp
   Graphics/MeshCache.cpp
@@ -11,9 +12,10 @@ add_executable(game
   Graphics/GameRenderer.cpp
 
   Graphics/Pipelines/BackgroundGradientPipeline.cpp
-  Graphics/Pipelines/SkinningPipeline.cpp
   Graphics/Pipelines/CSMPipeline.cpp
   Graphics/Pipelines/MeshPipeline.cpp
+  Graphics/Pipelines/SkinningPipeline.cpp
+  Graphics/Pipelines/SkyboxPipeline.cpp
 
   Graphics/Vulkan/DeletionQueue.cpp
   Graphics/Vulkan/Descriptors.cpp
@@ -96,6 +98,8 @@ target_compile_definitions(game
 set(SHADERS
   colored_triangle.vert
   colored_triangle.frag
+  fullscreen_triangle.vert
+  skybox.frag
   skinning.comp
   mesh.vert
   mesh_depth_only.vert

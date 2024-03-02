@@ -1,5 +1,6 @@
 #include "GameRenderer.h"
 
+#include <Graphics/Cubemap.h>
 #include <Graphics/FrustumCulling.h>
 #include <Graphics/Scene.h>
 #include <Graphics/Vulkan/Init.h>
@@ -20,6 +21,11 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
     csmPipeline = std::make_unique<CSMPipeline>(renderer);
     meshPipeline = std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format);
+    skyboxPipeline =
+        std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format);
+
+    skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
+    skyboxPipeline->setSkyboxImage(skyboxImage);
 }
 
 void GameRenderer::createDrawImage(VkExtent2D extent)
@@ -172,7 +178,7 @@ void GameRenderer::draw(
         vkutil::cmdEndLabel(cmd);
     }
 
-    { // Geometry
+    { // Geometry + Sky
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Draw geometry");
@@ -215,6 +221,8 @@ void GameRenderer::draw(
         meshPipeline->draw(
             cmd, renderExtent, camera, sceneDataDesctiptor, drawCommands, sortedDrawCommands);
 
+        skyboxPipeline->draw(cmd, camera);
+
         vkCmdEndRendering(cmd);
 
         vkutil::cmdEndLabel(cmd);
@@ -234,11 +242,13 @@ void GameRenderer::cleanup()
 
     vkDeviceWaitIdle(device);
 
+    skyboxPipeline->cleanup(device);
     meshPipeline->cleanup(device);
     csmPipeline->cleanup(device);
     skinningPipeline->cleanup(device);
     backgroundGradientPipeline.cleanup(device);
 
+    renderer.destroyImage(skyboxImage);
     renderer.destroyImage(depthImage);
     renderer.destroyImage(drawImage);
 

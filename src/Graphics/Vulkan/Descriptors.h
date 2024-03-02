@@ -20,17 +20,6 @@ VkDescriptorSetLayout buildDescriptorSetLayout(
     std::span<const DescriptorLayoutBinding> bindings);
 }
 
-class DescriptorLayoutBuilder {
-public:
-    DescriptorLayoutBuilder& addBinding(std::uint32_t binding, VkDescriptorType type);
-    VkDescriptorSetLayout build(VkDevice device, VkShaderStageFlags shaderStages);
-
-    void clear();
-
-private:
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
-};
-
 class DescriptorAllocatorGrowable {
 public:
     struct PoolSizeRatio {

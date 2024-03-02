@@ -26,8 +26,15 @@ AllocatedImage createImage(
                     1;
     }
 
+    if (createInfo.isCubemap) {
+        assert(createInfo.numLayers == 6);
+        assert(!createInfo.mipMap);
+        assert((createInfo.flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0);
+    }
+
     const auto imgInfo = VkImageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .flags = createInfo.flags,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = createInfo.format,
         .extent = createInfo.extent,
@@ -48,6 +55,7 @@ AllocatedImage createImage(
         .extent = createInfo.extent,
         .mipLevels = mipLevels,
         .numLayers = createInfo.numLayers,
+        .isCubemap = createInfo.isCubemap,
     };
     VK_CHECK(
         vmaCreateImage(allocator, &imgInfo, &allocInfo, &image.image, &image.allocation, nullptr));
@@ -58,10 +66,15 @@ AllocatedImage createImage(
         aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
+    auto viewType = createInfo.numLayers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    if (createInfo.isCubemap) {
+        viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+    }
+
     const auto viewCreateInfo = VkImageViewCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = image.image,
-        .viewType = createInfo.numLayers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        .viewType = viewType,
         .format = createInfo.format,
         .subresourceRange =
             VkImageSubresourceRange{
@@ -90,7 +103,8 @@ void uploadImageData(
     VkQueue graphicsQueue,
     VmaAllocator allocator,
     const AllocatedImage& image,
-    void* pixelData)
+    void* pixelData,
+    std::uint32_t layer)
 {
     // FIXME: usage shader executor?
     // or allow image data to be uploaded in async way?
@@ -118,7 +132,7 @@ void uploadImageData(
                 {
                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                     .mipLevel = 0,
-                    .baseArrayLayer = 0,
+                    .baseArrayLayer = layer,
                     .layerCount = 1,
                 },
             .imageExtent = image.extent,

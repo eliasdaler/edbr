@@ -18,6 +18,7 @@ struct AllocatedImage {
     VkExtent3D extent;
     std::uint32_t mipLevels{1};
     std::uint32_t numLayers{1};
+    bool isCubemap{false};
 };
 
 struct AllocatedBuffer {
