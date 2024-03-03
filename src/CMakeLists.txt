@@ -11,7 +11,6 @@ add_executable(game
   Graphics/Renderer.cpp
   Graphics/GameRenderer.cpp
 
-  Graphics/Pipelines/BackgroundGradientPipeline.cpp
   Graphics/Pipelines/CSMPipeline.cpp
   Graphics/Pipelines/MeshPipeline.cpp
   Graphics/Pipelines/SkinningPipeline.cpp
@@ -103,7 +102,6 @@ set(SHADERS
   mesh.vert
   mesh_depth_only.vert
   mesh.frag
-  gradient.comp
 )
 list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 

@@ -17,7 +17,6 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     renderer.init(window, vSync);
     createDrawImage(renderer.getSwapchainExtent());
 
-    backgroundGradientPipeline.init(renderer, drawImage);
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
     csmPipeline = std::make_unique<CSMPipeline>(renderer);
     meshPipeline = std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format);
@@ -86,36 +85,6 @@ void GameRenderer::draw(
         .sunlightDirection = sceneData.sunlightDirection,
         .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
     };
-
-    { // BG
-        vkutil::cmdBeginLabel(cmd, "Draw background");
-
-        vkutil::transitionImage(
-            cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-
-        backgroundGradientPipeline.draw(cmd, {drawImage.extent.width, drawImage.extent.height});
-        vkutil::cmdEndLabel(cmd);
-
-        // sync
-        const auto imageBarrier = VkImageMemoryBarrier2{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .dstAccessMask =
-                VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .image = drawImage.image,
-            .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT),
-        };
-        const auto dependencyInfo = VkDependencyInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers = &imageBarrier,
-        };
-        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-    }
 
     { // skinning
         vkutil::cmdBeginLabel(cmd, "Do skinning");
@@ -195,12 +164,11 @@ void GameRenderer::draw(
         const auto sceneDataDesctiptor =
             renderer.uploadSceneData(newSceneData, csmPipeline->getShadowMap());
 
-        // transition performed by BG sync barrier
-        /* vkutil::transitionImage(
+        vkutil::transitionImage(
             cmd,
             drawImage.image,
-            VK_IMAGE_LAYOUT_GENERAL,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL); */
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         vkutil::transitionImage(
             cmd,
@@ -246,7 +214,6 @@ void GameRenderer::cleanup()
     meshPipeline->cleanup(device);
     csmPipeline->cleanup(device);
     skinningPipeline->cleanup(device);
-    backgroundGradientPipeline.cleanup(device);
 
     renderer.destroyImage(skyboxImage);
     renderer.destroyImage(depthImage);

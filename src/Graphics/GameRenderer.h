@@ -10,7 +10,6 @@
 #include <Graphics/GPUMesh.h>
 #include <Graphics/Renderer.h>
 
-#include <Graphics/Pipelines/BackgroundGradientPipeline.h>
 #include <Graphics/Pipelines/CSMPipeline.h>
 #include <Graphics/Pipelines/MeshPipeline.h>
 #include <Graphics/Pipelines/SkinningPipeline.h>
@@ -60,7 +59,6 @@ private:
 
     Renderer renderer;
 
-    BackgroundGradientPipeline backgroundGradientPipeline;
     std::unique_ptr<SkinningPipeline> skinningPipeline;
     std::unique_ptr<CSMPipeline> csmPipeline;
     std::unique_ptr<MeshPipeline> meshPipeline;
