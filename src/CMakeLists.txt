@@ -97,8 +97,6 @@ target_compile_definitions(game
 )
 
 set(SHADERS
-  colored_triangle.vert
-  colored_triangle.frag
   fullscreen_triangle.vert
   skybox.frag
   skinning.comp
@@ -117,4 +115,15 @@ add_custom_command(TARGET game POST_BUILD
 )
 
 target_link_libraries(game PUBLIC Tracy::TracyClient)
-target_compile_definitions(game PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
+
+if (MSVC)
+  target_compile_definitions(TracyClient PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
+  target_compile_definitions(game PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
+else()
+  if(NOT CMAKE_BUILD_TYPE OR
+    CMAKE_BUILD_TYPE STREQUAL "Debug" OR
+    CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    target_compile_definitions(TracyClient PRIVATE TRACY_ENABLE)
+    target_compile_definitions(game PRIVATE TRACY_ENABLE)
+  endif()
+endif()
