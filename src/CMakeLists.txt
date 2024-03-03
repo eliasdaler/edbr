@@ -15,6 +15,7 @@ add_executable(game
   Graphics/Pipelines/MeshPipeline.cpp
   Graphics/Pipelines/SkinningPipeline.cpp
   Graphics/Pipelines/SkyboxPipeline.cpp
+  Graphics/Pipelines/PostFXPipeline.cpp
 
   Graphics/Vulkan/DeletionQueue.cpp
   Graphics/Vulkan/Descriptors.cpp
@@ -102,6 +103,7 @@ set(SHADERS
   mesh.vert
   mesh_depth_only.vert
   mesh.frag
+  postfx.frag
 )
 list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 

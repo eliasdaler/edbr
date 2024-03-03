@@ -22,6 +22,7 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     meshPipeline = std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format);
     skyboxPipeline =
         std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format);
+    postFXPipeline = std::make_unique<PostFXPipeline>(renderer, drawImage.format);
 
     skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
     skyboxPipeline->setSkyboxImage(skyboxImage);
@@ -41,14 +42,22 @@ void GameRenderer::createDrawImage(VkExtent2D extent)
         usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         usages |= VK_IMAGE_USAGE_STORAGE_BIT;
         usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        usages |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-        drawImage = renderer.createImage({
+        const auto createImageInfo = vkutil::CreateImageInfo{
             .format = VK_FORMAT_R16G16B16A16_SFLOAT,
             .usage = usages,
             .extent = drawImageExtent,
-        });
+        };
+        drawImage = renderer.createImage(createImageInfo);
+        secondaryDrawImage = renderer.createImage(createImageInfo);
+
         vkutil::addDebugLabel(renderer.getDevice(), drawImage.image, "main draw image");
         vkutil::addDebugLabel(renderer.getDevice(), drawImage.imageView, "main draw image view");
+        vkutil::
+            addDebugLabel(renderer.getDevice(), secondaryDrawImage.image, "secondary draw image");
+        vkutil::addDebugLabel(
+            renderer.getDevice(), secondaryDrawImage.imageView, "secondary draw image view");
     }
 
     { // setup depth image
@@ -68,7 +77,16 @@ void GameRenderer::draw(const Camera& camera, const RendererSceneData& sceneData
 {
     auto cmd = renderer.beginFrame();
     draw(cmd, camera, sceneData);
-    renderer.endFrame(cmd, drawImage);
+
+    // we'll copy from draw image to swapchain
+    const auto& currDrawImage = getDrawImage();
+    vkutil::transitionImage(
+        cmd,
+        currDrawImage.image,
+        VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    renderer.endFrame(cmd, currDrawImage);
 }
 
 void GameRenderer::draw(
@@ -87,7 +105,7 @@ void GameRenderer::draw(
     };
 
     { // skinning
-        vkutil::cmdBeginLabel(cmd, "Do skinning");
+        vkutil::cmdBeginLabel(cmd, "Skinning");
         for (const auto& dc : drawCommands) {
             if (!dc.skinnedMesh) {
                 continue;
@@ -115,7 +133,7 @@ void GameRenderer::draw(
     { // CSM
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "CSM", tracy::Color::CornflowerBlue);
-        vkutil::cmdBeginLabel(cmd, "Draw CSM");
+        vkutil::cmdBeginLabel(cmd, "CSM");
 
         vkutil::transitionImage(
             cmd,
@@ -147,10 +165,12 @@ void GameRenderer::draw(
         vkutil::cmdEndLabel(cmd);
     }
 
-    { // Geometry + Sky
+    const auto& currDrawImage = getDrawImage();
+
+    { // Geometry
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
-        vkutil::cmdBeginLabel(cmd, "Draw geometry");
+        vkutil::cmdBeginLabel(cmd, "Geometry");
 
         // update scene data (add CSM info) and upload
         auto newSceneData = gpuSceneData;
@@ -166,7 +186,7 @@ void GameRenderer::draw(
 
         vkutil::transitionImage(
             cmd,
-            drawImage.image,
+            currDrawImage.image,
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
@@ -176,11 +196,14 @@ void GameRenderer::draw(
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-        const auto colorAttachment = vkinit::
-            attachmentInfo(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
-        const auto depthAttachment = vkinit::
-            depthAttachmentInfo(depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-        const auto renderExtent = VkExtent2D{drawImage.extent.width, drawImage.extent.height};
+        const auto renderExtent =
+            VkExtent2D{currDrawImage.extent.width, currDrawImage.extent.height};
+        const auto colorClearValue = VkClearValue{.color = {0.f, 0.f, 0.f, 0.f}};
+        const auto colorAttachment = vkinit::attachmentInfo(
+            currDrawImage.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorClearValue);
+        const auto depthClearValue = 0.f;
+        const auto depthAttachment = vkinit::depthAttachmentInfo(
+            depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, depthClearValue);
         const auto renderInfo =
             vkinit::renderingInfo(renderExtent, &colorAttachment, &depthAttachment);
 
@@ -188,21 +211,84 @@ void GameRenderer::draw(
 
         meshPipeline->draw(
             cmd, renderExtent, camera, sceneDataDesctiptor, drawCommands, sortedDrawCommands);
+        vkCmdEndRendering(cmd);
+        vkutil::cmdEndLabel(cmd); // geometry
+    }
 
+    { // Sky
+        vkutil::cmdBeginLabel(cmd, "Sky");
+
+        const auto renderExtent =
+            VkExtent2D{currDrawImage.extent.width, currDrawImage.extent.height};
+        const auto colorAttachment =
+            vkinit::attachmentInfo(currDrawImage.imageView, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
+        const auto depthAttachment = vkinit::depthAttachmentInfo(
+            depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, std::nullopt);
+        const auto renderInfo =
+            vkinit::renderingInfo(renderExtent, &colorAttachment, &depthAttachment);
+
+        vkCmdBeginRendering(cmd, &renderInfo);
         skyboxPipeline->draw(cmd, camera);
+        vkCmdEndRendering(cmd);
+        vkutil::cmdEndLabel(cmd);
+    }
 
+    // sync with postFX
+    const auto imageBarrier = VkImageMemoryBarrier2{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+        .image = currDrawImage.image,
+        .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT),
+    };
+    const auto dependencyInfo = VkDependencyInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &imageBarrier,
+    };
+    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+
+    // now we'll draw into another draw image and use the currDrawImage as the
+    // color attachment (it was transitioned into
+    // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL by the previous barrier
+    swapDrawImage();
+    const auto& newDrawImage = getDrawImage();
+    vkutil::transitionImage(
+        cmd,
+        newDrawImage.image,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    postFXPipeline->setDrawImage(currDrawImage);
+
+    { // post FX
+        vkutil::cmdBeginLabel(cmd, "Post FX");
+
+        const auto colorAttachment =
+            vkinit::attachmentInfo(newDrawImage.imageView, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
+        const auto renderExtent = VkExtent2D{newDrawImage.extent.width, newDrawImage.extent.height};
+        const auto renderInfo = vkinit::renderingInfo(renderExtent, &colorAttachment, nullptr);
+
+        vkCmdBeginRendering(cmd, &renderInfo);
+        postFXPipeline->draw(cmd);
         vkCmdEndRendering(cmd);
 
         vkutil::cmdEndLabel(cmd);
     }
-
-    vkutil::transitionImage(
-        cmd,
-        drawImage.image,
-        VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    // Renderer will render into drawImage after this
 }
+
+const AllocatedImage& GameRenderer::getDrawImage() const
+{
+    return secondaryDrawImageUsed ? secondaryDrawImage : drawImage;
+}
+
+void GameRenderer::swapDrawImage()
+{
+    secondaryDrawImageUsed = !secondaryDrawImageUsed;
+};
 
 void GameRenderer::cleanup()
 {
@@ -210,6 +296,7 @@ void GameRenderer::cleanup()
 
     vkDeviceWaitIdle(device);
 
+    postFXPipeline->cleanup(device);
     skyboxPipeline->cleanup(device);
     meshPipeline->cleanup(device);
     csmPipeline->cleanup(device);
@@ -217,6 +304,7 @@ void GameRenderer::cleanup()
 
     renderer.destroyImage(skyboxImage);
     renderer.destroyImage(depthImage);
+    renderer.destroyImage(secondaryDrawImage);
     renderer.destroyImage(drawImage);
 
     renderer.cleanup();

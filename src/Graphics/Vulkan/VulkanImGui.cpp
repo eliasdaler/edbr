@@ -111,8 +111,8 @@ void drawImGui(
     VkExtent2D swapchainExtent,
     std::uint32_t swapchainImageIndex)
 {
-    const auto colorAttachment = vkinit::attachmentInfo(
-        imguiData.swapchainViews[swapchainImageIndex], nullptr, VK_IMAGE_LAYOUT_GENERAL);
+    const auto colorAttachment = vkinit::
+        attachmentInfo(imguiData.swapchainViews[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL);
     const auto renderInfo = vkinit::renderingInfo(swapchainExtent, &colorAttachment, nullptr);
 
     vkCmdBeginRendering(cmd, &renderInfo);

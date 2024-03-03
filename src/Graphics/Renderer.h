@@ -76,6 +76,7 @@ public:
 
     void updateDevTools(float dt);
 
+    VkSampler getDefaultNearestSampler() const { return defaultNearestSampler; }
     VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
 
 public:

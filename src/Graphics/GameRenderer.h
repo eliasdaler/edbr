@@ -12,6 +12,7 @@
 
 #include <Graphics/Pipelines/CSMPipeline.h>
 #include <Graphics/Pipelines/MeshPipeline.h>
+#include <Graphics/Pipelines/PostFXPipeline.h>
 #include <Graphics/Pipelines/SkinningPipeline.h>
 #include <Graphics/Pipelines/SkyboxPipeline.h>
 
@@ -52,6 +53,8 @@ public:
 
 private:
     void createDrawImage(VkExtent2D extent);
+    const AllocatedImage& getDrawImage() const;
+    void swapDrawImage();
 
     void draw(VkCommandBuffer cmd, const Camera& camera, const RendererSceneData& sceneData);
 
@@ -63,11 +66,15 @@ private:
     std::unique_ptr<CSMPipeline> csmPipeline;
     std::unique_ptr<MeshPipeline> meshPipeline;
     std::unique_ptr<SkyboxPipeline> skyboxPipeline;
+    std::unique_ptr<PostFXPipeline> postFXPipeline;
 
     std::vector<DrawCommand> drawCommands;
     std::vector<std::size_t> sortedDrawCommands;
 
     AllocatedImage drawImage;
+    AllocatedImage secondaryDrawImage;
+    bool secondaryDrawImageUsed{false};
+
     AllocatedImage depthImage;
 
     AllocatedImage skyboxImage;

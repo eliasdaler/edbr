@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 #include <vulkan/vulkan.h>
 
@@ -35,13 +36,13 @@ VkImageViewCreateInfo imageViewCreateInfo(
 
 VkRenderingAttachmentInfo attachmentInfo(
     VkImageView view,
-    const VkClearValue* clear,
-    VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    std::optional<VkClearValue> clearValue = std::nullopt);
 
 VkRenderingAttachmentInfo depthAttachmentInfo(
     VkImageView view,
     VkImageLayout layout,
-    float depthClearValue = 0.f);
+    std::optional<float> depthClearValue = 0.f);
 
 VkRenderingInfo renderingInfo(
     VkExtent2D renderExtent,

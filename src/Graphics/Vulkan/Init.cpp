@@ -114,40 +114,35 @@ VkImageViewCreateInfo imageViewCreateInfo(
 
 VkRenderingAttachmentInfo attachmentInfo(
     VkImageView view,
-    const VkClearValue* clear,
-    VkImageLayout layout)
-{
-    auto colorAttachment = VkRenderingAttachmentInfo{
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = view,
-        .imageLayout = layout,
-        .loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    };
-
-    if (clear) {
-        colorAttachment.clearValue = *clear;
-    }
-
-    return colorAttachment;
-}
-
-VkRenderingAttachmentInfo depthAttachmentInfo(
-    VkImageView view,
     VkImageLayout layout,
-    float depthClearValue)
+    std::optional<VkClearValue> clearValue)
 {
     return VkRenderingAttachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .imageView = view,
         .imageLayout = layout,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = clearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = clearValue ? clearValue.value() : VkClearValue{},
+    };
+}
+
+VkRenderingAttachmentInfo depthAttachmentInfo(
+    VkImageView view,
+    VkImageLayout layout,
+    std::optional<float> depthClearValue)
+{
+    return VkRenderingAttachmentInfo{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = view,
+        .imageLayout = layout,
+        .loadOp = depthClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .clearValue =
             {
                 .depthStencil =
                     {
-                        .depth = depthClearValue,
+                        .depth = depthClearValue ? depthClearValue.value() : 0.f,
                     },
             },
     };
