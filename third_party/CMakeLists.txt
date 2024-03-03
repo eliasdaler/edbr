@@ -16,6 +16,8 @@ add_subdirectory(SDL)
 add_subdirectory(vk-bootstrap)
 # vma
 add_subdirectory(vma)
+# volk
+add_subdirectory(volk)
 
 ## Dear ImGui
 set(IMGUI_SOURCES
@@ -73,7 +75,7 @@ add_subdirectory(tinygltf)
 add_library(tinygltf::tinygltf ALIAS tinygltf)
 
 ## tracy
-option(TRACY_ENABLE "" ON)
+option(TRACY_ENABLE "" OFF)
 option(TRACY_ON_DEMAND "" ON)
 add_subdirectory(tracy)
 

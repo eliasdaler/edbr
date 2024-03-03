@@ -53,7 +53,8 @@ target_include_directories(game PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 find_package(Vulkan REQUIRED)
 
 target_link_libraries(game PRIVATE
-  Vulkan::Vulkan
+  # Vulkan::Vulkan
+  volk::volk
   vk-bootstrap::vk-bootstrap
   GPUOpen::VulkanMemoryAllocator
 

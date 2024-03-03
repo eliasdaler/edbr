@@ -90,5 +90,6 @@ void SkinningPipeline::doSkinning(VkCommandBuffer cmd, const DrawCommand& dc)
         &cs);
 
     static const auto workgroupSize = 256;
-    vkCmdDispatch(cmd, std::ceil(mesh.numVertices / (float)workgroupSize), 1, 1);
+    const auto groupSizeX = (std::uint32_t)std::ceil(mesh.numVertices / (float)workgroupSize);
+    vkCmdDispatch(cmd, groupSizeX, 1, 1);
 }

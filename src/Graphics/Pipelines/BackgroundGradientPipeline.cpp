@@ -81,5 +81,8 @@ void BackgroundGradientPipeline::draw(VkCommandBuffer cmd, const glm::vec2& imag
         sizeof(ComputePushConstants),
         &gradientConstants);
 
-    vkCmdDispatch(cmd, std::ceil(imageSize.x / 16.f), std::ceil(imageSize.y / 16.f), 1.f);
+    const auto groupCountX = (std::uint32_t)std::ceil(imageSize.x / 16.f);
+    const auto groupCountY = (std::uint32_t)std::ceil(imageSize.y / 16.f);
+    const auto groupCountZ = std::uint32_t{1};
+    vkCmdDispatch(cmd, groupCountX, groupCountY, groupCountZ);
 }

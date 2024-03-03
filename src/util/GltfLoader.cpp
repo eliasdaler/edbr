@@ -215,15 +215,11 @@ void loadPrimitive(
         mesh.skinningData.resize(numVertices);
 
         for (std::size_t i = 0; i < joints.size(); ++i) {
-            for (std::size_t j = 0; j < 4; ++j) {
-                mesh.skinningData[i].jointIds[j] = joints[i][j];
-            }
+            mesh.skinningData[i].jointIds = glm::uvec4{joints[i][0], joints[i][1], joints[i][2], joints[i][3]};
         }
 
         for (std::size_t i = 0; i < weights.size(); ++i) {
-            for (std::size_t j = 0; j < 4; ++j) {
-                mesh.skinningData[i].weights[j] = weights[i][j];
-            }
+            mesh.skinningData[i].weights = glm::vec4{weights[i][0], weights[i][1], weights[i][2], weights[i][3]};
         }
     }
 }

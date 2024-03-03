@@ -120,9 +120,9 @@ void Game::init()
     }
     cameraController.setYawPitch(-2.5f, 0.2f);
 
-    const auto startPos = glm::vec3{-48.8440704, 5.05302525, 5.56558323};
+    const auto startPos = glm::vec3{-48.8440704f, 5.05302525f, 5.56558323f};
     camera.setPosition(startPos);
-    cameraController.setYawPitch(3.92699075, 0.523598909);
+    cameraController.setYawPitch(3.92699075f, 0.523598909f);
 
     /* const auto startPos = glm::vec3{-48.68f, 16.39f, 17.33f};
     camera.setPosition(startPos);
@@ -152,6 +152,10 @@ void Game::run()
 
         // moving average
         float newFPS = 1.f / frameTime;
+        if (newFPS == std::numeric_limits<float>::infinity()) { 
+            // can happen when frameTime == 0
+            newFPS = 0;
+        }
         avgFPS = std::lerp(avgFPS, newFPS, 0.1f);
 
         if (accumulator > 10 * dt) { // game stopped for debug

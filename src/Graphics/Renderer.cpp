@@ -6,7 +6,6 @@
 
 #include <vulkan/vulkan.h>
 
-#define VOLK_IMPLEMENTATION
 #include <volk.h>
 
 #include <vk_mem_alloc.h>

@@ -18,7 +18,7 @@
 
 struct AllocatedImage;
 struct AllocatedBuffer;
-struct VulkanImmediateExecutor;
+class VulkanImmediateExecutor;
 
 namespace vkutil
 {

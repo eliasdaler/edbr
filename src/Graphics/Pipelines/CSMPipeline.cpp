@@ -58,7 +58,6 @@ void CSMPipeline::initCSMData()
     vkutil::addDebugLabel(renderer.getDevice(), csmShadowMap.imageView, "CSM shadow map view");
 
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
-        VkImageView imageView;
         const auto createInfo = VkImageViewCreateInfo{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = csmShadowMap.image,
@@ -106,7 +105,7 @@ void CSMPipeline::draw(
         percents = {0.005f, 0.01f, 0.15f};
     }
 
-    for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
+    for (std::size_t i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         float zNear = i == 0 ? camera.getZNear() : camera.getZNear() * percents[i - 1];
         float zFar = camera.getZFar() * percents[i];
         cascadeFarPlaneZs[i] = zFar;

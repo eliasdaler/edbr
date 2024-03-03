@@ -6,7 +6,7 @@
 #include <glm/vec4.hpp>
 
 class Renderer;
-class AllocatedImage;
+struct AllocatedImage;
 class Camera;
 
 class SkyboxPipeline {
