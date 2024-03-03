@@ -66,9 +66,9 @@ void GameRenderer::createDrawImage(VkExtent2D extent)
 
 void GameRenderer::draw(const Camera& camera, const RendererSceneData& sceneData)
 {
-    renderer.draw(
-        [this, &camera, &sceneData](VkCommandBuffer cmd) { draw(cmd, camera, sceneData); },
-        drawImage);
+    auto cmd = renderer.beginFrame();
+    draw(cmd, camera, sceneData);
+    renderer.endFrame(cmd, drawImage);
 }
 
 void GameRenderer::draw(

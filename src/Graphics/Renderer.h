@@ -51,9 +51,9 @@ public:
 
 public:
     void init(SDL_Window* window, bool vSync);
-    void draw(
-        std::function<void(VkCommandBuffer cmd)> drawFunction,
-        const AllocatedImage& drawImage);
+
+    VkCommandBuffer beginFrame();
+    void endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage);
     void cleanup();
 
     [[nodiscard]] AllocatedBuffer createBuffer(
@@ -146,4 +146,6 @@ private: // data
     VkSampler defaultLinearSampler;
     VkSampler defaultShadowMapSampler;
     AllocatedImage whiteTexture;
+
+    bool imguiDrawn{true};
 };

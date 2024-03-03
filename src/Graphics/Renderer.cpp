@@ -311,9 +311,7 @@ void Renderer::initDefaultTextures()
     }
 }
 
-void Renderer::draw(
-    std::function<void(VkCommandBuffer)> drawFunction,
-    const AllocatedImage& drawImage)
+VkCommandBuffer Renderer::beginFrame()
 {
     auto& frame = getCurrentFrame();
 
@@ -329,7 +327,12 @@ void Renderer::draw(
     };
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-    drawFunction(cmd);
+    return cmd;
+}
+
+void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
+{
+    auto& frame = getCurrentFrame();
 
     // get swapchain image
     std::uint32_t swapchainImageIndex{};
@@ -352,26 +355,34 @@ void Renderer::draw(
         {drawImage.extent.width, drawImage.extent.height},
         swapchainExtent);
 
-    // TODO: if ImGui not drawn, we can immediately transfer to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR here
-    vkutil::transitionImage(
-        cmd,
-        swapchainImage,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    if (imguiDrawn) {
+        vkutil::transitionImage(
+            cmd,
+            swapchainImage,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    { // draw Dear ImGui
-        TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
-        vkutil::cmdBeginLabel(cmd, "Draw Dear ImGui");
-        vkutil::drawImGui(imguiData, cmd, swapchainExtent, swapchainImageIndex);
-        vkutil::cmdEndLabel(cmd);
+        { // draw Dear ImGui
+            TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
+            vkutil::cmdBeginLabel(cmd, "Draw Dear ImGui");
+            vkutil::drawImGui(imguiData, cmd, swapchainExtent, swapchainImageIndex);
+            vkutil::cmdEndLabel(cmd);
+        }
+
+        // prepare for present
+        vkutil::transitionImage(
+            cmd,
+            swapchainImage,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    } else {
+        // prepare for present
+        vkutil::transitionImage(
+            cmd,
+            swapchainImage,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     }
-
-    // prepare for present
-    vkutil::transitionImage(
-        cmd,
-        swapchainImage,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     // TODO: don't collect every frame?
     TracyVkCollect(frame.tracyVkCtx, frame.mainCommandBuffer);
