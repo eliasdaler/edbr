@@ -46,7 +46,10 @@ public:
     const glm::mat4& getProjection() const { return projection; }
 
     void setUseInverseDepth(bool b) { useInverseDepth = b; }
+    bool usesInverseDepth() const { return useInverseDepth; }
+
     void setClipSpaceYDown(bool b) { clipSpaceYDown = b; }
+    bool isClipSpaceYDown() const { return clipSpaceYDown; }
 
     bool isOrthographic() const { return orthographic; }
 

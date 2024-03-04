@@ -43,7 +43,7 @@ struct Frustum {
 namespace edge
 {
 // NOTE: this doesn't work for cameras with inverse depth
-std::array<glm::vec3, 8> calculateFrustumCornersWorldSpace(const glm::mat4& viewProj);
+std::array<glm::vec3, 8> calculateFrustumCornersWorldSpace(const Camera& camera);
 
 Frustum createFrustumFromCamera(const Camera& camera);
 bool isInFrustum(const Frustum& frustum, const math::Sphere& s);

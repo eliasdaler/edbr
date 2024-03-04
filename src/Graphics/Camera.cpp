@@ -15,7 +15,6 @@ void Camera::init(float fovX, float zNear, float zFar, float aspectRatio)
     this->aspectRatio = aspectRatio;
 
     // TODO #ifdef VULKAN
-    // setUseInverseDepth(true);
     setClipSpaceYDown(true);
 
     if (useInverseDepth) {
@@ -42,7 +41,6 @@ void Camera::initOrtho(float xScale, float yScale, float zNear, float zFar)
     aspectRatio = xScale / yScale;
 
     // TODO #ifdef VULKAN
-    // setUseInverseDepth(true);
     setClipSpaceYDown(true);
 
     if (useInverseDepth) {

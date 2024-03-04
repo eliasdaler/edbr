@@ -119,11 +119,8 @@ void CSMPipeline::draw(
         subFrustumCamera.setPosition(camera.getPosition());
         subFrustumCamera.setHeading(camera.getHeading());
         subFrustumCamera.init(camera.getFOVX(), zNear, zFar, 1.f);
-        // NOTE: this camera doesn't use inverse depth because otherwise
-        // calculateFrustumCornersWorldSpace doesn't work properly
 
-        const auto corners =
-            edge::calculateFrustumCornersWorldSpace(subFrustumCamera.getViewProj());
+        const auto corners = edge::calculateFrustumCornersWorldSpace(subFrustumCamera);
         const auto csmCamera = calculateCSMCamera(corners, sunlightDirection, shadowMapTextureSize);
         csmLightSpaceTMs[i] = csmCamera.getViewProj();
 
@@ -158,10 +155,11 @@ void CSMPipeline::draw(
 
         // FIXME: sort by mesh?
         for (const auto& dc : drawCommands) {
-            // hack: don't cull big objects, because shadows from them might disappear
-            if (dc.worldBoundingSphere.radius < 2.f &&
-                !edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
-                continue;
+            if (!edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
+                // hack: don't cull big objects, because shadows from them might disappear
+                if (dc.worldBoundingSphere.radius < 2.f) {
+                    continue;
+                }
             }
 
             const auto& mesh = renderer.getMesh(dc.meshId);
