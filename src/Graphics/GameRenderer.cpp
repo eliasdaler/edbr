@@ -18,7 +18,7 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     createDrawImage(renderer.getSwapchainExtent());
 
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
-    csmPipeline = std::make_unique<CSMPipeline>(renderer);
+    csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
     meshPipeline = std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format);
     skyboxPipeline =
         std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format);
@@ -332,6 +332,7 @@ void GameRenderer::cleanup()
 void GameRenderer::updateDevTools(float dt)
 {
     renderer.updateDevTools(dt);
+    ImGui::DragFloat3("Cascades", csmPipeline->percents.data(), 0.1f, 0.f, 1.f);
 }
 
 Scene GameRenderer::loadScene(const std::filesystem::path& path)

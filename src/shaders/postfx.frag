@@ -21,9 +21,10 @@ vec3 getViewPos(float depth, mat4 invProj, vec2 uv) {
     return pos;
 }
 
-vec3 calcFog(vec3 pos, vec3 color,
+vec3 exponentialFog(vec3 pos, vec3 color,
         vec3 fogColor, float fogDensity,
-        vec3 ambientColor, float ambientIntensity, vec3 dirLightColor) {
+        vec3 ambientColor, float ambientIntensity,
+        vec3 dirLightColor) {
     vec3 fc = fogColor * (ambientColor * ambientIntensity + dirLightColor);
     float dist = length(pos);
     float fogFactor = 1.0 / exp((dist * fogDensity) * (dist * fogDensity));
@@ -45,7 +46,7 @@ void main() {
     vec3 fragColor = texture(drawImage, inUV).rgb;
     float depth = texture(depthImage, inUV).r;
     vec3 viewPos = getViewPos(depth, pcs.invProj, inUV);
-    vec3 color = calcFog(viewPos, fragColor,
+    vec3 color = exponentialFog(viewPos, fragColor,
             pcs.fogColorAndDensity.rgb, pcs.fogColorAndDensity.w,
             pcs.ambientColorAndIntensity.rgb, pcs.ambientColorAndIntensity.w,
             pcs.sunlightColorAndIntensity.rgb);

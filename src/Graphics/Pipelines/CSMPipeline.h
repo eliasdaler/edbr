@@ -14,7 +14,7 @@ public:
     static const int NUM_SHADOW_CASCADES = 3;
 
 public:
-    CSMPipeline(Renderer& renderer);
+    CSMPipeline(Renderer& renderer, const std::array<float, NUM_SHADOW_CASCADES>& percents);
     void cleanup(VkDevice device);
 
     void draw(
@@ -27,6 +27,9 @@ public:
 
     std::array<float, NUM_SHADOW_CASCADES> cascadeFarPlaneZs{};
     std::array<glm::mat4, NUM_SHADOW_CASCADES> csmLightSpaceTMs{};
+
+    // how cascades are distributed
+    std::array<float, NUM_SHADOW_CASCADES> percents;
 
 private:
     void initCSMData();

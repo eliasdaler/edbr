@@ -9,7 +9,12 @@
 #include <Graphics/Renderer.h>
 #include <Graphics/ShadowMapping.h>
 
-CSMPipeline::CSMPipeline(Renderer& renderer) : renderer(renderer)
+#include <cassert>
+
+CSMPipeline::CSMPipeline(
+    Renderer& renderer,
+    const std::array<float, NUM_SHADOW_CASCADES>& percents) :
+    percents(percents), renderer(renderer)
 {
     const auto& device = renderer.getDevice();
     const auto vertexShader = vkutil::loadShaderModule("shaders/mesh_depth_only.vert.spv", device);
@@ -100,10 +105,10 @@ void CSMPipeline::draw(
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    std::array<float, NUM_SHADOW_CASCADES> percents = {0.3f, 0.8f, 1.f};
+    /* std::array<float, NUM_SHADOW_CASCADES> percents = {0.3f, 0.8f, 1.f};
     if (camera.getZFar() > 500.f) {
         percents = {0.005f, 0.01f, 0.15f};
-    }
+    } */
 
     for (std::size_t i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         float zNear = i == 0 ? camera.getZNear() : camera.getZNear() * percents[i - 1];
