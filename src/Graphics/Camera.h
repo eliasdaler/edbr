@@ -22,13 +22,6 @@ public:
     void initOrtho(float scale, float zNear, float zFar);
     void initOrtho(float xScale, float yScale, float zNear, float zFar);
 
-    // +Y axis will point down, +X - right, +Z - into the camera
-    void initOrtho2D(
-        const glm::vec2& size,
-        float zNear,
-        float zFar,
-        OriginType origin = OriginType::TopLeft);
-
     glm::mat4 getView() const;
     glm::mat4 getViewProj() const;
 
@@ -45,10 +38,10 @@ public:
     void setProjection(const glm::mat4& proj) { projection = proj; }
     const glm::mat4& getProjection() const { return projection; }
 
-    void setUseInverseDepth(bool b) { useInverseDepth = b; }
+    void setUseInverseDepth(bool b);
     bool usesInverseDepth() const { return useInverseDepth; }
 
-    void setClipSpaceYDown(bool b) { clipSpaceYDown = b; }
+    void setClipSpaceYDown(bool b);
     bool isClipSpaceYDown() const { return clipSpaceYDown; }
 
     bool isOrthographic() const { return orthographic; }
@@ -60,13 +53,15 @@ public:
     float getFOVY() const { return fovY; }
 
 private:
+    void reinit();
+
     Transform transform;
 
     glm::mat4 projection;
     bool orthographic{false};
 
     bool useInverseDepth{false};
-    bool clipSpaceYDown{false};
+    bool clipSpaceYDown{true}; // ifdef VULKAN?
 
     float zNear{1.f};
     float zFar{75.f};
@@ -75,5 +70,9 @@ private:
     float fovY{glm::radians(60.f)}; // vertical fov in radians
 
     // only for ortographic cameras
+    float xScale;
+    float yScale;
     glm::vec2 viewSize; // the area which the camera covers
+
+    bool initialized{false};
 };
