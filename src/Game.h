@@ -67,6 +67,7 @@ private:
 
     std::vector<std::unique_ptr<Entity>> entities;
     Entity& makeNewEntity();
+    void destroyEntity(const Entity& e);
     Entity& findEntityByName(std::string_view name) const;
 
     void updateEntityTransforms();

@@ -302,12 +302,9 @@ void Game::cleanup()
 {
     for (const auto& ePtr : entities) {
         auto& e = *ePtr;
-        if (e.hasSkeleton) {
-            for (const auto& skinnedMesh : e.skinnedMeshes) {
-                renderer.getRenderer().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
-            }
-        }
+        destroyEntity(e);
     }
+    entities.clear();
 
     renderer.cleanup();
 
@@ -376,7 +373,7 @@ Game::EntityId Game::createEntitiesFromNode(
                 e.children.push_back(childId);
             }
 
-            // if children doesn't have grandchildren, we can merge its meshes
+            // if children doesn't have children, we can merge its meshes
             // into the parent entity so that not too many entities are created
             if (child.hasMesh) {
                 assert(e.skinnedMeshes.empty()); // TODO: what to do about them?
@@ -397,6 +394,15 @@ Game::Entity& Game::makeNewEntity()
     auto& e = *entities.back();
     e.id = entities.size() - 1;
     return e;
+}
+
+void Game::destroyEntity(const Entity& e)
+{
+    if (e.hasSkeleton) {
+        for (const auto& skinnedMesh : e.skinnedMeshes) {
+            renderer.getRenderer().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+        }
+    }
 }
 
 Game::Entity& Game::findEntityByName(std::string_view name) const
