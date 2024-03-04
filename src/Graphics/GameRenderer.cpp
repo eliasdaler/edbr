@@ -64,7 +64,7 @@ void GameRenderer::createDrawImage(VkExtent2D extent)
         const auto usages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         depthImage = renderer.createImage({
             .format = VK_FORMAT_D32_SFLOAT,
-            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             .extent = drawImageExtent,
         });
         vkutil::addDebugLabel(renderer.getDevice(), depthImage.image, "main draw image (depth)");
@@ -220,8 +220,8 @@ void GameRenderer::draw(
 
         const auto renderExtent =
             VkExtent2D{currDrawImage.extent.width, currDrawImage.extent.height};
-        const auto colorAttachment =
-            vkinit::attachmentInfo(currDrawImage.imageView, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
+        const auto colorAttachment = vkinit::
+            attachmentInfo(currDrawImage.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         const auto depthAttachment = vkinit::depthAttachmentInfo(
             depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, std::nullopt);
         const auto renderInfo =
@@ -234,27 +234,40 @@ void GameRenderer::draw(
     }
 
     // sync with postFX
-    const auto imageBarrier = VkImageMemoryBarrier2{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-        .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .newLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
-        .image = currDrawImage.image,
-        .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT),
-    };
-    const auto dependencyInfo = VkDependencyInfo{
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &imageBarrier,
-    };
-    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+    {
+        const auto imageBarrier = VkImageMemoryBarrier2{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image = currDrawImage.image,
+            .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT),
+        };
+        const auto depthBarrier = VkImageMemoryBarrier2{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+            .srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image = depthImage.image,
+            .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_DEPTH_BIT),
+        };
+        const auto barriers = std::array{imageBarrier, depthBarrier};
+        const auto dependencyInfo = VkDependencyInfo{
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = barriers.size(),
+            .pImageMemoryBarriers = barriers.data(),
+        };
+        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+    }
 
-    // now we'll draw into another draw image and use the currDrawImage as the
-    // color attachment (it was transitioned into
-    // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL by the previous barrier
+    // Now we'll draw into another draw image and use currDrawImage and
+    // depthImage as attachments
     swapDrawImage();
     const auto& newDrawImage = getDrawImage();
     vkutil::transitionImage(
@@ -262,18 +275,24 @@ void GameRenderer::draw(
         newDrawImage.image,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    postFXPipeline->setDrawImage(currDrawImage);
+    postFXPipeline->setImages(currDrawImage, depthImage);
 
     { // post FX
         vkutil::cmdBeginLabel(cmd, "Post FX");
 
-        const auto colorAttachment =
-            vkinit::attachmentInfo(newDrawImage.imageView, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
+        const auto colorAttachment = vkinit::
+            attachmentInfo(newDrawImage.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         const auto renderExtent = VkExtent2D{newDrawImage.extent.width, newDrawImage.extent.height};
         const auto renderInfo = vkinit::renderingInfo(renderExtent, &colorAttachment, nullptr);
 
         vkCmdBeginRendering(cmd, &renderInfo);
-        postFXPipeline->draw(cmd);
+        const auto pcs = PostFXPipeline::PostFXPushContants{
+            .invProj = glm::inverse(camera.getProjection()),
+            .fogColorAndDensity = sceneData.fogColorAndDensity,
+            .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
+            .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
+        };
+        postFXPipeline->draw(cmd, pcs);
         vkCmdEndRendering(cmd);
 
         vkutil::cmdEndLabel(cmd);

@@ -26,6 +26,7 @@ struct RendererSceneData {
     glm::vec4 ambientColorAndIntensity;
     glm::vec4 sunlightDirection;
     glm::vec4 sunlightColorAndIntensity;
+    glm::vec4 fogColorAndDensity;
 };
 
 class GameRenderer {

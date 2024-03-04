@@ -104,6 +104,17 @@ void Game::init()
 
             cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
         }
+
+        { // create fourth cato
+            createEntitiesFromScene(scene);
+
+            const glm::vec3 catoPos{-54.97f, 0.05f, -0.56f};
+            auto& cato = findEntityByName("Cato");
+            cato.tag = "Cato4";
+            cato.transform.position = catoPos;
+
+            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
+        }
     }
 
     {
@@ -129,8 +140,9 @@ void Game::init()
     cameraController.setYawPitch(3.29f, 1.22f); */
 
     sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
-    sunlightColorAndIntensity = glm::vec4{213.f / 255.f, 136.f / 255.f, 49.f / 255.f, 0.6f};
-    ambientColorAndIntensity = glm::vec4{0.20784314, 0.592156887, 0.56078434, 0.05f};
+    sunlightColorAndIntensity = glm::vec4{144.f / 255.f, 116.f / 255.f, 26.f / 255.f, 0.643f};
+    ambientColorAndIntensity = glm::vec4{53.f / 255.f, 151.f / 255.f, 143.f / 255.f, 0.05f};
+    fogColorAndDensity = glm::vec4{0.5f, 0.5f, 0.5f, 0.05f};
 }
 
 void Game::run()
@@ -152,7 +164,7 @@ void Game::run()
 
         // moving average
         float newFPS = 1.f / frameTime;
-        if (newFPS == std::numeric_limits<float>::infinity()) { 
+        if (newFPS == std::numeric_limits<float>::infinity()) {
             // can happen when frameTime == 0
             newFPS = 0;
         }
@@ -198,6 +210,7 @@ void Game::run()
                 .ambientColorAndIntensity = ambientColorAndIntensity,
                 .sunlightDirection = sunlightDir,
                 .sunlightColorAndIntensity = sunlightColorAndIntensity,
+                .fogColorAndDensity = fogColorAndDensity,
             };
             renderer.draw(camera, sceneData);
             FrameMark;
@@ -273,6 +286,12 @@ void Game::updateDevTools(float dt)
         sunlightColorAndIntensity = arrToGLM(sunlight);
     }
     ImGui::DragFloat("Sunlight intensity", &sunlightColorAndIntensity.w, 1.f, 0.f, 1.f);
+
+    auto fog = glmToArr(fogColorAndDensity);
+    if (ImGui::ColorEdit3("Fog", fog.data())) {
+        fogColorAndDensity = arrToGLM(fog);
+    }
+    ImGui::DragFloat("Fog density", &fogColorAndDensity.w, 1.f, 0.f, 1.f);
 
     ImGui::End();
 

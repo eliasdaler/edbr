@@ -94,4 +94,5 @@ private:
     glm::vec4 ambientColorAndIntensity;
     glm::vec4 sunlightDir;
     glm::vec4 sunlightColorAndIntensity;
+    glm::vec4 fogColorAndDensity;
 };

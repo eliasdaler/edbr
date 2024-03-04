@@ -52,7 +52,7 @@ void main()
             diffuseColor, roughness, metallic, f0,
             n, v, l, h);
     // TODO: figure out how to properly compute light intensity for PBR
-    sunIntensity *= 2.6;
+    sunIntensity *= 4.6;
 #else
     vec3 fr = blinnPhongBRDF(diffuseColor, n, v, l, h);
 #endif
