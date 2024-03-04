@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan.h>
 
+struct AllocatedImage;
+
 namespace vkinit
 {
 VkImageSubresourceRange imageSubresourceRange(VkImageAspectFlags aspectMask);

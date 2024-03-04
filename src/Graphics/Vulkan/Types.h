@@ -19,6 +19,8 @@ struct AllocatedImage {
     std::uint32_t mipLevels{1};
     std::uint32_t numLayers{1};
     bool isCubemap{false};
+
+    VkExtent2D getExtent2D() const { return VkExtent2D{extent.width, extent.height}; }
 };
 
 struct AllocatedBuffer {

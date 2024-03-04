@@ -9,8 +9,6 @@
 #include <Graphics/Renderer.h>
 #include <Graphics/ShadowMapping.h>
 
-#include <cassert>
-
 CSMPipeline::CSMPipeline(
     Renderer& renderer,
     const std::array<float, NUM_SHADOW_CASCADES>& percents) :
@@ -129,13 +127,13 @@ void CSMPipeline::draw(
         const auto csmCamera = calculateCSMCamera(corners, sunlightDirection, shadowMapTextureSize);
         csmLightSpaceTMs[i] = csmCamera.getViewProj();
 
-        const auto depthAttachment = vkinit::
-            depthAttachmentInfo(csmShadowMapViews[i], VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-        const auto renderInfo = vkinit::renderingInfo(
-            VkExtent2D{(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize},
-            nullptr,
-            &depthAttachment);
-        vkCmdBeginRendering(cmd, &renderInfo);
+        const auto renderInfo = vkutil::createRenderingInfo({
+            .renderExtent =
+                {(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize},
+            .depthImageView = csmShadowMapViews[i],
+            .depthImageClearValue = 0.f,
+        });
+        vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshDepthOnlyPipeline);
 

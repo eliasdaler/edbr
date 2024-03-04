@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 
 #include <vulkan/vulkan.h>
 
@@ -93,5 +94,21 @@ void addDebugLabel(VkDevice device, VkImageView imageView, const char* label);
 void addDebugLabel(VkDevice device, VkShaderModule shaderModule, const char* label);
 void addDebugLabel(VkDevice device, VkPipeline pipeline, const char* label);
 void addDebugLabel(VkDevice device, VkBuffer buffer, const char* label);
+
+struct RenderingInfoParams {
+    VkExtent2D renderExtent;
+    VkImageView colorImageView{VK_NULL_HANDLE};
+    std::optional<glm::vec4> colorImageClearValue;
+    VkImageView depthImageView{VK_NULL_HANDLE};
+    std::optional<float> depthImageClearValue;
+};
+
+struct RenderInfo {
+    VkRenderingAttachmentInfo colorAttachment;
+    VkRenderingAttachmentInfo depthAttachment;
+    VkRenderingInfo renderingInfo;
+};
+
+RenderInfo createRenderingInfo(const RenderingInfoParams& params);
 
 } // end of namespace vkutil

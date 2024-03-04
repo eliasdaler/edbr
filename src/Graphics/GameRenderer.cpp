@@ -94,16 +94,6 @@ void GameRenderer::draw(
     const Camera& camera,
     const RendererSceneData& sceneData)
 {
-    const auto gpuSceneData = GPUSceneData{
-        .view = sceneData.camera.getView(),
-        .proj = sceneData.camera.getProjection(),
-        .viewProj = sceneData.camera.getViewProj(),
-        .cameraPos = glm::vec4{sceneData.camera.getPosition(), 1.f},
-        .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
-        .sunlightDirection = sceneData.sunlightDirection,
-        .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
-    };
-
     { // skinning
         vkutil::cmdBeginLabel(cmd, "Skinning");
         for (const auto& dc : drawCommands) {
@@ -114,7 +104,7 @@ void GameRenderer::draw(
         }
         vkutil::cmdEndLabel(cmd);
 
-        // sync skinning with later render passes
+        // Sync skinning with CSM
         const auto memoryBarrier = VkMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
             .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -143,7 +133,9 @@ void GameRenderer::draw(
 
         csmPipeline->draw(cmd, camera, glm::vec3{sceneData.sunlightDirection}, drawCommands);
 
-        // sync
+        vkutil::cmdEndLabel(cmd);
+
+        // Sync CSM with geometry pass
         const auto imageBarrier = VkImageMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .srcStageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
@@ -161,8 +153,6 @@ void GameRenderer::draw(
             .pImageMemoryBarriers = &imageBarrier,
         };
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-
-        vkutil::cmdEndLabel(cmd);
     }
 
     const auto& currDrawImage = getDrawImage();
@@ -172,17 +162,26 @@ void GameRenderer::draw(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Geometry");
 
-        // update scene data (add CSM info) and upload
-        auto newSceneData = gpuSceneData;
-        newSceneData.cascadeFarPlaneZs = glm::vec4{
-            csmPipeline->cascadeFarPlaneZs[0],
-            csmPipeline->cascadeFarPlaneZs[1],
-            csmPipeline->cascadeFarPlaneZs[2],
-            0.f,
+        // upload scene data
+        const auto gpuSceneData = GPUSceneData{
+            .view = sceneData.camera.getView(),
+            .proj = sceneData.camera.getProjection(),
+            .viewProj = sceneData.camera.getViewProj(),
+            .cameraPos = glm::vec4{sceneData.camera.getPosition(), 1.f},
+            .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
+            .sunlightDirection = sceneData.sunlightDirection,
+            .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
+            .cascadeFarPlaneZs =
+                glm::vec4{
+                    csmPipeline->cascadeFarPlaneZs[0],
+                    csmPipeline->cascadeFarPlaneZs[1],
+                    csmPipeline->cascadeFarPlaneZs[2],
+                    0.f,
+                },
+            .csmLightSpaceTMs = csmPipeline->csmLightSpaceTMs,
         };
-        newSceneData.csmLightSpaceTMs = csmPipeline->csmLightSpaceTMs;
         const auto sceneDataDesctiptor =
-            renderer.uploadSceneData(newSceneData, csmPipeline->getShadowMap());
+            renderer.uploadSceneData(gpuSceneData, csmPipeline->getShadowMap());
 
         vkutil::transitionImage(
             cmd,
@@ -196,21 +195,23 @@ void GameRenderer::draw(
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-        const auto renderExtent =
-            VkExtent2D{currDrawImage.extent.width, currDrawImage.extent.height};
-        const auto colorClearValue = VkClearValue{.color = {0.f, 0.f, 0.f, 0.f}};
-        const auto colorAttachment = vkinit::attachmentInfo(
-            currDrawImage.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorClearValue);
-        const auto depthClearValue = 0.f;
-        const auto depthAttachment = vkinit::depthAttachmentInfo(
-            depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, depthClearValue);
-        const auto renderInfo =
-            vkinit::renderingInfo(renderExtent, &colorAttachment, &depthAttachment);
+        const auto renderInfo = vkutil::createRenderingInfo({
+            .renderExtent = currDrawImage.getExtent2D(),
+            .colorImageView = currDrawImage.imageView,
+            .colorImageClearValue = glm::vec4{0.f, 0.f, 0.f, 0.f},
+            .depthImageView = depthImage.imageView,
+            .depthImageClearValue = 0.f,
+        });
 
-        vkCmdBeginRendering(cmd, &renderInfo);
+        vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
         meshPipeline->draw(
-            cmd, renderExtent, camera, sceneDataDesctiptor, drawCommands, sortedDrawCommands);
+            cmd,
+            currDrawImage.getExtent2D(),
+            camera,
+            sceneDataDesctiptor,
+            drawCommands,
+            sortedDrawCommands);
         vkCmdEndRendering(cmd);
         vkutil::cmdEndLabel(cmd); // geometry
     }
@@ -218,23 +219,19 @@ void GameRenderer::draw(
     { // Sky
         vkutil::cmdBeginLabel(cmd, "Sky");
 
-        const auto renderExtent =
-            VkExtent2D{currDrawImage.extent.width, currDrawImage.extent.height};
-        const auto colorAttachment = vkinit::
-            attachmentInfo(currDrawImage.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        const auto depthAttachment = vkinit::depthAttachmentInfo(
-            depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, std::nullopt);
-        const auto renderInfo =
-            vkinit::renderingInfo(renderExtent, &colorAttachment, &depthAttachment);
+        const auto renderInfo = vkutil::createRenderingInfo({
+            .renderExtent = currDrawImage.getExtent2D(),
+            .colorImageView = currDrawImage.imageView,
+            .depthImageView = depthImage.imageView,
+        });
 
-        vkCmdBeginRendering(cmd, &renderInfo);
+        vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
         skyboxPipeline->draw(cmd, camera);
         vkCmdEndRendering(cmd);
         vkutil::cmdEndLabel(cmd);
     }
 
-    // sync with postFX
-    {
+    { // Sync Geometry/Sky with PostFX pass
         const auto imageBarrier = VkImageMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -280,12 +277,12 @@ void GameRenderer::draw(
     { // post FX
         vkutil::cmdBeginLabel(cmd, "Post FX");
 
-        const auto colorAttachment = vkinit::
-            attachmentInfo(newDrawImage.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        const auto renderExtent = VkExtent2D{newDrawImage.extent.width, newDrawImage.extent.height};
-        const auto renderInfo = vkinit::renderingInfo(renderExtent, &colorAttachment, nullptr);
+        const auto renderInfo = vkutil::createRenderingInfo({
+            .renderExtent = newDrawImage.getExtent2D(),
+            .colorImageView = newDrawImage.imageView,
+        });
 
-        vkCmdBeginRendering(cmd, &renderInfo);
+        vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
         const auto pcs = PostFXPipeline::PostFXPushContants{
             .invProj = glm::inverse(camera.getProjection()),
             .fogColorAndDensity = sceneData.fogColorAndDensity,

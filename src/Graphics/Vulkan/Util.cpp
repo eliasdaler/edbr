@@ -477,4 +477,59 @@ void addDebugLabel(VkDevice device, VkBuffer buffer, const char* label)
     vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
 }
 
+RenderInfo createRenderingInfo(const RenderingInfoParams& params)
+{
+    assert(
+        (params.colorImageView || params.depthImageView != nullptr) &&
+        "Either draw or depth image should be present");
+    assert(
+        params.renderExtent.width != 0.f && params.renderExtent.height != 0.f &&
+        "renderExtent not specified");
+
+    RenderInfo ri;
+    if (params.colorImageView) {
+        ri.colorAttachment = VkRenderingAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = params.colorImageView,
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .loadOp = params.colorImageClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR :
+                                                    VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        };
+        if (params.colorImageClearValue) {
+            const auto col = params.colorImageClearValue.value();
+            ri.colorAttachment.clearValue.color = {col[0], col[1], col[2], col[3]};
+        }
+    }
+
+    if (params.depthImageView) {
+        ri.depthAttachment = VkRenderingAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = params.depthImageView,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .loadOp = params.depthImageClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR :
+                                                    VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        };
+        if (params.depthImageClearValue) {
+            ri.depthAttachment.clearValue.depthStencil.depth = params.depthImageClearValue.value();
+        }
+    }
+
+    ri.renderingInfo = VkRenderingInfo{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea =
+            VkRect2D{
+                .offset = {},
+                .extent = params.renderExtent,
+            },
+        .layerCount = 1,
+        .colorAttachmentCount = params.colorImageView ? 1u : 0u,
+        .pColorAttachments = params.colorImageView ? &ri.colorAttachment : nullptr,
+        .pDepthAttachment = params.depthImageView ? &ri.depthAttachment : nullptr,
+    };
+
+    return ri;
+}
+
 } // end of namespace vkutil

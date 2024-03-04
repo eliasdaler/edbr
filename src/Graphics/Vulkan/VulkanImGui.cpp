@@ -111,11 +111,12 @@ void drawImGui(
     VkExtent2D swapchainExtent,
     std::uint32_t swapchainImageIndex)
 {
-    const auto colorAttachment = vkinit::
-        attachmentInfo(imguiData.swapchainViews[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL);
-    const auto renderInfo = vkinit::renderingInfo(swapchainExtent, &colorAttachment, nullptr);
+    const auto renderInfo = vkutil::createRenderingInfo({
+        .renderExtent = swapchainExtent,
+        .colorImageView = imguiData.swapchainViews[swapchainImageIndex],
+    });
 
-    vkCmdBeginRendering(cmd, &renderInfo);
+    vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
