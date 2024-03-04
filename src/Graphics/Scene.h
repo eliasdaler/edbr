@@ -15,6 +15,7 @@ struct SceneNode {
     std::string name;
     Transform transform;
     std::size_t meshIndex;
+    bool hasMesh{false};
     int skinId{-1};
 
     SceneNode* parent{nullptr};

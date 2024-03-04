@@ -215,11 +215,13 @@ void loadPrimitive(
         mesh.skinningData.resize(numVertices);
 
         for (std::size_t i = 0; i < joints.size(); ++i) {
-            mesh.skinningData[i].jointIds = glm::uvec4{joints[i][0], joints[i][1], joints[i][2], joints[i][3]};
+            mesh.skinningData[i].jointIds =
+                glm::uvec4{joints[i][0], joints[i][1], joints[i][2], joints[i][3]};
         }
 
         for (std::size_t i = 0; i < weights.size(); ++i) {
-            mesh.skinningData[i].weights = glm::vec4{weights[i][0], weights[i][1], weights[i][2], weights[i][3]};
+            mesh.skinningData[i].weights =
+                glm::vec4{weights[i][0], weights[i][1], weights[i][2], weights[i][3]};
         }
     }
 }
@@ -271,9 +273,9 @@ void loadMaterial(
 
 bool shouldSkipNode(const tinygltf::Node& node)
 {
-    if (node.mesh == -1) {
+    /* if (node.mesh == -1) {
         return true;
-    }
+    } */
 
     if (node.light != -1) {
         return true;
@@ -311,8 +313,12 @@ void loadNode(SceneNode& node, const tinygltf::Node& gltfNode, const tinygltf::M
     node.name = gltfNode.name;
     node.transform = loadTransform(gltfNode);
 
-    assert(gltfNode.mesh != -1);
-    node.meshIndex = static_cast<std::size_t>(gltfNode.mesh);
+    if (gltfNode.mesh == -1) {
+        node.hasMesh = false;
+    } else {
+        node.hasMesh = true;
+        node.meshIndex = static_cast<std::size_t>(gltfNode.mesh);
+    }
 
     node.skinId = gltfNode.skin;
 

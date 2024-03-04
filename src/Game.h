@@ -37,6 +37,7 @@ public:
         std::vector<EntityId> children;
 
         std::vector<MeshId> meshes;
+        std::vector<Transform> meshTransforms;
 
         // skeleton
         Skeleton skeleton;

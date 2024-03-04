@@ -343,8 +343,11 @@ Game::EntityId Game::createEntitiesFromNode(
         }
     }
 
-    { // mesh
-        e.meshes = scene.meshes[node.meshIndex].primitives;
+    if (node.hasMesh) { // mesh
+        const auto& primitives = scene.meshes[node.meshIndex].primitives;
+        e.meshes = primitives;
+        e.meshTransforms.resize(primitives.size());
+
         // skeleton
         if (node.skinId != -1) {
             e.hasSkeleton = true;
@@ -363,9 +366,24 @@ Game::EntityId Game::createEntitiesFromNode(
     { // hierarchy
         e.parentId = parentId;
         for (const auto& childPtr : node.children) {
-            if (childPtr) {
-                const auto childId = createEntitiesFromNode(scene, *childPtr, e.id);
+            if (!childPtr) {
+                continue;
+            }
+
+            const auto& child = *childPtr;
+            if (!child.children.empty()) {
+                const auto childId = createEntitiesFromNode(scene, child, e.id);
                 e.children.push_back(childId);
+            }
+
+            // if children doesn't have grandchildren, we can merge its meshes
+            // into the parent entity so that not too many entities are created
+            if (child.hasMesh) {
+                assert(e.skinnedMeshes.empty()); // TODO: what to do about them?
+                for (const auto& meshId : scene.meshes[child.meshIndex].primitives) {
+                    e.meshes.push_back(meshId);
+                    e.meshTransforms.push_back(child.transform);
+                }
             }
         }
     }
@@ -432,11 +450,18 @@ void Game::generateDrawList()
             // 1. Not all meshes for the entity might be skinned
             // 2. Different meshes can have different joint matrices sets
             // But right now it's better to group meshes to not waste memory
+            // It's also assumed that all skinned meshes have meshTransform[i] == I
+#ifndef NDEBUG
+            for (const auto& t : e.meshTransforms) {
+                assert(t.isIdentity());
+            }
+#endif
             renderer.addDrawSkinnedMeshCommand(
                 e.meshes, e.skinnedMeshes, e.worldTransform, e.skeletonAnimator.getJointMatrices());
         } else {
-            for (const auto id : e.meshes) {
-                renderer.addDrawCommand(id, e.worldTransform);
+            for (std::size_t i = 0; i < e.meshes.size(); ++i) {
+                const auto meshTransform = e.worldTransform * e.meshTransforms[i].asMatrix();
+                renderer.addDrawCommand(e.meshes[i], meshTransform);
             }
         }
     }

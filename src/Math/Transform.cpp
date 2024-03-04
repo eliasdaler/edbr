@@ -42,6 +42,10 @@ Transform Transform::inverse() const
 
 glm::mat4 Transform::asMatrix() const
 {
+    if (isIdentity()) {
+        return glm::mat4{1.f};
+    }
+
     // TODO: cache + dirty flag for optimization?
     auto tm = glm::translate(I, position);
     tm *= glm::mat4_cast(heading);
