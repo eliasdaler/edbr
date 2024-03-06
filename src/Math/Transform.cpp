@@ -19,6 +19,7 @@ Transform::Transform(const glm::mat4& m)
     position = translationVec;
     heading = rotationQuat;
     scale = scaleVec;
+    isDirty = true;
 }
 
 Transform Transform::operator*(const Transform& rhs) const
@@ -40,15 +41,38 @@ Transform Transform::inverse() const
     return Transform(glm::inverse(asMatrix()));
 }
 
-glm::mat4 Transform::asMatrix() const
+const glm::mat4& Transform::asMatrix() const
 {
-    if (isIdentity()) {
-        return glm::mat4{1.f};
+    if (!isDirty) {
+        return transformMatrix;
     }
 
-    // TODO: cache + dirty flag for optimization?
-    auto tm = glm::translate(I, position);
-    tm *= glm::mat4_cast(heading);
-    tm = glm::scale(tm, scale);
-    return tm;
+    transformMatrix = glm::translate(I, position);
+    transformMatrix *= glm::mat4_cast(heading);
+    transformMatrix = glm::scale(transformMatrix, scale);
+    isDirty = false;
+    return transformMatrix;
+}
+
+void Transform::setPosition(const glm::vec3& pos)
+{
+    position = pos;
+    isDirty = true;
+}
+
+void Transform::setHeading(const glm::quat& h)
+{
+    heading = h;
+    isDirty = true;
+}
+
+void Transform::setScale(const glm::vec3& s)
+{
+    scale = s;
+    isDirty = true;
+}
+
+bool Transform::isIdentity() const
+{
+    return asMatrix() == glm::mat4{1.f};
 }

@@ -297,13 +297,13 @@ Transform loadTransform(const tinygltf::Node& gltfNode)
 {
     Transform transform;
     if (!gltfNode.translation.empty()) {
-        transform.position = tg2glm(gltfNode.translation);
+        transform.setPosition(tg2glm(gltfNode.translation));
     }
     if (!gltfNode.scale.empty()) {
-        transform.scale = tg2glm(gltfNode.scale);
+        transform.setScale(tg2glm(gltfNode.scale));
     }
     if (!gltfNode.rotation.empty()) {
-        transform.heading = tg2glmQuat(gltfNode.rotation);
+        transform.setHeading(tg2glmQuat(gltfNode.rotation));
     }
     return transform;
 }

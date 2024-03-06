@@ -29,11 +29,11 @@ public:
 
     const Transform& getTransform() const { return transform; }
 
-    void setPosition(const glm::vec3& pos) { transform.position = pos; }
-    const glm::vec3 getPosition() const { return transform.position; }
+    void setPosition(const glm::vec3& pos) { transform.setPosition(pos); }
+    const glm::vec3 getPosition() const { return transform.getPosition(); }
 
-    void setHeading(const glm::quat& h) { transform.heading = h; }
-    const glm::quat& getHeading() const { return transform.heading; }
+    void setHeading(const glm::quat& h) { transform.setHeading(h); }
+    const glm::quat& getHeading() const { return transform.getHeading(); }
 
     void setProjection(const glm::mat4& proj) { projection = proj; }
     const glm::mat4& getProjection() const { return projection; }

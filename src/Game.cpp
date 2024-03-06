@@ -79,7 +79,7 @@ void Game::init()
             const glm::vec3 catoPos{1.4f, 0.f, 0.f};
             auto& cato = findEntityByName("Cato");
             cato.tag = "Player";
-            cato.transform.position = catoPos;
+            cato.transform.setPosition(catoPos);
             cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Run"));
         }
 
@@ -89,7 +89,7 @@ void Game::init()
             const glm::vec3 catoPos{2.4f, 0.f, 0.f};
             auto& cato = findEntityByName("Cato");
             cato.tag = "Cato2";
-            cato.transform.position = catoPos;
+            cato.transform.setPosition(catoPos);
 
             cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Walk"));
         }
@@ -100,7 +100,7 @@ void Game::init()
             const glm::vec3 catoPos{0.4f, 0.f, 0.f};
             auto& cato = findEntityByName("Cato");
             cato.tag = "Cato3";
-            cato.transform.position = catoPos;
+            cato.transform.setPosition(catoPos);
 
             cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
         }
@@ -111,7 +111,7 @@ void Game::init()
             const glm::vec3 catoPos{-54.97f, 0.05f, -0.56f};
             auto& cato = findEntityByName("Cato");
             cato.tag = "Cato4";
-            cato.transform.position = catoPos;
+            cato.transform.setPosition(catoPos);
 
             cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
         }
@@ -427,7 +427,7 @@ void Game::updateEntityTransforms()
     const auto I = glm::mat4{1.f};
     for (auto& ePtr : entities) {
         auto& e = *ePtr;
-        if (e.parentId == NULL_MESH_ID) {
+        if (e.parentId == NULL_ENTITY_ID) {
             updateEntityTransforms(e, I);
         }
     }
@@ -435,10 +435,14 @@ void Game::updateEntityTransforms()
 
 void Game::updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransform)
 {
-    const auto prevTransform = e.worldTransform;
-    e.worldTransform = parentWorldTransform * e.transform.asMatrix();
-    if (e.worldTransform == prevTransform) {
-        return;
+    if (e.parentId == NULL_ENTITY_ID) {
+        e.worldTransform = e.transform.asMatrix();
+    } else {
+        const auto prevTransform = e.worldTransform;
+        e.worldTransform = parentWorldTransform * e.transform.asMatrix();
+        if (e.worldTransform == prevTransform) {
+            return;
+        }
     }
 
     for (const auto& childId : e.children) {
@@ -470,7 +474,9 @@ void Game::generateDrawList()
                 e.meshes, e.skinnedMeshes, e.worldTransform, e.skeletonAnimator.getJointMatrices());
         } else {
             for (std::size_t i = 0; i < e.meshes.size(); ++i) {
-                const auto meshTransform = e.worldTransform * e.meshTransforms[i].asMatrix();
+                const auto meshTransform = e.meshTransforms[i].isIdentity() ?
+                                               e.worldTransform :
+                                               e.worldTransform * e.meshTransforms[i].asMatrix();
                 renderer.addDrawCommand(e.meshes[i], meshTransform);
             }
         }

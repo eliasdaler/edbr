@@ -157,6 +157,7 @@ void GameRenderer::draw(
     }
 
     { // CSM
+        ZoneScopedN("CSM");
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "CSM", tracy::Color::CornflowerBlue);
         vkutil::cmdBeginLabel(cmd, "CSM");
@@ -167,7 +168,8 @@ void GameRenderer::draw(
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-        csmPipeline->draw(cmd, camera, glm::vec3{sceneData.sunlightDirection}, drawCommands);
+        csmPipeline->draw(
+            cmd, camera, glm::vec3{sceneData.sunlightDirection}, drawCommands, shadowsEnabled);
 
         vkutil::cmdEndLabel(cmd);
 
@@ -191,7 +193,8 @@ void GameRenderer::draw(
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
     }
 
-    { // Geometry
+    { // Geometry + Sky
+        ZoneScopedN("Geometry");
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Geometry");
@@ -260,7 +263,7 @@ void GameRenderer::draw(
         skyboxPipeline->draw(cmd, camera);
 
         vkCmdEndRendering(cmd);
-        vkutil::cmdEndLabel(cmd); // geometry
+        vkutil::cmdEndLabel(cmd);
     }
 
     { // Sync Geometry/Sky with next pass
@@ -296,6 +299,7 @@ void GameRenderer::draw(
     }
 
     if (isMultisamplingEnabled()) {
+        ZoneScopedN("Depth resolve");
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "Depth resolve", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Depth resolve");
@@ -328,7 +332,7 @@ void GameRenderer::draw(
         vkutil::cmdEndLabel(cmd);
     }
 
-    // Now we'll draw into another draw image and use currDrawImage and
+    // Now we'll draw into another draw image and use drawImage and
     // depthImage as attachments
     vkutil::transitionImage(
         cmd,
@@ -343,6 +347,8 @@ void GameRenderer::draw(
     }
 
     { // post FX
+        ZoneScopedN("Post FX");
+        TracyVkZoneC(renderer.getCurrentFrame().tracyVkCtx, cmd, "Post FX", tracy::Color::Purple);
         vkutil::cmdBeginLabel(cmd, "Post FX");
 
         const auto renderInfo = vkutil::createRenderingInfo({
@@ -379,10 +385,10 @@ void GameRenderer::cleanup()
 
     renderer.destroyImage(skyboxImage);
 
+    renderer.destroyImage(postFXDrawImage);
     renderer.destroyImage(resolveDepthImage);
     renderer.destroyImage(depthImage);
     renderer.destroyImage(resolveImage);
-    renderer.destroyImage(postFXDrawImage);
     renderer.destroyImage(drawImage);
 
     renderer.cleanup();
@@ -392,6 +398,8 @@ void GameRenderer::updateDevTools(float dt)
 {
     renderer.updateDevTools(dt);
     ImGui::DragFloat3("Cascades", csmPipeline->percents.data(), 0.1f, 0.f, 1.f);
+
+    ImGui::Checkbox("Shadows", &shadowsEnabled);
 
     if (ImGui::BeginCombo("MSAA", vkutil::sampleCountToString(samples))) {
         static const auto counts = std::array{

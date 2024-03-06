@@ -95,7 +95,8 @@ void CSMPipeline::draw(
     VkCommandBuffer cmd,
     const Camera& camera,
     const glm::vec3& sunlightDirection,
-    const std::vector<DrawCommand>& drawCommands)
+    const std::vector<DrawCommand>& drawCommands,
+    bool shadowsEnabled)
 {
     vkutil::transitionImage(
         cmd,
@@ -155,6 +156,10 @@ void CSMPipeline::draw(
 
         // FIXME: sort by mesh?
         for (const auto& dc : drawCommands) {
+            if (!shadowsEnabled) {
+                continue;
+            }
+
             if (!edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
                 // hack: don't cull big objects, because shadows from them might disappear
                 if (dc.worldBoundingSphere.radius < 2.f) {

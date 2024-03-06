@@ -21,7 +21,8 @@ public:
         VkCommandBuffer cmd,
         const Camera& camera,
         const glm::vec3& sunlightDirection,
-        const std::vector<DrawCommand>& drawCommands);
+        const std::vector<DrawCommand>& drawCommands,
+        bool shadowsEnabled);
 
     const AllocatedImage& getShadowMap() { return csmShadowMap; }
 

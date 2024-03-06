@@ -76,13 +76,15 @@ private:
     std::vector<std::size_t> sortedDrawCommands;
 
     AllocatedImage drawImage;
-    AllocatedImage postFXDrawImage;
     AllocatedImage resolveImage;
 
     AllocatedImage depthImage;
     AllocatedImage resolveDepthImage;
 
+    AllocatedImage postFXDrawImage;
+
     AllocatedImage skyboxImage;
 
+    bool shadowsEnabled{true};
     VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
 };
