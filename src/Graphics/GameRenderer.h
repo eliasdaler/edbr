@@ -54,8 +54,9 @@ public:
 
 private:
     void createDrawImage(VkExtent2D extent);
-    const AllocatedImage& getDrawImage() const;
-    void swapDrawImage();
+
+    void onMultisamplingStateUpdate();
+    VkSampleCountFlagBits getSamples() const;
 
     void draw(VkCommandBuffer cmd, const Camera& camera, const RendererSceneData& sceneData);
 
@@ -73,10 +74,12 @@ private:
     std::vector<std::size_t> sortedDrawCommands;
 
     AllocatedImage drawImage;
-    AllocatedImage secondaryDrawImage;
-    bool secondaryDrawImageUsed{false};
-
+    AllocatedImage postFXDrawImage;
+    AllocatedImage resolveImage;
     AllocatedImage depthImage;
 
     AllocatedImage skyboxImage;
+
+    bool multisamplingEnabled{true};
+    VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_8_BIT}; // TODO: allow to change?
 };

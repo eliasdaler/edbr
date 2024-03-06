@@ -96,15 +96,17 @@ void Renderer::initVulkan(SDL_Window* window)
         .dynamicRendering = true,
     };
 
-    physicalDevice = vkb::PhysicalDeviceSelector{instance}
-                         .set_minimum_version(1, 3)
-                         .add_required_extension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
-                         .set_required_features(deviceFeatures)
-                         .set_required_features_12(features12)
-                         .set_required_features_13(features13)
-                         .set_surface(surface)
-                         .select()
-                         .value();
+    physicalDevice =
+        vkb::PhysicalDeviceSelector{instance}
+            .set_minimum_version(1, 3)
+            .add_required_extension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
+            // .add_required_extension(VK_EXT_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_EXTENSION_NAME)
+            .set_required_features(deviceFeatures)
+            .set_required_features_12(features12)
+            .set_required_features_13(features13)
+            .set_surface(surface)
+            .select()
+            .value();
 
     // check limits
     VkPhysicalDeviceProperties props{};

@@ -24,6 +24,7 @@ public:
     PipelineBuilder& setPolygonMode(VkPolygonMode mode);
     PipelineBuilder& setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
     PipelineBuilder& setMultisamplingNone();
+    PipelineBuilder& setMultisampling(VkSampleCountFlagBits samples);
     PipelineBuilder& disableBlending();
     PipelineBuilder& setColorAttachmentFormat(VkFormat format);
     PipelineBuilder& setDepthFormat(VkFormat format);

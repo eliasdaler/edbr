@@ -30,6 +30,7 @@ struct CreateImageInfo {
     VkImageCreateFlags flags;
     VkExtent3D extent{};
     std::uint32_t numLayers{1};
+    VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
     bool mipMap{false};
     bool isCubemap{false};
 };
@@ -101,6 +102,7 @@ struct RenderingInfoParams {
     std::optional<glm::vec4> colorImageClearValue;
     VkImageView depthImageView{VK_NULL_HANDLE};
     std::optional<float> depthImageClearValue;
+    VkImageView resolveImageView{VK_NULL_HANDLE};
 };
 
 struct RenderInfo {

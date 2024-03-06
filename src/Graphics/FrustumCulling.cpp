@@ -128,6 +128,8 @@ namespace
 
 bool isInFrustum(const Frustum& frustum, const math::Sphere& s)
 {
+    return true;
+
     return (
         isOnOrForwardPlane(frustum.farFace, s) && isOnOrForwardPlane(frustum.nearFace, s) &&
         isOnOrForwardPlane(frustum.leftFace, s) && isOnOrForwardPlane(frustum.rightFace, s) &&

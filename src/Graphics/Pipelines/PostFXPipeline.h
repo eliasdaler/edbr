@@ -14,13 +14,14 @@ class PostFXPipeline {
 public:
     struct PostFXPushContants {
         glm::mat4 invProj;
+        glm::vec4 screenSizeAndUnused;
         glm::vec4 fogColorAndDensity;
         glm::vec4 ambientColorAndIntensity;
         glm::vec4 sunlightColorAndIntensity;
     };
 
 public:
-    PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat);
+    PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat, bool multisampling);
     void cleanup(VkDevice device);
 
     void setImages(const AllocatedImage& drawImage, const AllocatedImage& depthImage);

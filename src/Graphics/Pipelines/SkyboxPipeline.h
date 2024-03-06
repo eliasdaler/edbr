@@ -11,7 +11,11 @@ class Camera;
 
 class SkyboxPipeline {
 public:
-    SkyboxPipeline(Renderer& renderer, VkFormat drawImageFormat, VkFormat depthImageFormat);
+    SkyboxPipeline(
+        Renderer& renderer,
+        VkFormat drawImageFormat,
+        VkFormat depthImageFormat,
+        VkSampleCountFlagBits samples);
     void cleanup(VkDevice device);
 
     void setSkyboxImage(const AllocatedImage& skybox);

@@ -185,6 +185,17 @@ PipelineBuilder& PipelineBuilder::setMultisamplingNone()
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::setMultisampling(VkSampleCountFlagBits samples)
+{
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = samples;
+    multisampling.minSampleShading = 1.0f;
+    multisampling.alphaToCoverageEnable = VK_FALSE;
+    multisampling.alphaToOneEnable = VK_FALSE;
+
+    return *this;
+}
+
 PipelineBuilder& PipelineBuilder::disableBlending()
 {
     colorBlendAttachment.blendEnable = VK_FALSE;

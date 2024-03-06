@@ -11,7 +11,11 @@ struct DrawCommand;
 
 class MeshPipeline {
 public:
-    MeshPipeline(Renderer& renderer, VkFormat drawImageFormat, VkFormat depthImageFormat);
+    MeshPipeline(
+        Renderer& renderer,
+        VkFormat drawImageFormat,
+        VkFormat depthImageFormat,
+        VkSampleCountFlagBits samples);
     void cleanup(VkDevice device);
 
     void draw(

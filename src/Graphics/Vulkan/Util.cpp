@@ -40,7 +40,7 @@ AllocatedImage createImage(
         .extent = createInfo.extent,
         .mipLevels = mipLevels,
         .arrayLayers = createInfo.numLayers,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .samples = createInfo.samples,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = createInfo.usage,
     };
@@ -514,6 +514,12 @@ RenderInfo createRenderingInfo(const RenderingInfoParams& params)
         if (params.depthImageClearValue) {
             ri.depthAttachment.clearValue.depthStencil.depth = params.depthImageClearValue.value();
         }
+    }
+
+    if (params.resolveImageView) {
+        ri.colorAttachment.resolveImageView = params.resolveImageView;
+        ri.colorAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        ri.colorAttachment.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
     }
 
     ri.renderingInfo = VkRenderingInfo{

@@ -104,6 +104,7 @@ set(SHADERS
   mesh_depth_only.vert
   mesh.frag
   postfx.frag
+  postfx_ms.frag
 )
 list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 

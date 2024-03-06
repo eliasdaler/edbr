@@ -131,13 +131,17 @@ void Game::init()
     }
     cameraController.setYawPitch(-2.5f, 0.2f);
 
+#if 1
     const auto startPos = glm::vec3{-48.8440704f, 5.05302525f, 5.56558323f};
     camera.setPosition(startPos);
     cameraController.setYawPitch(3.92699075f, 0.523598909f);
+#endif
 
-    /* const auto startPos = glm::vec3{-48.68f, 16.39f, 17.33f};
+#if 0
+    const auto startPos = glm::vec3{6.77f, 3.66f, 7.25f};
     camera.setPosition(startPos);
-    cameraController.setYawPitch(3.29f, 1.22f); */
+    cameraController.setYawPitch(3.7f, 0.17f);
+#endif
 
     sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
     sunlightColorAndIntensity = glm::vec4{144.f / 255.f, 116.f / 255.f, 26.f / 255.f, 0.643f};
