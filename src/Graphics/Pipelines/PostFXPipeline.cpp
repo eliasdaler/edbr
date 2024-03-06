@@ -7,15 +7,9 @@
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
-PostFXPipeline::PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat, bool multisampling) :
-    renderer(renderer)
+PostFXPipeline::PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat) : renderer(renderer)
 {
     const auto& device = renderer.getDevice();
-
-    const auto vertexShader =
-        vkutil::loadShaderModule("shaders/fullscreen_triangle.vert.spv", device);
-    const auto fragShader = vkutil::loadShaderModule(
-        multisampling ? "shaders/postfx_ms.frag.spv" : "shaders/postfx.frag.spv", device);
 
     const auto bindings = std::array<DescriptorLayoutBinding, 2>{{
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
@@ -37,6 +31,9 @@ PostFXPipeline::PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat, boo
     const auto layouts = std::array{postFXDescSetLayout};
     postFXPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
+    const auto vertexShader =
+        vkutil::loadShaderModule("shaders/fullscreen_triangle.vert.spv", device);
+    const auto fragShader = vkutil::loadShaderModule("shaders/postfx.frag.spv", device);
     postFXPipeline = PipelineBuilder{postFXPipelineLayout}
                          .setShaders(vertexShader, fragShader)
                          .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)

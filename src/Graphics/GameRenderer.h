@@ -11,6 +11,7 @@
 #include <Graphics/Renderer.h>
 
 #include <Graphics/Pipelines/CSMPipeline.h>
+#include <Graphics/Pipelines/DepthResolvePipeline.h>
 #include <Graphics/Pipelines/MeshPipeline.h>
 #include <Graphics/Pipelines/PostFXPipeline.h>
 #include <Graphics/Pipelines/SkinningPipeline.h>
@@ -53,7 +54,7 @@ public:
     Renderer& getRenderer() { return renderer; }
 
 private:
-    void createDrawImage(VkExtent2D extent);
+    void createDrawImage(VkExtent2D extent, bool firstCreate);
 
     void onMultisamplingStateUpdate();
     VkSampleCountFlagBits getSamples() const;
@@ -68,6 +69,7 @@ private:
     std::unique_ptr<CSMPipeline> csmPipeline;
     std::unique_ptr<MeshPipeline> meshPipeline;
     std::unique_ptr<SkyboxPipeline> skyboxPipeline;
+    std::unique_ptr<DepthResolvePipeline> depthResolvePipeline;
     std::unique_ptr<PostFXPipeline> postFXPipeline;
 
     std::vector<DrawCommand> drawCommands;
@@ -76,7 +78,9 @@ private:
     AllocatedImage drawImage;
     AllocatedImage postFXDrawImage;
     AllocatedImage resolveImage;
+
     AllocatedImage depthImage;
+    AllocatedImage resolveDepthImage;
 
     AllocatedImage skyboxImage;
 

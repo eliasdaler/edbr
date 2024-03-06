@@ -15,7 +15,7 @@
 void GameRenderer::init(SDL_Window* window, bool vSync)
 {
     renderer.init(window, vSync);
-    createDrawImage(renderer.getSwapchainExtent());
+    createDrawImage(renderer.getSwapchainExtent(), true);
 
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
     csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
@@ -23,14 +23,14 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
         std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
     skyboxPipeline = std::make_unique<
         SkyboxPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
-    postFXPipeline =
-        std::make_unique<PostFXPipeline>(renderer, drawImage.format, multisamplingEnabled);
+    depthResolvePipeline = std::make_unique<DepthResolvePipeline>(renderer, depthImage);
+    postFXPipeline = std::make_unique<PostFXPipeline>(renderer, drawImage.format);
 
     skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
     skyboxPipeline->setSkyboxImage(skyboxImage);
 }
 
-void GameRenderer::createDrawImage(VkExtent2D extent)
+void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
 {
     const auto drawImageExtent = VkExtent3D{
         .width = extent.width,
@@ -53,17 +53,20 @@ void GameRenderer::createDrawImage(VkExtent2D extent)
         };
         drawImage = renderer.createImage(createImageInfo);
 
-        createImageInfo.samples = VK_SAMPLE_COUNT_1_BIT; // no MSAA
-        postFXDrawImage = renderer.createImage(createImageInfo);
-
         vkutil::addDebugLabel(renderer.getDevice(), drawImage.image, "main draw image");
         vkutil::addDebugLabel(renderer.getDevice(), drawImage.imageView, "main draw image view");
-        vkutil::addDebugLabel(renderer.getDevice(), postFXDrawImage.image, "post FX draw image");
-        vkutil::addDebugLabel(
-            renderer.getDevice(), postFXDrawImage.imageView, "post FX draw image view");
+
+        if (firstCreate) {
+            createImageInfo.samples = VK_SAMPLE_COUNT_1_BIT; // no MSAA
+            postFXDrawImage = renderer.createImage(createImageInfo);
+            vkutil::
+                addDebugLabel(renderer.getDevice(), postFXDrawImage.image, "post FX draw image");
+            vkutil::addDebugLabel(
+                renderer.getDevice(), postFXDrawImage.imageView, "post FX draw image view");
+        }
     }
 
-    { // setup resolve image
+    if (firstCreate) { // setup resolve image
         VkImageUsageFlags usages{};
         usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -82,16 +85,28 @@ void GameRenderer::createDrawImage(VkExtent2D extent)
     }
 
     { // setup depth image
-        const auto usages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        depthImage = renderer.createImage({
+        auto createInfo = vkutil::CreateImageInfo{
             .format = VK_FORMAT_D32_SFLOAT,
             .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             .extent = drawImageExtent,
             .samples = getSamples(),
-        });
+        };
+
+        depthImage = renderer.createImage(createInfo);
         vkutil::addDebugLabel(renderer.getDevice(), depthImage.image, "main draw image (depth)");
         vkutil::
             addDebugLabel(renderer.getDevice(), depthImage.imageView, "main draw image depth view");
+
+        if (firstCreate) {
+            createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            resolveDepthImage = renderer.createImage(createInfo);
+            vkutil::addDebugLabel(
+                renderer.getDevice(), resolveDepthImage.image, "main draw image (depth resolve)");
+            vkutil::addDebugLabel(
+                renderer.getDevice(),
+                resolveDepthImage.imageView,
+                "main draw image depth resolve view");
+        }
     }
 }
 
@@ -248,7 +263,7 @@ void GameRenderer::draw(
         vkutil::cmdEndLabel(cmd); // geometry
     }
 
-    { // Sync Geometry/Sky with PostFX pass
+    { // Sync Geometry/Sky with next pass
         const auto imageBarrier = VkImageMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -280,6 +295,38 @@ void GameRenderer::draw(
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
     }
 
+    if (multisamplingEnabled) {
+        TracyVkZoneC(
+            renderer.getCurrentFrame().tracyVkCtx, cmd, "Depth resolve", tracy::Color::ForestGreen);
+        vkutil::cmdBeginLabel(cmd, "Depth resolve");
+
+        vkutil::transitionImage(
+            cmd,
+            resolveDepthImage.image,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+        const auto renderInfo = vkutil::createRenderingInfo({
+            .renderExtent = resolveDepthImage.getExtent2D(),
+            .depthImageView = resolveDepthImage.imageView,
+        });
+
+        vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
+
+        depthResolvePipeline->draw(cmd, depthImage.getExtent2D(), 8);
+
+        vkCmdEndRendering(cmd);
+
+        // sync
+        vkutil::transitionImage(
+            cmd,
+            resolveDepthImage.image,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        vkutil::cmdEndLabel(cmd);
+    }
+
     // Now we'll draw into another draw image and use currDrawImage and
     // depthImage as attachments
     vkutil::transitionImage(
@@ -287,7 +334,12 @@ void GameRenderer::draw(
         postFXDrawImage.image,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    postFXPipeline->setImages(multisamplingEnabled ? resolveImage : drawImage, depthImage);
+
+    if (multisamplingEnabled) {
+        postFXPipeline->setImages(resolveImage, resolveDepthImage);
+    } else {
+        postFXPipeline->setImages(drawImage, depthImage);
+    }
 
     { // post FX
         vkutil::cmdBeginLabel(cmd, "Post FX");
@@ -300,11 +352,6 @@ void GameRenderer::draw(
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
         const auto pcs = PostFXPipeline::PostFXPushContants{
             .invProj = glm::inverse(camera.getProjection()),
-            .screenSizeAndUnused =
-                {postFXDrawImage.getExtent2D().width,
-                 postFXDrawImage.getExtent2D().height,
-                 0.f,
-                 0.f},
             .fogColorAndDensity = sceneData.fogColorAndDensity,
             .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
             .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
@@ -323,6 +370,7 @@ void GameRenderer::cleanup()
     vkDeviceWaitIdle(device);
 
     postFXPipeline->cleanup(device);
+    depthResolvePipeline->cleanup(device);
     skyboxPipeline->cleanup(device);
     meshPipeline->cleanup(device);
     csmPipeline->cleanup(device);
@@ -330,6 +378,7 @@ void GameRenderer::cleanup()
 
     renderer.destroyImage(skyboxImage);
 
+    renderer.destroyImage(resolveDepthImage);
     renderer.destroyImage(depthImage);
     renderer.destroyImage(resolveImage);
     renderer.destroyImage(postFXDrawImage);
@@ -354,11 +403,8 @@ void GameRenderer::onMultisamplingStateUpdate()
     { // cleanup old state
         meshPipeline->cleanup(renderer.getDevice());
         skyboxPipeline->cleanup(renderer.getDevice());
-        postFXPipeline->cleanup(renderer.getDevice());
 
         renderer.destroyImage(depthImage);
-        renderer.destroyImage(postFXDrawImage);
-        renderer.destroyImage(resolveImage);
         renderer.destroyImage(drawImage);
     }
 
@@ -368,10 +414,11 @@ void GameRenderer::onMultisamplingStateUpdate()
         SkyboxPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
     skyboxPipeline->setSkyboxImage(skyboxImage);
 
-    postFXPipeline =
-        std::make_unique<PostFXPipeline>(renderer, drawImage.format, multisamplingEnabled);
+    createDrawImage(renderer.getSwapchainExtent(), false);
 
-    createDrawImage(renderer.getSwapchainExtent());
+    if (multisamplingEnabled) {
+        depthResolvePipeline->setDepthImage(renderer, depthImage);
+    }
 }
 
 VkSampleCountFlagBits GameRenderer::getSamples() const
