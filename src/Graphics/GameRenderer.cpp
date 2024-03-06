@@ -15,14 +15,16 @@
 void GameRenderer::init(SDL_Window* window, bool vSync)
 {
     renderer.init(window, vSync);
+    samples = renderer.getHighestSupportedSamplingCount();
+
     createDrawImage(renderer.getSwapchainExtent(), true);
 
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
     csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
     meshPipeline =
-        std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
-    skyboxPipeline = std::make_unique<
-        SkyboxPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
+        std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, samples);
+    skyboxPipeline =
+        std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
     depthResolvePipeline = std::make_unique<DepthResolvePipeline>(renderer, depthImage);
     postFXPipeline = std::make_unique<PostFXPipeline>(renderer, drawImage.format);
 
@@ -49,12 +51,12 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
             .format = VK_FORMAT_R16G16B16A16_SFLOAT,
             .usage = usages,
             .extent = drawImageExtent,
-            .samples = getSamples(),
+            .samples = samples,
         };
         drawImage = renderer.createImage(createImageInfo);
 
-        vkutil::addDebugLabel(renderer.getDevice(), drawImage.image, "main draw image");
-        vkutil::addDebugLabel(renderer.getDevice(), drawImage.imageView, "main draw image view");
+        vkutil::addDebugLabel(renderer.getDevice(), drawImage.image, "draw image");
+        vkutil::addDebugLabel(renderer.getDevice(), drawImage.imageView, "draw image view");
 
         if (firstCreate) {
             createImageInfo.samples = VK_SAMPLE_COUNT_1_BIT; // no MSAA
@@ -89,23 +91,21 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
             .format = VK_FORMAT_D32_SFLOAT,
             .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             .extent = drawImageExtent,
-            .samples = getSamples(),
+            .samples = samples,
         };
 
         depthImage = renderer.createImage(createInfo);
-        vkutil::addDebugLabel(renderer.getDevice(), depthImage.image, "main draw image (depth)");
-        vkutil::
-            addDebugLabel(renderer.getDevice(), depthImage.imageView, "main draw image depth view");
+        vkutil::addDebugLabel(renderer.getDevice(), depthImage.image, "draw image (depth)");
+        vkutil::addDebugLabel(renderer.getDevice(), depthImage.imageView, "draw image depth view");
 
         if (firstCreate) {
-            createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            createInfo.samples = VK_SAMPLE_COUNT_1_BIT; // NO MSAA
             resolveDepthImage = renderer.createImage(createInfo);
+
             vkutil::addDebugLabel(
-                renderer.getDevice(), resolveDepthImage.image, "main draw image (depth resolve)");
+                renderer.getDevice(), resolveDepthImage.image, "draw image (depth resolve)");
             vkutil::addDebugLabel(
-                renderer.getDevice(),
-                resolveDepthImage.imageView,
-                "main draw image depth resolve view");
+                renderer.getDevice(), resolveDepthImage.imageView, "draw image depth resolve view");
         }
     }
 }
@@ -229,7 +229,7 @@ void GameRenderer::draw(
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-        if (multisamplingEnabled) {
+        if (isMultisamplingEnabled()) {
             vkutil::transitionImage(
                 cmd,
                 resolveImage.image,
@@ -243,7 +243,7 @@ void GameRenderer::draw(
             .colorImageClearValue = glm::vec4{0.f, 0.f, 0.f, 0.f},
             .depthImageView = depthImage.imageView,
             .depthImageClearValue = 0.f,
-            .resolveImageView = multisamplingEnabled ? resolveImage.imageView : VK_NULL_HANDLE,
+            .resolveImageView = isMultisamplingEnabled() ? resolveImage.imageView : VK_NULL_HANDLE,
         });
 
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
@@ -272,7 +272,7 @@ void GameRenderer::draw(
             .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
             .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .image = multisamplingEnabled ? resolveImage.image : drawImage.image,
+            .image = isMultisamplingEnabled() ? resolveImage.image : drawImage.image,
             .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT),
         };
         const auto depthBarrier = VkImageMemoryBarrier2{
@@ -295,7 +295,7 @@ void GameRenderer::draw(
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
     }
 
-    if (multisamplingEnabled) {
+    if (isMultisamplingEnabled()) {
         TracyVkZoneC(
             renderer.getCurrentFrame().tracyVkCtx, cmd, "Depth resolve", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Depth resolve");
@@ -313,7 +313,8 @@ void GameRenderer::draw(
 
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
-        depthResolvePipeline->draw(cmd, depthImage.getExtent2D(), 8);
+        depthResolvePipeline
+            ->draw(cmd, depthImage.getExtent2D(), vkutil::sampleCountToInt(samples));
 
         vkCmdEndRendering(cmd);
 
@@ -335,7 +336,7 @@ void GameRenderer::draw(
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    if (multisamplingEnabled) {
+    if (isMultisamplingEnabled()) {
         postFXPipeline->setImages(resolveImage, resolveDepthImage);
     } else {
         postFXPipeline->setImages(drawImage, depthImage);
@@ -391,9 +392,34 @@ void GameRenderer::updateDevTools(float dt)
 {
     renderer.updateDevTools(dt);
     ImGui::DragFloat3("Cascades", csmPipeline->percents.data(), 0.1f, 0.f, 1.f);
-    if (ImGui::Checkbox("MSAA", &multisamplingEnabled)) {
-        onMultisamplingStateUpdate();
+
+    if (ImGui::BeginCombo("MSAA", vkutil::sampleCountToString(samples))) {
+        static const auto counts = std::array{
+            VK_SAMPLE_COUNT_1_BIT,
+            VK_SAMPLE_COUNT_2_BIT,
+            VK_SAMPLE_COUNT_4_BIT,
+            VK_SAMPLE_COUNT_8_BIT,
+            VK_SAMPLE_COUNT_16_BIT,
+            VK_SAMPLE_COUNT_32_BIT,
+            VK_SAMPLE_COUNT_64_BIT,
+        };
+        for (const auto& count : counts) {
+            if (!renderer.deviceSupportsSamplingCount(count)) {
+                continue;
+            }
+            bool isSelected = (count == samples);
+            if (ImGui::Selectable(vkutil::sampleCountToString(count), isSelected)) {
+                samples = count;
+                onMultisamplingStateUpdate();
+            }
+        }
+        ImGui::EndCombo();
     }
+}
+
+bool GameRenderer::isMultisamplingEnabled() const
+{
+    return samples != VK_SAMPLE_COUNT_1_BIT;
 }
 
 void GameRenderer::onMultisamplingStateUpdate()
@@ -409,21 +435,16 @@ void GameRenderer::onMultisamplingStateUpdate()
     }
 
     meshPipeline =
-        std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
-    skyboxPipeline = std::make_unique<
-        SkyboxPipeline>(renderer, drawImage.format, depthImage.format, getSamples());
+        std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, samples);
+    skyboxPipeline =
+        std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
     skyboxPipeline->setSkyboxImage(skyboxImage);
 
     createDrawImage(renderer.getSwapchainExtent(), false);
 
-    if (multisamplingEnabled) {
+    if (isMultisamplingEnabled()) {
         depthResolvePipeline->setDepthImage(renderer, depthImage);
     }
-}
-
-VkSampleCountFlagBits GameRenderer::getSamples() const
-{
-    return multisamplingEnabled ? samples : VK_SAMPLE_COUNT_1_BIT;
 }
 
 Scene GameRenderer::loadScene(const std::filesystem::path& path)

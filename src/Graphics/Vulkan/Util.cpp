@@ -538,4 +538,48 @@ RenderInfo createRenderingInfo(const RenderingInfoParams& params)
     return ri;
 }
 
+int sampleCountToInt(VkSampleCountFlagBits count)
+{
+    switch (count) {
+    case VK_SAMPLE_COUNT_1_BIT:
+        return 1;
+    case VK_SAMPLE_COUNT_2_BIT:
+        return 2;
+    case VK_SAMPLE_COUNT_4_BIT:
+        return 4;
+    case VK_SAMPLE_COUNT_8_BIT:
+        return 8;
+    case VK_SAMPLE_COUNT_16_BIT:
+        return 16;
+    case VK_SAMPLE_COUNT_32_BIT:
+        return 32;
+    case VK_SAMPLE_COUNT_64_BIT:
+        return 64;
+    default:
+        return 0;
+    }
+}
+
+const char* sampleCountToString(VkSampleCountFlagBits count)
+{
+    switch (count) {
+    case VK_SAMPLE_COUNT_1_BIT:
+        return "Off";
+    case VK_SAMPLE_COUNT_2_BIT:
+        return "2x";
+    case VK_SAMPLE_COUNT_4_BIT:
+        return "4x";
+    case VK_SAMPLE_COUNT_8_BIT:
+        return "8x";
+    case VK_SAMPLE_COUNT_16_BIT:
+        return "16x";
+    case VK_SAMPLE_COUNT_32_BIT:
+        return "32x";
+    case VK_SAMPLE_COUNT_64_BIT:
+        return "64x";
+    default:
+        return "Unknown";
+    }
+}
+
 } // end of namespace vkutil

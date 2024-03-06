@@ -79,6 +79,9 @@ public:
     VkSampler getDefaultNearestSampler() const { return defaultNearestSampler; }
     VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
 
+    bool deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const;
+    VkSampleCountFlagBits getHighestSupportedSamplingCount() const;
+
 public:
     VkDevice getDevice() const { return device; }
     FrameData& getCurrentFrame();
@@ -102,6 +105,7 @@ public:
 
 private:
     void initVulkan(SDL_Window* window);
+    void checkDeviceCapabilities();
     void createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync);
     void createCommandBuffers();
     void initSyncStructures();
@@ -147,6 +151,10 @@ private: // data
     VkSampler defaultLinearSampler;
     VkSampler defaultShadowMapSampler;
     AllocatedImage whiteTexture;
+
+    VkSampleCountFlagBits supportedSampleCounts;
+    VkSampleCountFlagBits highestSupportedSamples{VK_SAMPLE_COUNT_1_BIT};
+    float maxSamplerAnisotropy{1.f};
 
     bool imguiDrawn{true};
 };

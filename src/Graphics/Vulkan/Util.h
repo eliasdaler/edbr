@@ -113,4 +113,7 @@ struct RenderInfo {
 
 RenderInfo createRenderingInfo(const RenderingInfoParams& params);
 
+int sampleCountToInt(VkSampleCountFlagBits count);
+const char* sampleCountToString(VkSampleCountFlagBits count);
+
 } // end of namespace vkutil

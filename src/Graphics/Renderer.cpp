@@ -108,10 +108,7 @@ void Renderer::initVulkan(SDL_Window* window)
             .select()
             .value();
 
-    // check limits
-    VkPhysicalDeviceProperties props{};
-    vkGetPhysicalDeviceProperties(physicalDevice, &props);
-    assert(props.limits.maxSamplerAnisotropy == 16.f && "TODO: use smaller aniso values");
+    checkDeviceCapabilities();
 
     device = vkb::DeviceBuilder{physicalDevice}.build().value();
 
@@ -135,6 +132,37 @@ void Renderer::initVulkan(SDL_Window* window)
     }
 
     deletionQueue.pushFunction([&](VkDevice) { vmaDestroyAllocator(allocator); });
+}
+
+void Renderer::checkDeviceCapabilities()
+{
+    // check limits
+    VkPhysicalDeviceProperties props{};
+    vkGetPhysicalDeviceProperties(physicalDevice, &props);
+
+    maxSamplerAnisotropy = props.limits.maxSamplerAnisotropy;
+
+    { // store which sampling counts HW supports
+        const auto counts = std::array{
+            VK_SAMPLE_COUNT_1_BIT,
+            VK_SAMPLE_COUNT_2_BIT,
+            VK_SAMPLE_COUNT_4_BIT,
+            VK_SAMPLE_COUNT_8_BIT,
+            VK_SAMPLE_COUNT_16_BIT,
+            VK_SAMPLE_COUNT_32_BIT,
+            VK_SAMPLE_COUNT_64_BIT,
+        };
+
+        const auto supportedByDepthAndColor =
+            props.limits.framebufferColorSampleCounts & props.limits.framebufferDepthSampleCounts;
+        supportedSampleCounts = {};
+        for (const auto& count : counts) {
+            if (supportedByDepthAndColor & count) {
+                supportedSampleCounts = (VkSampleCountFlagBits)(supportedSampleCounts | count);
+                highestSupportedSamples = count;
+            }
+        }
+    }
 }
 
 void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
@@ -273,9 +301,9 @@ void Renderer::initSamplers()
             .magFilter = VK_FILTER_LINEAR,
             .minFilter = VK_FILTER_LINEAR,
             .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-            // TODO: make possible to disable anisotropy?
+            // TODO: make possible to disable anisotropy or set other values?
             .anisotropyEnable = VK_TRUE,
-            .maxAnisotropy = 16.f,
+            .maxAnisotropy = maxSamplerAnisotropy,
         };
         VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultLinearSampler));
         deletionQueue.pushFunction(
@@ -723,4 +751,14 @@ MaterialId Renderer::addMaterial(Material material)
 const Material& Renderer::getMaterial(MaterialId id) const
 {
     return materialCache.getMaterial(id);
+}
+
+bool Renderer::deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const
+{
+    return (supportedSampleCounts & sample) != 0;
+}
+
+VkSampleCountFlagBits Renderer::getHighestSupportedSamplingCount() const
+{
+    return highestSupportedSamples;
 }

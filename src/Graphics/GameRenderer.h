@@ -56,8 +56,8 @@ public:
 private:
     void createDrawImage(VkExtent2D extent, bool firstCreate);
 
+    bool isMultisamplingEnabled() const;
     void onMultisamplingStateUpdate();
-    VkSampleCountFlagBits getSamples() const;
 
     void draw(VkCommandBuffer cmd, const Camera& camera, const RendererSceneData& sceneData);
 
@@ -84,6 +84,5 @@ private:
 
     AllocatedImage skyboxImage;
 
-    bool multisamplingEnabled{true};
-    VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_8_BIT}; // TODO: allow to change?
+    VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
 };
