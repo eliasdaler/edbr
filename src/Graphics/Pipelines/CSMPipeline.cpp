@@ -154,7 +154,7 @@ void CSMPipeline::draw(
 
         // FIXME: sort by mesh?
         for (const auto& dc : drawCommands) {
-            if (!shadowsEnabled) {
+            if (!shadowsEnabled || !dc.castShadow) {
                 continue;
             }
 

@@ -19,7 +19,6 @@
 
 #include <Graphics/Vulkan/DeletionQueue.h>
 #include <Graphics/Vulkan/Descriptors.h>
-#include <Graphics/Vulkan/NBuffer.h>
 #include <Graphics/Vulkan/Types.h>
 #include <Graphics/Vulkan/VulkanImGui.h>
 #include <Graphics/Vulkan/VulkanImmediateExecutor.h>
@@ -79,22 +78,21 @@ public:
 
     VkSampler getDefaultNearestSampler() const { return defaultNearestSampler; }
     VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
+    VkSampler getDefaultShadowMapSample() const { return defaultShadowMapSampler; }
 
     bool deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const;
     VkSampleCountFlagBits getHighestSupportedSamplingCount() const;
 
 public:
     VkDevice getDevice() const { return device; }
+    VmaAllocator getAllocator() const { return allocator; }
+
     FrameData& getCurrentFrame();
     std::uint32_t getCurrentFrameIndex() const;
     VkExtent2D getSwapchainExtent() const { return swapchainExtent; }
 
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout layout);
 
-    void setShadowMap(const AllocatedImage& shadowMap);
-    void uploadSceneData(VkCommandBuffer cmd, const GPUSceneData& sceneData);
-
-    VkDescriptorSet getSceneDataDescSet() const { return sceneDataDescriptorSet; }
     VkDescriptorSetLayout getSceneDataDescSetLayout() const { return sceneDataDescriptorLayout; }
     VkDescriptorSetLayout getMaterialDataDescSetLayout() const { return meshMaterialLayout; }
 
@@ -150,10 +148,7 @@ private: // data
 
     MaterialCache materialCache;
     VkDescriptorSetLayout sceneDataDescriptorLayout;
-    VkDescriptorSet sceneDataDescriptorSet;
     VkDescriptorSetLayout meshMaterialLayout;
-
-    NBuffer sceneDataBuffer;
 
     VkSampler defaultNearestSampler;
     VkSampler defaultLinearSampler;

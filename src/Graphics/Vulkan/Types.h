@@ -40,25 +40,6 @@ struct GPUDrawPushConstants {
     VkDeviceAddress vertexBuffer;
 };
 
-struct GPUSceneData {
-    // camera
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::mat4 viewProj;
-    glm::vec4 cameraPos;
-
-    // ambient
-    glm::vec4 ambientColorAndIntensity;
-
-    // sun
-    glm::vec4 sunlightDirection;
-    glm::vec4 sunlightColorAndIntensity;
-
-    // CSM data
-    glm::vec4 cascadeFarPlaneZs;
-    std::array<glm::mat4, 3> csmLightSpaceTMs;
-};
-
 struct DepthOnlyPushConstants {
     glm::mat4 mvp;
     VkDeviceAddress vertexBuffer;

@@ -15,4 +15,5 @@ struct DrawCommand {
 
     const SkinnedMesh* skinnedMesh{nullptr};
     std::uint32_t jointMatricesStartIndex;
+    bool castShadow{true};
 };

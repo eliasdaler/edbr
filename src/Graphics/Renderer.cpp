@@ -61,14 +61,6 @@ void Renderer::init(SDL_Window* window, bool vSync)
     }
 
     allocateMaterialDataBuffer();
-
-    sceneDataBuffer.init(
-        device,
-        allocator,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        sizeof(GPUSceneData),
-        FRAME_OVERLAP,
-        "scene data");
 }
 
 void Renderer::initVulkan(SDL_Window* window)
@@ -469,8 +461,6 @@ void Renderer::cleanup()
         vkDestroySemaphore(device, frame.renderSemaphore, nullptr);
     }
 
-    sceneDataBuffer.cleanup(device, allocator);
-
     deletionQueue.flush(device);
 
     vkutil::cleanupImGui(imguiData, device);
@@ -558,32 +548,6 @@ std::uint32_t Renderer::getCurrentFrameIndex() const
 VkDescriptorSet Renderer::allocateDescriptorSet(VkDescriptorSetLayout layout)
 {
     return descriptorAllocator.allocate(device, layout);
-}
-
-void Renderer::setShadowMap(const AllocatedImage& shadowMap)
-{
-    sceneDataDescriptorSet = descriptorAllocator.allocate(device, sceneDataDescriptorLayout);
-
-    DescriptorWriter writer;
-    writer.writeBuffer(
-        0,
-        sceneDataBuffer.getBuffer().buffer,
-        sizeof(GPUSceneData),
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.writeImage(
-        1,
-        shadowMap.imageView,
-        defaultShadowMapSampler,
-        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(device, sceneDataDescriptorSet);
-}
-
-void Renderer::uploadSceneData(VkCommandBuffer cmd, const GPUSceneData& sceneData)
-{
-    sceneDataBuffer
-        .uploadNewData(cmd, getCurrentFrameIndex(), (void*)&sceneData, sizeof(GPUSceneData));
 }
 
 MeshId Renderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)

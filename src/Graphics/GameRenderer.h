@@ -17,6 +17,8 @@
 #include <Graphics/Pipelines/SkinningPipeline.h>
 #include <Graphics/Pipelines/SkyboxPipeline.h>
 
+#include <Graphics/Vulkan/NBuffer.h>
+
 struct SDL_Window;
 
 class Camera;
@@ -44,7 +46,7 @@ public:
     void beginDrawing();
     void endDrawing();
 
-    void addDrawCommand(MeshId id, const glm::mat4& transform);
+    void addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow);
     void addDrawSkinnedMeshCommand(
         std::span<const MeshId> meshes,
         std::span<const SkinnedMesh> skinnedMeshes,
@@ -87,4 +89,25 @@ private:
 
     bool shadowsEnabled{true};
     VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
+
+    struct GPUSceneData {
+        // camera
+        glm::mat4 view;
+        glm::mat4 proj;
+        glm::mat4 viewProj;
+        glm::vec4 cameraPos;
+
+        // ambient
+        glm::vec4 ambientColorAndIntensity;
+
+        // sun
+        glm::vec4 sunlightDirection;
+        glm::vec4 sunlightColorAndIntensity;
+
+        // CSM data
+        glm::vec4 cascadeFarPlaneZs;
+        std::array<glm::mat4, 3> csmLightSpaceTMs;
+    };
+    NBuffer sceneDataBuffer;
+    VkDescriptorSet sceneDataDescriptorSet;
 };

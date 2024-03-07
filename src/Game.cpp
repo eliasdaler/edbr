@@ -451,6 +451,14 @@ void Game::updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransfo
     }
 }
 
+namespace
+{
+bool shouldCastShadow(const Game::Entity& e)
+{
+    return !e.tag.starts_with("GroundTile");
+}
+}
+
 void Game::generateDrawList()
 {
     ZoneScopedN("Generate draw list");
@@ -473,11 +481,12 @@ void Game::generateDrawList()
             renderer.addDrawSkinnedMeshCommand(
                 e.meshes, e.skinnedMeshes, e.worldTransform, e.skeletonAnimator.getJointMatrices());
         } else {
+            bool castShadow = shouldCastShadow(e);
             for (std::size_t i = 0; i < e.meshes.size(); ++i) {
                 const auto meshTransform = e.meshTransforms[i].isIdentity() ?
                                                e.worldTransform :
                                                e.worldTransform * e.meshTransforms[i].asMatrix();
-                renderer.addDrawCommand(e.meshes[i], meshTransform);
+                renderer.addDrawCommand(e.meshes[i], meshTransform, castShadow);
             }
         }
     }

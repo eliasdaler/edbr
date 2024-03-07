@@ -22,7 +22,6 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
 
     csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
-    renderer.setShadowMap(csmPipeline->getShadowMap());
 
     meshPipeline =
         std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, samples);
@@ -33,6 +32,34 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
 
     skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
     skyboxPipeline->setSkyboxImage(skyboxImage);
+
+    {
+        sceneDataBuffer.init(
+            renderer.getDevice(),
+            renderer.getAllocator(),
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            sizeof(GPUSceneData),
+            Renderer::FRAME_OVERLAP,
+            "scene data");
+
+        sceneDataDescriptorSet =
+            renderer.allocateDescriptorSet(renderer.getSceneDataDescSetLayout());
+
+        DescriptorWriter writer;
+        writer.writeBuffer(
+            0,
+            sceneDataBuffer.getBuffer().buffer,
+            sizeof(GPUSceneData),
+            0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        writer.writeImage(
+            1,
+            csmPipeline->getShadowMap().imageView,
+            renderer.getDefaultShadowMapSample(),
+            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        writer.updateSet(renderer.getDevice(), sceneDataDescriptorSet);
+    }
 }
 
 void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
@@ -220,7 +247,8 @@ void GameRenderer::draw(
                 },
             .csmLightSpaceTMs = csmPipeline->csmLightSpaceTMs,
         };
-        renderer.uploadSceneData(cmd, gpuSceneData);
+        sceneDataBuffer.uploadNewData(
+            cmd, renderer.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
 
         vkutil::transitionImage(
             cmd,
@@ -257,7 +285,7 @@ void GameRenderer::draw(
             cmd,
             drawImage.getExtent2D(),
             camera,
-            renderer.getSceneDataDescSet(),
+            sceneDataDescriptorSet,
             drawCommands,
             sortedDrawCommands);
 
@@ -378,6 +406,8 @@ void GameRenderer::cleanup()
 
     vkDeviceWaitIdle(device);
 
+    sceneDataBuffer.cleanup(device, renderer.getAllocator());
+
     postFXPipeline->cleanup(device);
     depthResolvePipeline->cleanup(device);
     skyboxPipeline->cleanup(device);
@@ -480,7 +510,7 @@ void GameRenderer::endDrawing()
     sortDrawList();
 }
 
-void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform)
+void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow)
 {
     const auto& mesh = renderer.getMesh(id);
     const auto worldBoundingSphere =
@@ -490,6 +520,7 @@ void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform)
         .meshId = id,
         .transformMatrix = transform,
         .worldBoundingSphere = worldBoundingSphere,
+        .castShadow = castShadow,
     });
 }
 
