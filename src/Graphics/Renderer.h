@@ -19,6 +19,7 @@
 
 #include <Graphics/Vulkan/DeletionQueue.h>
 #include <Graphics/Vulkan/Descriptors.h>
+#include <Graphics/Vulkan/NBuffer.h>
 #include <Graphics/Vulkan/Types.h>
 #include <Graphics/Vulkan/VulkanImGui.h>
 #include <Graphics/Vulkan/VulkanImmediateExecutor.h>
@@ -152,8 +153,7 @@ private: // data
     VkDescriptorSet sceneDataDescriptorSet;
     VkDescriptorSetLayout meshMaterialLayout;
 
-    std::array<AllocatedBuffer, FRAME_OVERLAP> stagingSceneDataBuffers;
-    AllocatedBuffer sceneDataBuffer;
+    NBuffer sceneDataBuffer;
 
     VkSampler defaultNearestSampler;
     VkSampler defaultLinearSampler;

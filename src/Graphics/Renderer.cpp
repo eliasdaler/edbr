@@ -60,17 +60,15 @@ void Renderer::init(SDL_Window* window, bool vSync)
         deletionQueue.pushFunction([this, i](VkDevice) { TracyVkDestroy(frames[i].tracyVkCtx); });
     }
 
-    sceneDataBuffer = createBuffer(
-        sizeof(GPUSceneData),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-    vkutil::addDebugLabel(device, sceneDataBuffer.buffer, "scene data");
-    for (std::size_t i = 0; i < FRAME_OVERLAP; ++i) {
-        stagingSceneDataBuffers[i] = createBuffer(
-            sizeof(GPUSceneData),
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    }
-
     allocateMaterialDataBuffer();
+
+    sceneDataBuffer.init(
+        device,
+        allocator,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        sizeof(GPUSceneData),
+        FRAME_OVERLAP,
+        "scene data");
 }
 
 void Renderer::initVulkan(SDL_Window* window)
@@ -471,10 +469,7 @@ void Renderer::cleanup()
         vkDestroySemaphore(device, frame.renderSemaphore, nullptr);
     }
 
-    destroyBuffer(sceneDataBuffer);
-    for (std::size_t i = 0; i < FRAME_OVERLAP; ++i) {
-        destroyBuffer(stagingSceneDataBuffers[i]);
-    }
+    sceneDataBuffer.cleanup(device, allocator);
 
     deletionQueue.flush(device);
 
@@ -571,7 +566,11 @@ void Renderer::setShadowMap(const AllocatedImage& shadowMap)
 
     DescriptorWriter writer;
     writer.writeBuffer(
-        0, sceneDataBuffer.buffer, sizeof(GPUSceneData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        0,
+        sceneDataBuffer.getBuffer().buffer,
+        sizeof(GPUSceneData),
+        0,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     writer.writeImage(
         1,
         shadowMap.imageView,
@@ -583,62 +582,8 @@ void Renderer::setShadowMap(const AllocatedImage& shadowMap)
 
 void Renderer::uploadSceneData(VkCommandBuffer cmd, const GPUSceneData& sceneData)
 {
-    { // sync previous reads with write
-        const auto bufferBarrier = VkBufferMemoryBarrier2{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            .srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-            .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-            .buffer = sceneDataBuffer.buffer,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        };
-        const auto dependencyInfo = VkDependencyInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .bufferMemoryBarrierCount = 1,
-            .pBufferMemoryBarriers = &bufferBarrier,
-        };
-        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-    }
-
-    auto& staging = stagingSceneDataBuffers[getCurrentFrameIndex()];
-    memcpy(staging.info.pMappedData, &sceneData, sizeof(GPUSceneData));
-
-    const auto region = VkBufferCopy2{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-        .srcOffset = 0,
-        .dstOffset = 0,
-        .size = sizeof(GPUSceneData),
-    };
-    const auto bufCopyInfo = VkCopyBufferInfo2{
-        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-        .srcBuffer = staging.buffer,
-        .dstBuffer = sceneDataBuffer.buffer,
-        .regionCount = 1,
-        .pRegions = &region,
-    };
-
-    vkCmdCopyBuffer2(cmd, &bufCopyInfo);
-
-    { // sync write
-        const auto bufferBarrier = VkBufferMemoryBarrier2{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
-            .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
-            .buffer = sceneDataBuffer.buffer,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        };
-        const auto dependencyInfo = VkDependencyInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .bufferMemoryBarrierCount = 1,
-            .pBufferMemoryBarriers = &bufferBarrier,
-        };
-        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-    }
+    sceneDataBuffer
+        .uploadNewData(cmd, getCurrentFrameIndex(), (void*)&sceneData, sizeof(GPUSceneData));
 }
 
 MeshId Renderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)

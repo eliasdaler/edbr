@@ -21,6 +21,7 @@ add_executable(game
   Graphics/Vulkan/DeletionQueue.cpp
   Graphics/Vulkan/Descriptors.cpp
   Graphics/Vulkan/Init.cpp
+  Graphics/Vulkan/NBuffer.cpp
   Graphics/Vulkan/Pipelines.cpp
   Graphics/Vulkan/Util.cpp
   Graphics/Vulkan/VmaImpl.cpp
