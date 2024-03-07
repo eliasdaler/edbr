@@ -455,7 +455,6 @@ void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
 
         VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
     }
-
     frameNumber++;
 }
 
@@ -584,6 +583,25 @@ void Renderer::setShadowMap(const AllocatedImage& shadowMap)
 
 void Renderer::uploadSceneData(VkCommandBuffer cmd, const GPUSceneData& sceneData)
 {
+    { // sync previous reads with write
+        const auto bufferBarrier = VkBufferMemoryBarrier2{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            .srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
+            .buffer = sceneDataBuffer.buffer,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        };
+        const auto dependencyInfo = VkDependencyInfo{
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers = &bufferBarrier,
+        };
+        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+    }
+
     auto& staging = stagingSceneDataBuffers[getCurrentFrameIndex()];
     memcpy(staging.info.pMappedData, &sceneData, sizeof(GPUSceneData));
 
@@ -601,40 +619,26 @@ void Renderer::uploadSceneData(VkCommandBuffer cmd, const GPUSceneData& sceneDat
         .pRegions = &region,
     };
 
-    { // GIGACOPE
-        const auto memoryBarrier = VkMemoryBarrier2{
-            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
+    vkCmdCopyBuffer2(cmd, &bufCopyInfo);
+
+    { // sync write
+        const auto bufferBarrier = VkBufferMemoryBarrier2{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+            .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
             .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
+            .buffer = sceneDataBuffer.buffer,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
         };
         const auto dependencyInfo = VkDependencyInfo{
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .memoryBarrierCount = 1,
-            .pMemoryBarriers = &memoryBarrier,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers = &bufferBarrier,
         };
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
     }
-
-    vkCmdCopyBuffer2(cmd, &bufCopyInfo);
-
-    const auto bufferBarrier = VkBufferMemoryBarrier2{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-        .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
-        .buffer = sceneDataBuffer.buffer,
-        .offset = 0,
-        .size = VK_WHOLE_SIZE,
-    };
-    const auto dependencyInfo = VkDependencyInfo{
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .bufferMemoryBarrierCount = 1,
-        .pBufferMemoryBarriers = &bufferBarrier,
-    };
-    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
 }
 
 MeshId Renderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)
