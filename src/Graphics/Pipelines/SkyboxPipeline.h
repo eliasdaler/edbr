@@ -18,8 +18,10 @@ public:
         VkSampleCountFlagBits samples);
     void cleanup(VkDevice device);
 
-    void setSkyboxImage(const AllocatedImage& skybox);
     void draw(VkCommandBuffer cmd, const Camera& camera);
+
+    // updating the image requires sync (vkDeviceWaitIdle)
+    void setSkyboxImage(const AllocatedImage& skybox);
 
 private:
     Renderer& renderer;

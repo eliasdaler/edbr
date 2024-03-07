@@ -36,7 +36,7 @@ void Renderer::init(SDL_Window* window, bool vSync)
 
     createCommandBuffers();
     initSyncStructures();
-    initDescriptorAllocators();
+    initDescriptorAllocator();
 
     initDescriptors();
     initSamplers();
@@ -232,24 +232,8 @@ void Renderer::initSyncStructures()
     }
 }
 
-void Renderer::initDescriptorAllocators()
+void Renderer::initDescriptorAllocator()
 {
-    for (std::size_t i = 0; i < FRAME_OVERLAP; i++) {
-        // create a descriptor pool
-        std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> frame_sizes = {
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
-        };
-
-        auto& fd = frames[i];
-        fd.frameDescriptors.init(device, 1000, frame_sizes);
-
-        deletionQueue.pushFunction(
-            [&, i](VkDevice) { frames[i].frameDescriptors.destroyPools(device); });
-    }
-
     const auto sizes = std::vector<DescriptorAllocatorGrowable::PoolSizeRatio>{
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
@@ -260,17 +244,6 @@ void Renderer::initDescriptorAllocators()
 
 void Renderer::initDescriptors()
 {
-    const auto sceneDataBindings = std::array<DescriptorLayoutBinding, 2>{{
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
-    }};
-    sceneDataDescriptorLayout = vkutil::buildDescriptorSetLayout(
-        device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sceneDataBindings);
-
-    deletionQueue.pushFunction([this](VkDevice) {
-        vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr);
-    });
-
     const auto meshMaterialBindings = std::array<DescriptorLayoutBinding, 2>{{
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
@@ -343,12 +316,10 @@ void Renderer::initDefaultTextures()
 
 VkCommandBuffer Renderer::beginFrame()
 {
-    auto& frame = getCurrentFrame();
+    const auto& frame = getCurrentFrame();
 
     VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, NO_TIMEOUT));
     VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
-
-    frame.deletionQueue.flush(device);
 
     const auto& cmd = frame.mainCommandBuffer;
     const auto cmdBeginInfo = VkCommandBufferBeginInfo{
@@ -454,7 +425,6 @@ void Renderer::cleanup()
     materialCache.cleanup(*this);
 
     for (auto& frame : frames) {
-        frame.deletionQueue.flush(device);
         vkDestroyCommandPool(device, frame.commandPool, 0);
         vkDestroyFence(device, frame.renderFence, nullptr);
         vkDestroySemaphore(device, frame.swapchainSemaphore, nullptr);
@@ -531,9 +501,6 @@ void Renderer::destroyImage(const AllocatedImage& image) const
 {
     vkutil::destroyImage(device, allocator, image);
 }
-
-void Renderer::updateDevTools(float dt)
-{}
 
 Renderer::FrameData& Renderer::getCurrentFrame()
 {

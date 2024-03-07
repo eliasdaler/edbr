@@ -24,19 +24,20 @@ struct SDL_Window;
 class Camera;
 struct Scene;
 
-struct RendererSceneData {
-    const Camera& camera;
-    glm::vec4 ambientColorAndIntensity;
-    glm::vec4 sunlightDirection;
-    glm::vec4 sunlightColorAndIntensity;
-    glm::vec4 fogColorAndDensity;
-};
-
 class GameRenderer {
+public:
+    struct SceneData {
+        const Camera& camera;
+        glm::vec4 ambientColorAndIntensity;
+        glm::vec4 sunlightDirection;
+        glm::vec4 sunlightColorAndIntensity;
+        glm::vec4 fogColorAndDensity;
+    };
+
 public:
     void init(SDL_Window* window, bool vSync);
 
-    void draw(const Camera& camera, const RendererSceneData& sceneData);
+    void draw(const Camera& camera, const SceneData& sceneData);
     void cleanup();
 
     void updateDevTools(float dt);
@@ -57,11 +58,13 @@ public:
 
 private:
     void createDrawImage(VkExtent2D extent, bool firstCreate);
+    void initSceneData();
+    void updateSceneDataDescriptorSet();
 
     bool isMultisamplingEnabled() const;
     void onMultisamplingStateUpdate();
 
-    void draw(VkCommandBuffer cmd, const Camera& camera, const RendererSceneData& sceneData);
+    void draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData);
 
     void sortDrawList();
 
@@ -109,5 +112,6 @@ private:
         std::array<glm::mat4, 3> csmLightSpaceTMs;
     };
     NBuffer sceneDataBuffer;
+    VkDescriptorSetLayout sceneDataDescriptorLayout;
     VkDescriptorSet sceneDataDescriptorSet;
 };

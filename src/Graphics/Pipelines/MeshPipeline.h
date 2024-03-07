@@ -15,6 +15,7 @@ public:
         Renderer& renderer,
         VkFormat drawImageFormat,
         VkFormat depthImageFormat,
+        VkDescriptorSetLayout sceneDataDescriptorLayout,
         VkSampleCountFlagBits samples);
     void cleanup(VkDevice device);
 

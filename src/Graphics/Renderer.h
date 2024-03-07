@@ -42,10 +42,6 @@ public:
         VkSemaphore renderSemaphore;
         VkFence renderFence;
 
-        DeletionQueue deletionQueue;
-
-        DescriptorAllocatorGrowable frameDescriptors;
-
         TracyVkCtx tracyVkCtx;
     };
 
@@ -74,8 +70,6 @@ public:
         bool mipMap) const;
     void destroyImage(const AllocatedImage& image) const;
 
-    void updateDevTools(float dt);
-
     VkSampler getDefaultNearestSampler() const { return defaultNearestSampler; }
     VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
     VkSampler getDefaultShadowMapSample() const { return defaultShadowMapSampler; }
@@ -93,7 +87,6 @@ public:
 
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout layout);
 
-    VkDescriptorSetLayout getSceneDataDescSetLayout() const { return sceneDataDescriptorLayout; }
     VkDescriptorSetLayout getMaterialDataDescSetLayout() const { return meshMaterialLayout; }
 
     MeshId addMesh(const CPUMesh& cpuMesh, MaterialId material);
@@ -110,7 +103,7 @@ private:
     void createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync);
     void createCommandBuffers();
     void initSyncStructures();
-    void initDescriptorAllocators();
+    void initDescriptorAllocator();
     void initDescriptors();
     void initSamplers();
     void initDefaultTextures();
@@ -147,7 +140,6 @@ private: // data
     AllocatedBuffer materialDataBuffer;
 
     MaterialCache materialCache;
-    VkDescriptorSetLayout sceneDataDescriptorLayout;
     VkDescriptorSetLayout meshMaterialLayout;
 
     VkSampler defaultNearestSampler;

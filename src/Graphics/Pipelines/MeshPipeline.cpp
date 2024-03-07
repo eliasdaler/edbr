@@ -13,6 +13,7 @@ MeshPipeline::MeshPipeline(
     Renderer& renderer,
     VkFormat drawImageFormat,
     VkFormat depthImageFormat,
+    VkDescriptorSetLayout sceneDataDescriptorLayout,
     VkSampleCountFlagBits samples) :
     renderer(renderer)
 {
@@ -32,7 +33,7 @@ MeshPipeline::MeshPipeline(
 
     const auto pushConstantRanges = std::array{bufferRange};
     const auto layouts =
-        std::array{renderer.getSceneDataDescSetLayout(), renderer.getMaterialDataDescSetLayout()};
+        std::array{sceneDataDescriptorLayout, renderer.getMaterialDataDescSetLayout()};
     meshPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     meshPipeline = PipelineBuilder{meshPipelineLayout}

@@ -209,7 +209,7 @@ void Game::run()
 
         {
             ZoneScopedN("Render");
-            const auto sceneData = RendererSceneData{
+            const auto sceneData = GameRenderer::SceneData{
                 .camera = camera,
                 .ambientColorAndIntensity = ambientColorAndIntensity,
                 .sunlightDirection = sunlightDir,

@@ -17,9 +17,7 @@ PostFXPipeline::PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat) : r
     }};
     postFXDescSetLayout = vkutil::
         buildDescriptorSetLayout(renderer.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
-    for (auto& fd : frames) {
-        fd.postFXDescSet = renderer.allocateDescriptorSet(postFXDescSetLayout);
-    }
+    postFXDescSet = renderer.allocateDescriptorSet(postFXDescSetLayout);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -57,11 +55,6 @@ void PostFXPipeline::cleanup(VkDevice device)
     vkDestroyPipelineLayout(device, postFXPipelineLayout, nullptr);
 }
 
-PostFXPipeline::FrameData& PostFXPipeline::getCurrentFrameData()
-{
-    return frames[renderer.getCurrentFrameIndex()];
-}
-
 void PostFXPipeline::setImages(const AllocatedImage& drawImage, const AllocatedImage& depthImage)
 {
     DescriptorWriter writer;
@@ -77,7 +70,7 @@ void PostFXPipeline::setImages(const AllocatedImage& drawImage, const AllocatedI
         renderer.getDefaultNearestSampler(),
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(renderer.getDevice(), getCurrentFrameData().postFXDescSet);
+    writer.updateSet(renderer.getDevice(), postFXDescSet);
 }
 
 void PostFXPipeline::draw(VkCommandBuffer cmd, const PostFXPushContants& pcs)
@@ -89,7 +82,7 @@ void PostFXPipeline::draw(VkCommandBuffer cmd, const PostFXPushContants& pcs)
         postFXPipelineLayout,
         0,
         1,
-        &getCurrentFrameData().postFXDescSet,
+        &postFXDescSet,
         0,
         nullptr);
 

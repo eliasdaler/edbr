@@ -17,49 +17,30 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     renderer.init(window, vSync);
     samples = renderer.getHighestSupportedSamplingCount();
 
+    initSceneData();
+
     createDrawImage(renderer.getSwapchainExtent(), true);
 
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
-
     csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
-
-    meshPipeline =
-        std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, samples);
+    meshPipeline = std::make_unique<MeshPipeline>(
+        renderer, drawImage.format, depthImage.format, sceneDataDescriptorLayout, samples);
+    depthResolvePipeline = std::make_unique<DepthResolvePipeline>(renderer, depthImage);
     skyboxPipeline =
         std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
-    depthResolvePipeline = std::make_unique<DepthResolvePipeline>(renderer, depthImage);
     postFXPipeline = std::make_unique<PostFXPipeline>(renderer, drawImage.format);
+
+    if (isMultisamplingEnabled()) {
+        postFXPipeline->setImages(resolveImage, resolveDepthImage);
+    } else {
+        postFXPipeline->setImages(drawImage, depthImage);
+    }
 
     skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
     skyboxPipeline->setSkyboxImage(skyboxImage);
 
-    {
-        sceneDataBuffer.init(
-            renderer.getDevice(),
-            renderer.getAllocator(),
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            sizeof(GPUSceneData),
-            Renderer::FRAME_OVERLAP,
-            "scene data");
-
-        sceneDataDescriptorSet =
-            renderer.allocateDescriptorSet(renderer.getSceneDataDescSetLayout());
-
-        DescriptorWriter writer;
-        writer.writeBuffer(
-            0,
-            sceneDataBuffer.getBuffer().buffer,
-            sizeof(GPUSceneData),
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        writer.writeImage(
-            1,
-            csmPipeline->getShadowMap().imageView,
-            renderer.getDefaultShadowMapSample(),
-            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        writer.updateSet(renderer.getDevice(), sceneDataDescriptorSet);
-    }
+    // depends on csm pipeline being created
+    updateSceneDataDescriptorSet();
 }
 
 void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
@@ -140,7 +121,48 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
     }
 }
 
-void GameRenderer::draw(const Camera& camera, const RendererSceneData& sceneData)
+void GameRenderer::initSceneData()
+{
+    const auto sceneDataBindings = std::array<DescriptorLayoutBinding, 2>{{
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
+        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
+    }};
+    sceneDataDescriptorLayout = vkutil::buildDescriptorSetLayout(
+        renderer.getDevice(),
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        sceneDataBindings);
+
+    sceneDataBuffer.init(
+        renderer.getDevice(),
+        renderer.getAllocator(),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        sizeof(GPUSceneData),
+        Renderer::FRAME_OVERLAP,
+        "scene data");
+
+    sceneDataDescriptorSet = renderer.allocateDescriptorSet(sceneDataDescriptorLayout);
+}
+
+void GameRenderer::updateSceneDataDescriptorSet()
+{
+    assert(csmPipeline);
+    DescriptorWriter writer;
+    writer.writeBuffer(
+        0,
+        sceneDataBuffer.getBuffer().buffer,
+        sizeof(GPUSceneData),
+        0,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.writeImage(
+        1,
+        csmPipeline->getShadowMap().imageView,
+        renderer.getDefaultShadowMapSample(),
+        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    writer.updateSet(renderer.getDevice(), sceneDataDescriptorSet);
+}
+
+void GameRenderer::draw(const Camera& camera, const SceneData& sceneData)
 {
     auto cmd = renderer.beginFrame();
     draw(cmd, camera, sceneData);
@@ -155,10 +177,7 @@ void GameRenderer::draw(const Camera& camera, const RendererSceneData& sceneData
     renderer.endFrame(cmd, postFXDrawImage);
 }
 
-void GameRenderer::draw(
-    VkCommandBuffer cmd,
-    const Camera& camera,
-    const RendererSceneData& sceneData)
+void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData)
 {
     { // skinning
         vkutil::cmdBeginLabel(cmd, "Skinning");
@@ -370,12 +389,6 @@ void GameRenderer::draw(
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    if (isMultisamplingEnabled()) {
-        postFXPipeline->setImages(resolveImage, resolveDepthImage);
-    } else {
-        postFXPipeline->setImages(drawImage, depthImage);
-    }
-
     { // post FX
         ZoneScopedN("Post FX");
         TracyVkZoneC(renderer.getCurrentFrame().tracyVkCtx, cmd, "Post FX", tracy::Color::Purple);
@@ -407,6 +420,7 @@ void GameRenderer::cleanup()
     vkDeviceWaitIdle(device);
 
     sceneDataBuffer.cleanup(device, renderer.getAllocator());
+    vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr);
 
     postFXPipeline->cleanup(device);
     depthResolvePipeline->cleanup(device);
@@ -428,7 +442,6 @@ void GameRenderer::cleanup()
 
 void GameRenderer::updateDevTools(float dt)
 {
-    renderer.updateDevTools(dt);
     ImGui::DragFloat3("Cascades", csmPipeline->percents.data(), 0.1f, 0.f, 1.f);
 
     ImGui::Checkbox("Shadows", &shadowsEnabled);
@@ -474,8 +487,9 @@ void GameRenderer::onMultisamplingStateUpdate()
         renderer.destroyImage(drawImage);
     }
 
-    meshPipeline =
-        std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, samples);
+    // recreate pipelines
+    meshPipeline = std::make_unique<MeshPipeline>(
+        renderer, drawImage.format, depthImage.format, sceneDataDescriptorLayout, samples);
     skyboxPipeline =
         std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
     skyboxPipeline->setSkyboxImage(skyboxImage);
@@ -484,6 +498,9 @@ void GameRenderer::onMultisamplingStateUpdate()
 
     if (isMultisamplingEnabled()) {
         depthResolvePipeline->setDepthImage(renderer, depthImage);
+        postFXPipeline->setImages(resolveImage, resolveDepthImage);
+    } else {
+        postFXPipeline->setImages(drawImage, depthImage);
     }
 }
 

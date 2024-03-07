@@ -1,7 +1,5 @@
 #pragma once
 
-#include <array>
-
 #include <vulkan/vulkan.h>
 
 #include <glm/mat4x4.hpp>
@@ -23,8 +21,10 @@ public:
     PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat);
     void cleanup(VkDevice device);
 
-    void setImages(const AllocatedImage& drawImage, const AllocatedImage& depthImage);
     void draw(VkCommandBuffer cmd, const PostFXPushContants& pcs);
+
+    // updating images requires sync (vkDeviceWaitIdle)
+    void setImages(const AllocatedImage& drawImage, const AllocatedImage& depthImage);
 
 private:
     Renderer& renderer;
@@ -33,13 +33,7 @@ private:
     VkPipeline postFXPipeline;
 
     VkDescriptorSetLayout postFXDescSetLayout;
-
-    struct FrameData {
-        VkDescriptorSet postFXDescSet;
-    };
-    FrameData& getCurrentFrameData();
-    // TODO: Use Renderer::FRAME_OVERLAP
-    std::array<FrameData, 2> frames;
+    VkDescriptorSet postFXDescSet;
 
     PostFXPushContants pcs;
 };
