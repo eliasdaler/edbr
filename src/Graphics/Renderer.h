@@ -59,7 +59,7 @@ public:
     [[nodiscard]] AllocatedBuffer createBuffer(
         std::size_t allocSize,
         VkBufferUsageFlags usage,
-        VmaMemoryUsage memoryUsage) const;
+        VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) const;
     [[nodiscard]] VkDeviceAddress getBufferAddress(const AllocatedBuffer& buffer) const;
     void destroyBuffer(const AllocatedBuffer& buffer) const;
 

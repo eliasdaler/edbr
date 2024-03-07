@@ -84,7 +84,7 @@ AllocatedBuffer createBuffer(
     VmaAllocator allocator,
     std::size_t allocSize,
     VkBufferUsageFlags usage,
-    VmaMemoryUsage memoryUsage);
+    VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO);
 void destroyBuffer(VmaAllocator allocator, const AllocatedBuffer& buffer);
 
 void cmdBeginLabel(VkCommandBuffer cmd, const char* label, glm::vec4 color = glm::vec4{1.f});

@@ -45,7 +45,7 @@ AllocatedImage createImage(
         .usage = createInfo.usage,
     };
     const auto allocInfo = VmaAllocationCreateInfo{
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
@@ -113,8 +113,8 @@ void uploadImageData(
 
     const auto dataSize = image.extent.depth * image.extent.width * image.extent.height * 4;
 
-    const auto uploadBuffer = createBuffer(
-        allocator, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    const auto uploadBuffer =
+        createBuffer(allocator, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO);
     memcpy(uploadBuffer.info.pMappedData, pixelData, dataSize);
 
     executor.immediateSubmit([&](VkCommandBuffer cmd) {
@@ -391,7 +391,9 @@ AllocatedBuffer createBuffer(
     };
 
     const auto allocInfo = VmaAllocationCreateInfo{
-        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                 // TODO: allow to set VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT when needed
+                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
         .usage = memoryUsage,
     };
 

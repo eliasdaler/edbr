@@ -69,6 +69,7 @@ target_link_libraries(game PRIVATE
 target_compile_definitions(game
   PUBLIC
     VK_NO_PROTOTYPES
+    VMA_VULKAN_VERSION=1003000
 )
 
 

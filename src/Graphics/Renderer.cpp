@@ -362,7 +362,7 @@ VkCommandBuffer Renderer::beginFrame()
 
 void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
 {
-    auto& frame = getCurrentFrame();
+    const auto& frame = getCurrentFrame();
 
     // get swapchain image
     std::uint32_t swapchainImageIndex{};
@@ -373,7 +373,7 @@ void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
         frame.swapchainSemaphore,
         VK_NULL_HANDLE,
         &swapchainImageIndex));
-    auto& swapchainImage = swapchainImages[swapchainImageIndex];
+    const auto& swapchainImage = swapchainImages[swapchainImageIndex];
 
     // copy from draw image into swapchain
     vkutil::transitionImage(
@@ -557,8 +557,8 @@ VkDescriptorSet Renderer::uploadSceneData(
 {
     auto& frame = getCurrentFrame();
 
-    const auto gpuSceneDataBuffer = createBuffer(
-        sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    const auto gpuSceneDataBuffer =
+        createBuffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     vkutil::addDebugLabel(device, gpuSceneDataBuffer.buffer, "scene data");
 
     frame.deletionQueue.pushFunction(
@@ -611,23 +611,18 @@ void Renderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
     // create index buffer
     const auto indexBufferSize = cpuMesh.indices.size() * sizeof(std::uint32_t);
     buffers.indexBuffer = createBuffer(
-        indexBufferSize,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+        indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
     // create vertex buffer
     const auto vertexBufferSize = cpuMesh.vertices.size() * sizeof(CPUMesh::Vertex);
     buffers.vertexBuffer = createBuffer(
         vertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     buffers.vertexBufferAddress = getBufferAddress(buffers.vertexBuffer);
 
-    const auto staging = createBuffer(
-        vertexBufferSize + indexBufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY);
+    const auto staging =
+        createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
     // copy data
     void* data = staging.info.pMappedData;
@@ -660,12 +655,10 @@ void Renderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
         gpuMesh.skinningDataBuffer = createBuffer(
             skinningDataSize,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY);
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
         gpuMesh.skinningDataBufferAddress = getBufferAddress(gpuMesh.skinningDataBuffer);
 
-        const auto staging = createBuffer(
-            skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+        const auto staging = createBuffer(skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
         // copy data
         void* data = staging.info.pMappedData;
@@ -691,8 +684,7 @@ SkinnedMesh Renderer::createSkinnedMeshBuffer(MeshId meshId) const
     sm.skinnedVertexBuffer = createBuffer(
         mesh.numVertices * sizeof(CPUMesh::Vertex),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     sm.skinnedVertexBufferAddress = getBufferAddress(sm.skinnedVertexBuffer);
     return sm;
 }
@@ -704,10 +696,8 @@ const GPUMesh& Renderer::getMesh(MeshId id) const
 
 void Renderer::allocateMaterialDataBuffer()
 {
-    materialDataBuffer = createBuffer(
-        MAX_MATERIALS * sizeof(MaterialData),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    materialDataBuffer =
+        createBuffer(MAX_MATERIALS * sizeof(MaterialData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     vkutil::addDebugLabel(device, materialDataBuffer.buffer, "material data");
 
     deletionQueue.pushFunction([this](VkDevice) { destroyBuffer(materialDataBuffer); });

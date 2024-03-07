@@ -31,8 +31,7 @@ SkinningPipeline::SkinningPipeline(Renderer& renderer) : renderer(renderer)
         jointMatricesBuffer.capacity = MAX_JOINT_MATRICES;
         jointMatricesBuffer.buffer = renderer.createBuffer(
             MAX_JOINT_MATRICES * sizeof(glm::mat4),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU);
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
         framesData[i].jointMatricesBufferAddress =
             renderer.getBufferAddress(jointMatricesBuffer.buffer);
     }

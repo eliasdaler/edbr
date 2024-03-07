@@ -115,7 +115,7 @@ void GameRenderer::draw(const Camera& camera, const RendererSceneData& sceneData
     auto cmd = renderer.beginFrame();
     draw(cmd, camera, sceneData);
 
-    // we'll copy from draw image to swapchain
+    // we'll copy from post FX draw image to swapchain
     vkutil::transitionImage(
         cmd,
         postFXDrawImage.image,
