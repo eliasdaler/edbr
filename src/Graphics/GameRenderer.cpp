@@ -20,7 +20,10 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     createDrawImage(renderer.getSwapchainExtent(), true);
 
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
+
     csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
+    renderer.setShadowMap(csmPipeline->getShadowMap());
+
     meshPipeline =
         std::make_unique<MeshPipeline>(renderer, drawImage.format, depthImage.format, samples);
     skyboxPipeline =
@@ -217,8 +220,7 @@ void GameRenderer::draw(
                 },
             .csmLightSpaceTMs = csmPipeline->csmLightSpaceTMs,
         };
-        const auto sceneDataDesctiptor =
-            renderer.uploadSceneData(gpuSceneData, csmPipeline->getShadowMap());
+        renderer.uploadSceneData(cmd, gpuSceneData);
 
         vkutil::transitionImage(
             cmd,
@@ -255,7 +257,7 @@ void GameRenderer::draw(
             cmd,
             drawImage.getExtent2D(),
             camera,
-            sceneDataDesctiptor,
+            renderer.getSceneDataDescSet(),
             drawCommands,
             sortedDrawCommands);
 

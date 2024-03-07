@@ -26,9 +26,7 @@ CSMPipeline::CSMPipeline(
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    const auto layouts =
-        std::array{renderer.sceneDataDescriptorLayout, renderer.meshMaterialLayout};
-    meshDepthOnlyPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+    meshDepthOnlyPipelineLayout = vkutil::createPipelineLayout(device, {}, pushConstantRanges);
 
     meshDepthOnlyPipeline = PipelineBuilder{meshDepthOnlyPipelineLayout}
                                 .setShaders(vertexShader, VK_NULL_HANDLE)

@@ -90,10 +90,12 @@ public:
 
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout layout);
 
-    VkDescriptorSet uploadSceneData(const GPUSceneData& sceneData, const AllocatedImage& shadowMap);
+    void setShadowMap(const AllocatedImage& shadowMap);
+    void uploadSceneData(VkCommandBuffer cmd, const GPUSceneData& sceneData);
 
-    VkDescriptorSetLayout sceneDataDescriptorLayout;
-    VkDescriptorSetLayout meshMaterialLayout;
+    VkDescriptorSet getSceneDataDescSet() const { return sceneDataDescriptorSet; }
+    VkDescriptorSetLayout getSceneDataDescSetLayout() const { return sceneDataDescriptorLayout; }
+    VkDescriptorSetLayout getMaterialDataDescSetLayout() const { return meshMaterialLayout; }
 
     MeshId addMesh(const CPUMesh& cpuMesh, MaterialId material);
     void uploadMesh(const CPUMesh& cpuMesh, GPUMesh& mesh) const;
@@ -146,6 +148,12 @@ private: // data
     AllocatedBuffer materialDataBuffer;
 
     MaterialCache materialCache;
+    VkDescriptorSetLayout sceneDataDescriptorLayout;
+    VkDescriptorSet sceneDataDescriptorSet;
+    VkDescriptorSetLayout meshMaterialLayout;
+
+    std::array<AllocatedBuffer, FRAME_OVERLAP> stagingSceneDataBuffers;
+    AllocatedBuffer sceneDataBuffer;
 
     VkSampler defaultNearestSampler;
     VkSampler defaultLinearSampler;

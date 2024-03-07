@@ -32,7 +32,7 @@ MeshPipeline::MeshPipeline(
 
     const auto pushConstantRanges = std::array{bufferRange};
     const auto layouts =
-        std::array{renderer.sceneDataDescriptorLayout, renderer.meshMaterialLayout};
+        std::array{renderer.getSceneDataDescSetLayout(), renderer.getMaterialDataDescSetLayout()};
     meshPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     meshPipeline = PipelineBuilder{meshPipelineLayout}
