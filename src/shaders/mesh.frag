@@ -20,12 +20,12 @@ layout (location = 0) out vec4 outFragColor;
 
 void main()
 {
-    vec4 albedo = texture(diffuseTex, inUV.xy);
+    vec4 albedo = texture(diffuseTex, inUV);
     vec3 baseColor = materialData.baseColor.rgb * albedo.rgb;
 
 #ifdef PBR
-    float metallic = materialData.metallicRoughness.r;
-    float roughness = materialData.metallicRoughness.g;
+    float metallic = materialData.metallicRoughnessEmissive.r;
+    float roughness = materialData.metallicRoughnessEmissive.g;
     roughness = max(roughness, 1e-6); // 0.0 roughness leads to NaNs
 
     // TODO: figure out if we need to do this!
@@ -70,6 +70,11 @@ void main()
     vec3 ambientColor = sceneData.ambientColor.rgb;
     float ambientIntensity = sceneData.ambientColor.w;
     fragColor += baseColor * ambientColor.xyz * ambientIntensity;
+
+    // emissive
+    float emissive = materialData.metallicRoughnessEmissive.b;
+    vec3 emissiveColor = emissive * texture(emissiveTex, inUV).rgb;
+    fragColor += emissiveColor;
 
     // uint cascadeIndex = chooseCascade(inPos, cameraPos, sceneData.cascadeFarPlaneZs);
     // fragColor *= debugShadowsFactor(cascadeIndex);

@@ -60,6 +60,11 @@ static const std::string GLTF_SAMPLER_PATH_TRANSLATION{"translation"};
 static const std::string GLTF_SAMPLER_PATH_ROTATION{"rotation"};
 static const std::string GLTF_SAMPLER_PATH_SCALE{"scale"};
 
+// extensions
+static const std::string GLTF_LIGHTS_PUNCTUAL_KEY{"KHR_lights_punctual"};
+static const std::string GLTF_EMISSIVE_STRENGTH_KHR_KEY{"KHR_materials_emissive_strength"};
+static const std::string GLTF_EMISSIVE_STRENGTH_PARAM_NAME{"emissiveStrength"};
+
 glm::vec3 tg2glm(const std::vector<double>& vec)
 {
     return {vec[0], vec[1], vec[2]};
@@ -105,11 +110,72 @@ bool hasDiffuseTexture(const tinygltf::Material& material)
     return textureIndex != -1;
 }
 
+bool hasNormalMapTexture(const tinygltf::Material& material)
+{
+    const auto textureIndex = material.normalTexture.index;
+    return textureIndex != -1;
+}
+
+bool hasMetallicRoughnessTexture(const tinygltf::Material& material)
+{
+    const auto textureIndex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+    return textureIndex != -1;
+}
+
+bool hasEmissiveTexture(const tinygltf::Material& material)
+{
+    const auto textureIndex = material.emissiveTexture.index;
+    return textureIndex != -1;
+}
+
 glm::vec4 getDiffuseColor(const tinygltf::Material& material)
 {
     const auto c = material.pbrMetallicRoughness.baseColorFactor;
     assert(c.size() == 4);
     return {(float)c[0], (float)c[1], (float)c[2], (float)c[3]};
+}
+
+std::filesystem::path getNormalMapTexturePath(
+    const tinygltf::Model& model,
+    const tinygltf::Material& material,
+    const std::filesystem::path& fileDir)
+{
+    const auto textureIndex = material.normalTexture.index;
+    const auto& textureId = model.textures[textureIndex];
+    const auto& image = model.images[textureId.source];
+    return fileDir / image.uri;
+}
+
+std::filesystem::path getMetallicRoughnessTexturePath(
+    const tinygltf::Model& model,
+    const tinygltf::Material& material,
+    const std::filesystem::path& fileDir)
+{
+    const auto textureIndex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+    const auto& textureId = model.textures[textureIndex];
+    const auto& image = model.images[textureId.source];
+    return fileDir / image.uri;
+}
+
+std::filesystem::path getEmissiveTexturePath(
+    const tinygltf::Model& model,
+    const tinygltf::Material& material,
+    const std::filesystem::path& fileDir)
+{
+    const auto textureIndex = material.emissiveTexture.index;
+    const auto& textureId = model.textures[textureIndex];
+    const auto& image = model.images[textureId.source];
+    return fileDir / image.uri;
+}
+
+float getEmissiveStrength(const tinygltf::Material& material)
+{
+    if (material.extensions.contains(GLTF_EMISSIVE_STRENGTH_KHR_KEY)) {
+        return (float)material.extensions.at(GLTF_EMISSIVE_STRENGTH_KHR_KEY)
+            .Get(GLTF_EMISSIVE_STRENGTH_PARAM_NAME)
+            .GetNumberAsDouble();
+    }
+    return 1.f;
 }
 
 template<typename T>
@@ -141,13 +207,12 @@ std::filesystem::path getDiffuseTexturePath(
     return fileDir / image.uri;
 }
 
-void loadPrimitive(
+CPUMesh loadPrimitive(
     const tinygltf::Model& model,
     const std::string& meshName,
-    const tinygltf::Primitive& primitive,
-    CPUMesh& mesh)
+    const tinygltf::Primitive& primitive)
 {
-    mesh.name = meshName;
+    CPUMesh mesh{.name = meshName};
 
     if (primitive.indices != -1) { // load indices
         const auto& indexAccessor = model.accessors[primitive.indices];
@@ -225,6 +290,8 @@ void loadPrimitive(
                 glm::vec4{weights[i][0], weights[i][1], weights[i][2], weights[i][3]};
         }
     }
+
+    return mesh;
 }
 
 void loadFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
@@ -249,26 +316,46 @@ void loadFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
     }
 }
 
-void loadMaterial(
+Material loadMaterial(
     const util::LoadContext& ctx,
     const tinygltf::Model& gltfModel,
     const std::filesystem::path& fileDir,
-    const tinygltf::Material& gltfMaterial,
-    Material& material)
+    const tinygltf::Material& gltfMaterial)
 {
-    std::filesystem::path diffusePath;
+    Material material{
+        .baseColor = getDiffuseColor(gltfMaterial),
+        .name = gltfMaterial.name,
+    };
+    material.metallicFactor = (float)gltfMaterial.pbrMetallicRoughness.metallicFactor;
+    material.roughnessFactor = (float)gltfMaterial.pbrMetallicRoughness.roughnessFactor;
+
     if (hasDiffuseTexture(gltfMaterial)) {
-        diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
-    }
-    if (!diffusePath.empty()) {
-        // TODO: use texture cache and don't load same textures
+        const auto diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
         material.diffuseTexture = ctx.renderer.loadImageFromFile(
             diffusePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
-    // TODO: load metallicRoughness texture if it exists
-    material.metallicFactor = (float)gltfMaterial.pbrMetallicRoughness.metallicFactor;
-    material.roughnessFactor = (float)gltfMaterial.pbrMetallicRoughness.roughnessFactor;
+    if (hasNormalMapTexture(gltfMaterial)) {
+        const auto normalMapPath = getNormalMapTexturePath(gltfModel, gltfMaterial, fileDir);
+        material.normalMapTexture = ctx.renderer.loadImageFromFile(
+            normalMapPath, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+    }
+
+    if (hasMetallicRoughnessTexture(gltfMaterial)) {
+        const auto metalRoughnessPath =
+            getMetallicRoughnessTexturePath(gltfModel, gltfMaterial, fileDir);
+        material.metallicRoughnessTexture = ctx.renderer.loadImageFromFile(
+            metalRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+    }
+
+    if (hasEmissiveTexture(gltfMaterial)) {
+        const auto emissivePath = getEmissiveTexturePath(gltfModel, gltfMaterial, fileDir);
+        material.emissiveTexture = ctx.renderer.loadImageFromFile(
+            emissivePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+        material.emissiveFactor = getEmissiveStrength(gltfMaterial);
+    }
+
+    return material;
 }
 
 bool shouldSkipNode(const tinygltf::Node& node)
@@ -493,14 +580,8 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
     // load materials
     for (std::size_t materialIdx = 0; materialIdx < gltfModel.materials.size(); ++materialIdx) {
         const auto& gltfMaterial = gltfModel.materials[materialIdx];
-        Material material{
-            .baseColor = getDiffuseColor(gltfMaterial),
-            .name = gltfMaterial.name,
-        };
-
-        loadMaterial(ctx, gltfModel, fileDir, gltfMaterial, material);
-
-        const auto materialId = ctx.renderer.addMaterial(std::move(material));
+        const auto materialId =
+            ctx.renderer.addMaterial(loadMaterial(ctx, gltfModel, fileDir, gltfMaterial));
         materialMapping.emplace(materialIdx, materialId);
     }
 
@@ -511,11 +592,9 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
         mesh.primitives.resize(gltfMesh.primitives.size());
         for (std::size_t primitiveIdx = 0; primitiveIdx < gltfMesh.primitives.size();
              ++primitiveIdx) {
-            const auto& gltfPrimitive = gltfMesh.primitives[primitiveIdx];
-
             // load on CPU
-            CPUMesh cpuMesh;
-            loadPrimitive(gltfModel, gltfMesh.name, gltfPrimitive, cpuMesh);
+            const auto& gltfPrimitive = gltfMesh.primitives[primitiveIdx];
+            const auto cpuMesh = loadPrimitive(gltfModel, gltfMesh.name, gltfPrimitive);
             if (cpuMesh.indices.empty()) {
                 continue;
             }

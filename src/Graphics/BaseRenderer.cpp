@@ -93,9 +93,12 @@ void BaseRenderer::initDefaultTextures()
 
 void BaseRenderer::initDescriptors()
 {
-    const auto meshMaterialBindings = std::array<DescriptorLayoutBinding, 2>{{
+    const auto meshMaterialBindings = std::array<DescriptorLayoutBinding, 5>{{
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
+        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // diffuse
+        {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // normal map
+        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // metallic roughness
+        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // emissive
     }};
     meshMaterialLayout = vkutil::buildDescriptorSetLayout(
         gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, meshMaterialBindings);
@@ -226,27 +229,41 @@ MaterialId BaseRenderer::addMaterial(Material material)
     MaterialData* data = (MaterialData*)materialDataBuffer.info.pMappedData;
     data[materialId] = MaterialData{
         .baseColor = material.baseColor,
-        .metalRoughnessFactors =
-            glm::vec4{material.metallicFactor, material.roughnessFactor, 0.f, 0.f},
+        .metalRoughnessEmissive = glm::
+            vec4{material.metallicFactor, material.roughnessFactor, material.emissiveFactor, 0.f},
     };
 
     material.materialSet = gfxDevice.allocateDescriptorSet(meshMaterialLayout);
 
+    struct ImageBinding {
+        std::uint32_t binding;
+        ImageId image;
+        VkImageView placeholderImage;
+    };
+    const std::array<ImageBinding, 4> imageBindings{{
+        {1, material.diffuseTexture, whiteTexture.imageView},
+        {2, material.normalMapTexture, whiteTexture.imageView},
+        {3, material.metallicRoughnessTexture, whiteTexture.imageView},
+        {4, material.emissiveTexture, whiteTexture.imageView},
+    }};
+
     DescriptorWriter writer;
+
     writer.writeBuffer(
         0,
         materialDataBuffer.buffer,
         sizeof(MaterialData),
         materialId * sizeof(MaterialData),
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.writeImage(
-        1,
-        (material.diffuseTexture == NULL_IMAGE_ID) ? whiteTexture.imageView :
-                                                     getImage(material.diffuseTexture).imageView,
-        defaultLinearSampler,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
+    for (const auto& binding : imageBindings) {
+        writer.writeImage(
+            binding.binding,
+            (binding.image == NULL_IMAGE_ID) ? binding.placeholderImage :
+                                               getImage(binding.image).imageView,
+            defaultLinearSampler,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    }
     writer.updateSet(gfxDevice.getDevice(), material.materialSet);
 
     materialCache.addMaterial(materialId, std::move(material));
