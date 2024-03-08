@@ -6,7 +6,7 @@ Current progress:
 
 ![shadows](screenshots/06.png)
 
-![fog](screenshots/05.png)
+![fog](screenshots/07.png)
 
 * glTF scene loading
 * Basic PBR lighting (no IBL)
