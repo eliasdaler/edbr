@@ -47,7 +47,7 @@ void GfxDevice::init(SDL_Window* window, bool vSync)
             window);
     }
 
-    for (std::size_t i = 0; i < FRAME_OVERLAP; ++i) {
+    for (std::size_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
         frames[i].tracyVkCtx =
             TracyVkContext(physicalDevice, device, graphicsQueue, frames[i].mainCommandBuffer);
         deletionQueue.pushFunction([this, i](VkDevice) { TracyVkDestroy(frames[i].tracyVkCtx); });
@@ -193,7 +193,7 @@ void GfxDevice::createCommandBuffers()
     const auto poolCreateInfo = vkinit::
         commandPoolCreateInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamily);
 
-    for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
+    for (std::uint32_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
         auto& commandPool = frames[i].commandPool;
         VK_CHECK(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &commandPool));
 
@@ -212,7 +212,7 @@ void GfxDevice::initSyncStructures()
     const auto semaphoreCreateInfo = VkSemaphoreCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
-    for (std::uint32_t i = 0; i < FRAME_OVERLAP; ++i) {
+    for (std::uint32_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
         VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i].renderFence));
         VK_CHECK(vkCreateSemaphore(
             device, &semaphoreCreateInfo, nullptr, &frames[i].swapchainSemaphore));
@@ -423,7 +423,7 @@ GfxDevice::FrameData& GfxDevice::getCurrentFrame()
 
 std::uint32_t GfxDevice::getCurrentFrameIndex() const
 {
-    return frameNumber % FRAME_OVERLAP;
+    return frameNumber % graphics::FRAME_OVERLAP;
 }
 
 VkDescriptorSet GfxDevice::allocateDescriptorSet(VkDescriptorSetLayout layout)

@@ -153,7 +153,7 @@ void GameRenderer::initSceneData()
         gfxDevice.getAllocator(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         sizeof(GPUSceneData),
-        GfxDevice::FRAME_OVERLAP,
+        graphics::FRAME_OVERLAP,
         "scene data");
 
     sceneDataDescriptorSet = gfxDevice.allocateDescriptorSet(sceneDataDescriptorLayout);

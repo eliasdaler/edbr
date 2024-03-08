@@ -4,11 +4,12 @@
 
 #include <vulkan/vulkan.h>
 
-#include <Graphics/GfxDevice.h>
+#include <Graphics/Common.h>
 #include <Graphics/Vulkan/AppendableBuffer.h>
 
 struct DrawCommand;
 class BaseRenderer;
+class GfxDevice;
 
 class SkinningPipeline {
 public:
@@ -44,7 +45,7 @@ private:
         VkDeviceAddress jointMatricesBufferAddress;
     };
 
-    std::array<PerFrameData, GfxDevice::FRAME_OVERLAP> framesData;
+    std::array<PerFrameData, graphics::FRAME_OVERLAP> framesData;
 
     PerFrameData& getCurrentFrameData(std::size_t frameIndex);
 };

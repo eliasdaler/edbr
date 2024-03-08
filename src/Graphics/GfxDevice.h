@@ -14,6 +14,7 @@
 #include <tracy/TracyVulkan.hpp>
 // clang-format on
 
+#include <Graphics/Common.h>
 #include <Graphics/Vulkan/DeletionQueue.h>
 #include <Graphics/Vulkan/Descriptors.h>
 #include <Graphics/Vulkan/Types.h>
@@ -27,8 +28,6 @@ struct CreateImageInfo;
 
 class GfxDevice {
 public:
-    static constexpr std::size_t FRAME_OVERLAP = 2;
-
     struct FrameData {
         VkCommandPool commandPool;
         VkCommandBuffer mainCommandBuffer;
@@ -108,7 +107,7 @@ private: // data
     DeletionQueue deletionQueue;
     DescriptorAllocatorGrowable descriptorAllocator;
 
-    std::array<FrameData, FRAME_OVERLAP> frames{};
+    std::array<FrameData, graphics::FRAME_OVERLAP> frames{};
     std::uint32_t frameNumber{0};
 
     VulkanImmediateExecutor executor;

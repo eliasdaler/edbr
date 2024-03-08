@@ -5,6 +5,7 @@
 
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
+#include <Graphics/GfxDevice.h>
 
 void SkinningPipeline::init(GfxDevice& gfxDevice)
 {
@@ -27,7 +28,7 @@ void SkinningPipeline::init(GfxDevice& gfxDevice)
 
     vkDestroyShaderModule(device, shader, nullptr);
 
-    for (std::size_t i = 0; i < GfxDevice::FRAME_OVERLAP; ++i) {
+    for (std::size_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
         auto& jointMatricesBuffer = framesData[i].jointMatricesBuffer;
         jointMatricesBuffer.capacity = MAX_JOINT_MATRICES;
         jointMatricesBuffer.buffer = gfxDevice.createBuffer(
@@ -40,7 +41,7 @@ void SkinningPipeline::init(GfxDevice& gfxDevice)
 
 void SkinningPipeline::cleanup(GfxDevice& gfxDevice)
 {
-    for (std::size_t i = 0; i < GfxDevice::FRAME_OVERLAP; ++i) {
+    for (std::size_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
         gfxDevice.destroyBuffer(framesData[i].jointMatricesBuffer.buffer);
     }
     vkDestroyPipelineLayout(gfxDevice.getDevice(), skinningPipelineLayout, nullptr);
