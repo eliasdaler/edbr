@@ -207,9 +207,9 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         const auto memoryBarrier = VkMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
             .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR,
+            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
             .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT_KHR,
+            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT,
         };
         const auto dependencyInfo = VkDependencyInfo{
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -260,12 +260,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
     }
 
-    { // Geometry + Sky
-        ZoneScopedN("Geometry");
-        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Geometry", tracy::Color::ForestGreen);
-        vkutil::cmdBeginLabel(cmd, "Geometry");
-
-        // upload scene data
+    { // upload scene data - can only be done after CSM has finished
         const auto gpuSceneData = GPUSceneData{
             .view = sceneData.camera.getView(),
             .proj = sceneData.camera.getProjection(),
@@ -286,6 +281,12 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         };
         sceneDataBuffer.uploadNewData(
             cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
+    }
+
+    { // Geometry + Sky
+        ZoneScopedN("Geometry");
+        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Geometry", tracy::Color::ForestGreen);
+        vkutil::cmdBeginLabel(cmd, "Geometry");
 
         vkutil::transitionImage(
             cmd,
