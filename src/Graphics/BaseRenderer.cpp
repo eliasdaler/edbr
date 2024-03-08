@@ -91,7 +91,7 @@ void BaseRenderer::initDefaultTextures()
         gfxDevice.uploadImageData(whiteTexture, (void*)&white);
     }
 
-    { // create white texture
+    { // create default normal map texture
         placeholderNormalMapTexture = gfxDevice.createImage({
             .format = VK_FORMAT_R8G8B8A8_UNORM,
             .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -196,8 +196,8 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
 
     gpuMesh.buffers = buffers;
 
-    const auto vtxBufferName = cpuMesh.name + "(vtx)";
-    const auto idxBufferName = cpuMesh.name + "(idx)";
+    const auto vtxBufferName = cpuMesh.name + " (vtx)";
+    const auto idxBufferName = cpuMesh.name + " (idx)";
     vkutil::
         addDebugLabel(gfxDevice.getDevice(), buffers.vertexBuffer.buffer, vtxBufferName.c_str());
     vkutil::addDebugLabel(gfxDevice.getDevice(), buffers.indexBuffer.buffer, idxBufferName.c_str());
