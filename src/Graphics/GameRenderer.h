@@ -111,6 +111,9 @@ private:
         glm::vec4 sunlightDirection;
         glm::vec4 sunlightColorAndIntensity;
 
+        // fog
+        glm::vec4 fogColorAndDensity;
+
         // CSM data
         glm::vec4 cascadeFarPlaneZs;
         std::array<glm::mat4, 3> csmLightSpaceTMs;

@@ -2,7 +2,9 @@
 
 #extension GL_GOOGLE_include_directive : require
 
-#include "input_structures.glsl"
+#include "scene_data.glsl"
+#include "material_data.glsl"
+
 #include "shadow.glsl"
 
 #include "pbr.glsl"

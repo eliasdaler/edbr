@@ -10,18 +10,14 @@ struct AllocatedImage;
 
 class PostFXPipeline {
 public:
-    struct PostFXPushContants {
-        glm::mat4 invProj;
-        glm::vec4 fogColorAndDensity;
-        glm::vec4 ambientColorAndIntensity;
-        glm::vec4 sunlightColorAndIntensity;
-    };
-
 public:
-    void init(GfxDevice& renderer, VkFormat drawImageFormat);
+    void init(
+        GfxDevice& renderer,
+        VkFormat drawImageFormat,
+        VkDescriptorSetLayout sceneDataDescriptorLayout);
     void cleanup(VkDevice device);
 
-    void draw(VkCommandBuffer cmd, const PostFXPushContants& pcs);
+    void draw(VkCommandBuffer cmd, VkDescriptorSet sceneDataDescriptorSet);
 
     // updating images requires sync (vkDeviceWaitIdle)
     void setImages(
@@ -36,6 +32,4 @@ private:
 
     VkDescriptorSetLayout imagesDescSetLayout;
     VkDescriptorSet imagesDescSet;
-
-    PostFXPushContants pcs;
 };

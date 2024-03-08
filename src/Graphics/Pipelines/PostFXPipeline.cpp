@@ -7,7 +7,10 @@
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
-void PostFXPipeline::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
+void PostFXPipeline::init(
+    GfxDevice& gfxDevice,
+    VkFormat drawImageFormat,
+    VkDescriptorSetLayout sceneDataDescriptorLayout)
 {
     const auto& device = gfxDevice.getDevice();
 
@@ -19,15 +22,8 @@ void PostFXPipeline::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
         buildDescriptorSetLayout(gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
     imagesDescSet = gfxDevice.allocateDescriptorSet(imagesDescSetLayout);
 
-    const auto bufferRange = VkPushConstantRange{
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .offset = 0,
-        .size = sizeof(PostFXPushContants),
-    };
-
-    const auto pushConstantRanges = std::array{bufferRange};
-    const auto layouts = std::array{imagesDescSetLayout};
-    pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+    const auto layouts = std::array{sceneDataDescriptorLayout, imagesDescSetLayout};
+    pipelineLayout = vkutil::createPipelineLayout(device, layouts);
 
     const auto vertexShader =
         vkutil::loadShaderModule("shaders/fullscreen_triangle.vert.spv", device);
@@ -77,14 +73,20 @@ void PostFXPipeline::setImages(
     writer.updateSet(gfxDevice.getDevice(), imagesDescSet);
 }
 
-void PostFXPipeline::draw(VkCommandBuffer cmd, const PostFXPushContants& pcs)
+void PostFXPipeline::draw(VkCommandBuffer cmd, VkDescriptorSet sceneDataDescriptorSet)
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &imagesDescSet, 0, nullptr);
-
-    vkCmdPushConstants(
-        cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PostFXPushContants), &pcs);
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipelineLayout,
+        0,
+        1,
+        &sceneDataDescriptorSet,
+        0,
+        nullptr);
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &imagesDescSet, 0, nullptr);
 
     vkCmdDraw(cmd, 3, 1, 0, 0);
 }

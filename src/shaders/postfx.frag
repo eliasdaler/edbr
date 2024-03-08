@@ -1,17 +1,13 @@
 #version 460
 
+#extension GL_GOOGLE_include_directive : require
+
 layout (location = 0) in vec2 inUV;
 
-layout (push_constant) uniform constants
-{
-	mat4 invProj;
-    vec4 fogColorAndDensity; // (color.rgb, density)
-    vec4 ambientColorAndIntensity; // (color.rgb, intensity)
-    vec4 sunlightColorAndIntensity; // (color.rgb, intensity)
-} pcs;
+#include "scene_data.glsl"
 
-layout (set = 0, binding = 0) uniform sampler2D drawImage;
-layout (set = 0, binding = 1) uniform sampler2D depthImage;
+layout (set = 1, binding = 0) uniform sampler2D drawImage;
+layout (set = 1, binding = 1) uniform sampler2D depthImage;
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -46,11 +42,11 @@ void main() {
     vec3 fragColor = texture(drawImage, inUV).rgb;
     float depth = texture(depthImage, inUV).r;
 
-    vec3 viewPos = getViewPos(depth, pcs.invProj, inUV);
+    vec3 viewPos = getViewPos(depth, inverse(sceneData.proj), inUV);
     vec3 color = exponentialFog(viewPos, fragColor,
-            pcs.fogColorAndDensity.rgb, pcs.fogColorAndDensity.w,
-            pcs.ambientColorAndIntensity.rgb, pcs.ambientColorAndIntensity.w,
-            pcs.sunlightColorAndIntensity.rgb);
+            sceneData.fogColorAndDensity.rgb, sceneData.fogColorAndDensity.w,
+            sceneData.ambientColor.rgb, sceneData.ambientColor.w,
+            sceneData.sunlightColor.rgb);
     outFragColor = vec4(color, 1.0);
 
     // vec3 color = chromaticAberration(drawImage, inUV, 0.001f);

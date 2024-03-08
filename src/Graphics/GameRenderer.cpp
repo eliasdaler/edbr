@@ -39,7 +39,7 @@ void GameRenderer::init()
         .setDepthImage(gfxDevice, depthImage, baseRenderer.getDefaultNearestSampler());
 
     skyboxPipeline.init(gfxDevice, drawImage.format, depthImage.format, samples);
-    postFXPipeline.init(gfxDevice, drawImage.format);
+    postFXPipeline.init(gfxDevice, drawImage.format, sceneDataDescriptorLayout);
 
     if (isMultisamplingEnabled()) {
         postFXPipeline.setImages(
@@ -274,6 +274,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
             .sunlightDirection = sceneData.sunlightDirection,
             .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
+            .fogColorAndDensity = sceneData.fogColorAndDensity,
             .cascadeFarPlaneZs =
                 glm::vec4{
                     csmPipeline.cascadeFarPlaneZs[0],
@@ -416,13 +417,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         });
 
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
-        const auto pcs = PostFXPipeline::PostFXPushContants{
-            .invProj = glm::inverse(camera.getProjection()),
-            .fogColorAndDensity = sceneData.fogColorAndDensity,
-            .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
-            .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
-        };
-        postFXPipeline.draw(cmd, pcs);
+        postFXPipeline.draw(cmd, sceneDataDescriptorSet);
         vkCmdEndRendering(cmd);
 
         vkutil::cmdEndLabel(cmd);
