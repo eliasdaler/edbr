@@ -70,4 +70,5 @@ private: // data
     VkSampler defaultShadowMapSampler;
 
     AllocatedImage whiteTexture;
+    AllocatedImage placeholderNormalMapTexture;
 };

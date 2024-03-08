@@ -587,6 +587,8 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
 
     // load meshes
     scene.meshes.reserve(gltfModel.meshes.size());
+    std::string meshName;
+    meshName.resize(255);
     for (const auto& gltfMesh : gltfModel.meshes) {
         SceneMesh mesh;
         mesh.primitives.resize(gltfMesh.primitives.size());
@@ -594,7 +596,10 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
              ++primitiveIdx) {
             // load on CPU
             const auto& gltfPrimitive = gltfMesh.primitives[primitiveIdx];
-            const auto cpuMesh = loadPrimitive(gltfModel, gltfMesh.name, gltfPrimitive);
+            meshName = path.string();
+            meshName += ":";
+            meshName += gltfMesh.name;
+            const auto cpuMesh = loadPrimitive(gltfModel, meshName, gltfPrimitive);
             if (cpuMesh.indices.empty()) {
                 continue;
             }

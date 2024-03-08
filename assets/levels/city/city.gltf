@@ -52,28 +52,6 @@
 					},
 					"type":"spot",
 					"name":"Spot.001"
-				},
-				{
-					"color":[
-						0.3334592878818512,
-						0.2601783573627472,
-						0.5412795543670654
-					],
-					"intensity":5293.827715550607,
-					"type":"point",
-					"range":10,
-					"name":"Spot.002"
-				},
-				{
-					"color":[
-						0.3334592878818512,
-						0.2601783573627472,
-						0.5412795543670654
-					],
-					"intensity":5293.827300882233,
-					"type":"point",
-					"range":10,
-					"name":"Spot.003"
 				}
 			]
 		}
@@ -1417,25 +1395,23 @@
 				1331,
 				1332,
 				1333,
-				1334,
-				1335,
-				1341,
-				1347,
-				1353,
-				1359,
-				1365,
-				1371,
-				1377,
-				1383,
-				1389,
-				1395,
-				1401,
-				1407,
-				1413,
-				1419,
-				1425,
-				1431,
-				1437
+				1339,
+				1345,
+				1351,
+				1357,
+				1363,
+				1369,
+				1375,
+				1381,
+				1387,
+				1393,
+				1399,
+				1405,
+				1411,
+				1417,
+				1423,
+				1429,
+				1435
 			]
 		}
 	],
@@ -17369,54 +17345,6 @@
 			]
 		},
 		{
-			"extensions":{
-				"KHR_lights_punctual":{
-					"light":3
-				}
-			},
-			"name":"StoreLight",
-			"rotation":[
-				-0.04789413511753082,
-				-0.6992909908294678,
-				-0.7117712497711182,
-				0.045607712119817734
-			],
-			"scale":[
-				0.6567107439041138,
-				0.6567107439041138,
-				0.6567108035087585
-			],
-			"translation":[
-				-56.04456329345703,
-				2.53709077835083,
-				0.5873826742172241
-			]
-		},
-		{
-			"extensions":{
-				"KHR_lights_punctual":{
-					"light":4
-				}
-			},
-			"name":"StoreLight.001",
-			"rotation":[
-				-0.04789413511753082,
-				-0.6992909908294678,
-				-0.7117712497711182,
-				0.045607712119817734
-			],
-			"scale":[
-				0.6567107439041138,
-				0.6567107439041138,
-				0.6567108035087585
-			],
-			"translation":[
-				-56.04456329345703,
-				2.53709077835083,
-				-3.642141342163086
-			]
-		},
-		{
 			"mesh":71,
 			"name":"Cube.038",
 			"rotation":[
@@ -17498,17 +17426,17 @@
 		},
 		{
 			"children":[
+				1334,
+				1335,
 				1336,
-				1337,
-				1338,
-				1339
+				1337
 			],
 			"mesh":75,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1340
+				1338
 			],
 			"name":"PineTree",
 			"scale":[
@@ -17604,17 +17532,17 @@
 		},
 		{
 			"children":[
+				1340,
+				1341,
 				1342,
-				1343,
-				1344,
-				1345
+				1343
 			],
 			"mesh":80,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1346
+				1344
 			],
 			"name":"PineTree.001",
 			"rotation":[
@@ -17716,17 +17644,17 @@
 		},
 		{
 			"children":[
+				1346,
+				1347,
 				1348,
-				1349,
-				1350,
-				1351
+				1349
 			],
 			"mesh":85,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1352
+				1350
 			],
 			"name":"PineTree.002",
 			"rotation":[
@@ -17828,17 +17756,17 @@
 		},
 		{
 			"children":[
+				1352,
+				1353,
 				1354,
-				1355,
-				1356,
-				1357
+				1355
 			],
 			"mesh":90,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1358
+				1356
 			],
 			"name":"PineTree.003",
 			"rotation":[
@@ -17940,17 +17868,17 @@
 		},
 		{
 			"children":[
+				1358,
+				1359,
 				1360,
-				1361,
-				1362,
-				1363
+				1361
 			],
 			"mesh":95,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1364
+				1362
 			],
 			"name":"PineTree.004",
 			"rotation":[
@@ -18052,17 +17980,17 @@
 		},
 		{
 			"children":[
+				1364,
+				1365,
 				1366,
-				1367,
-				1368,
-				1369
+				1367
 			],
 			"mesh":100,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1370
+				1368
 			],
 			"name":"PineTree.005",
 			"rotation":[
@@ -18164,10 +18092,10 @@
 		},
 		{
 			"children":[
+				1370,
+				1371,
 				1372,
-				1373,
-				1374,
-				1375
+				1373
 			],
 			"mesh":105,
 			"name":"Tree",
@@ -18179,7 +18107,7 @@
 		},
 		{
 			"children":[
-				1376
+				1374
 			],
 			"name":"PineTree.006",
 			"rotation":[
@@ -18281,17 +18209,17 @@
 		},
 		{
 			"children":[
+				1376,
+				1377,
 				1378,
-				1379,
-				1380,
-				1381
+				1379
 			],
 			"mesh":110,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1382
+				1380
 			],
 			"name":"PineTree.007",
 			"rotation":[
@@ -18393,17 +18321,17 @@
 		},
 		{
 			"children":[
+				1382,
+				1383,
 				1384,
-				1385,
-				1386,
-				1387
+				1385
 			],
 			"mesh":115,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1388
+				1386
 			],
 			"name":"PineTree.008",
 			"rotation":[
@@ -18505,17 +18433,17 @@
 		},
 		{
 			"children":[
+				1388,
+				1389,
 				1390,
-				1391,
-				1392,
-				1393
+				1391
 			],
 			"mesh":120,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1394
+				1392
 			],
 			"name":"PineTree.010",
 			"rotation":[
@@ -18617,17 +18545,17 @@
 		},
 		{
 			"children":[
+				1394,
+				1395,
 				1396,
-				1397,
-				1398,
-				1399
+				1397
 			],
 			"mesh":125,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1400
+				1398
 			],
 			"name":"PineTree.011",
 			"rotation":[
@@ -18729,17 +18657,17 @@
 		},
 		{
 			"children":[
+				1400,
+				1401,
 				1402,
-				1403,
-				1404,
-				1405
+				1403
 			],
 			"mesh":130,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1406
+				1404
 			],
 			"name":"PineTree.012",
 			"rotation":[
@@ -18841,17 +18769,17 @@
 		},
 		{
 			"children":[
+				1406,
+				1407,
 				1408,
-				1409,
-				1410,
-				1411
+				1409
 			],
 			"mesh":135,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1412
+				1410
 			],
 			"name":"PineTree.013",
 			"rotation":[
@@ -18953,10 +18881,10 @@
 		},
 		{
 			"children":[
+				1412,
+				1413,
 				1414,
-				1415,
-				1416,
-				1417
+				1415
 			],
 			"mesh":140,
 			"name":"Tree",
@@ -18968,7 +18896,7 @@
 		},
 		{
 			"children":[
-				1418
+				1416
 			],
 			"name":"PineTree.009",
 			"rotation":[
@@ -19070,10 +18998,10 @@
 		},
 		{
 			"children":[
+				1418,
+				1419,
 				1420,
-				1421,
-				1422,
-				1423
+				1421
 			],
 			"mesh":145,
 			"name":"Tree",
@@ -19085,7 +19013,7 @@
 		},
 		{
 			"children":[
-				1424
+				1422
 			],
 			"name":"PineTree.014",
 			"rotation":[
@@ -19187,10 +19115,10 @@
 		},
 		{
 			"children":[
+				1424,
+				1425,
 				1426,
-				1427,
-				1428,
-				1429
+				1427
 			],
 			"mesh":150,
 			"name":"Tree",
@@ -19202,7 +19130,7 @@
 		},
 		{
 			"children":[
-				1430
+				1428
 			],
 			"name":"PineTree.015",
 			"rotation":[
@@ -19304,17 +19232,17 @@
 		},
 		{
 			"children":[
+				1430,
+				1431,
 				1432,
-				1433,
-				1434,
-				1435
+				1433
 			],
 			"mesh":155,
 			"name":"Tree"
 		},
 		{
 			"children":[
-				1436
+				1434
 			],
 			"name":"PineTree.016",
 			"rotation":[
@@ -19528,9 +19456,12 @@
 		{
 			"doubleSided":true,
 			"name":"Grass",
+			"normalTexture":{
+				"index":1
+			},
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":1
+					"index":2
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.8500000238418579
@@ -19541,7 +19472,7 @@
 			"name":"Concrete",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":2
+					"index":3
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.7469879388809204
@@ -19564,12 +19495,17 @@
 		{
 			"doubleSided":true,
 			"name":"SidewalkTextured",
+			"normalTexture":{
+				"index":4
+			},
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":3
+					"index":5
 				},
 				"metallicFactor":0,
-				"roughnessFactor":0.5
+				"metallicRoughnessTexture":{
+					"index":6
+				}
 			}
 		},
 		{
@@ -19603,7 +19539,7 @@
 			"name":"Floor",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":4
+					"index":7
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19642,7 +19578,7 @@
 			"name":"Roof",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":5
+					"index":8
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19653,20 +19589,25 @@
 			"name":"Wood.001",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":6
+					"index":9
 				},
 				"metallicFactor":0
 			}
 		},
 		{
 			"doubleSided":true,
-			"name":"StoreBrick",
+			"name":"BrickWall",
+			"normalTexture":{
+				"index":10
+			},
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":7
+					"index":11
 				},
 				"metallicFactor":0,
-				"roughnessFactor":0.8500000238418579
+				"metallicRoughnessTexture":{
+					"index":12
+				}
 			}
 		},
 		{
@@ -19688,7 +19629,7 @@
 			"name":"StoreRoofWood",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":8
+					"index":13
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19713,7 +19654,7 @@
 			"name":"StoreStripe",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":9
+					"index":14
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19724,7 +19665,7 @@
 			"name":"StorePosters",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":10
+					"index":15
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19738,7 +19679,7 @@
 				1
 			],
 			"emissiveTexture":{
-				"index":11
+				"index":16
 			},
 			"extensions":{
 				"KHR_materials_emissive_strength":{
@@ -19748,7 +19689,7 @@
 			"name":"StoreBanner",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":12
+					"index":17
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19762,7 +19703,7 @@
 				1
 			],
 			"emissiveTexture":{
-				"index":13
+				"index":18
 			},
 			"extensions":{
 				"KHR_materials_emissive_strength":{
@@ -19772,7 +19713,7 @@
 			"name":"StoreLogo",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":14
+					"index":19
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -19795,7 +19736,7 @@
 			"name":"Wood",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":15
+					"index":20
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.5
@@ -22572,19 +22513,39 @@
 		},
 		{
 			"sampler":0,
-			"source":11
-		},
-		{
-			"sampler":0,
-			"source":12
-		},
-		{
-			"sampler":0,
 			"source":12
 		},
 		{
 			"sampler":0,
 			"source":13
+		},
+		{
+			"sampler":0,
+			"source":14
+		},
+		{
+			"sampler":0,
+			"source":15
+		},
+		{
+			"sampler":0,
+			"source":16
+		},
+		{
+			"sampler":0,
+			"source":16
+		},
+		{
+			"sampler":0,
+			"source":17
+		},
+		{
+			"sampler":0,
+			"source":17
+		},
+		{
+			"sampler":0,
+			"source":18
 		}
 	],
 	"images":[
@@ -22594,9 +22555,14 @@
 			"uri":"wooden_door.png"
 		},
 		{
-			"mimeType":"image/png",
-			"name":"grass2",
-			"uri":"grass2.png"
+			"mimeType":"image/jpeg",
+			"name":"grass_autumn_n",
+			"uri":"grass_autumn_n.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"grass_autumn_orn_d",
+			"uri":"grass_autumn_orn_d.jpg"
 		},
 		{
 			"mimeType":"image/jpeg",
@@ -22605,8 +22571,18 @@
 		},
 		{
 			"mimeType":"image/jpeg",
+			"name":"large_grey_tiles_norm",
+			"uri":"large_grey_tiles_norm.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
 			"name":"large_grey_tiles_diff",
 			"uri":"large_grey_tiles_diff.jpg"
+		},
+		{
+			"mimeType":"image/png",
+			"name":"large_grey_tiles_rough",
+			"uri":"large_grey_tiles_rough.png"
 		},
 		{
 			"mimeType":"image/png",
@@ -22624,9 +22600,19 @@
 			"uri":"darkwood5.jpg"
 		},
 		{
+			"mimeType":"image/jpeg",
+			"name":"brick_wall_norm",
+			"uri":"brick_wall_norm.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"brick_wall_diff",
+			"uri":"brick_wall_diff.jpg"
+		},
+		{
 			"mimeType":"image/png",
-			"name":"store_brick",
-			"uri":"store_brick.png"
+			"name":"brick_wall_rough",
+			"uri":"brick_wall_rough.png"
 		},
 		{
 			"mimeType":"image/png",

@@ -13,6 +13,8 @@
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec2 inUV;
 layout (location = 2) in vec3 inNormal;
+layout (location = 3) in vec4 inTangent;
+layout (location = 4) in mat3 inTBN;
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -23,13 +25,27 @@ void main()
     vec4 albedo = texture(diffuseTex, inUV);
     vec3 baseColor = materialData.baseColor.rgb * albedo.rgb;
 
+    vec3 normal = normalize(inNormal).rgb;
+    if (inTangent != vec4(0.0)) {
+        // FIXME: sometimes Blender doesn't export tangents for some objects
+        // for some reason. When we will start computing tangents manually,
+        // this check can be removed
+        normal = texture(normalMapTex, inUV).rgb;
+        normal = inTBN * normalize(normal * 2.0 - 1.0);
+    }
+
 #ifdef PBR
-    float metallic = materialData.metallicRoughnessEmissive.r;
-    float roughness = materialData.metallicRoughnessEmissive.g;
+    float metallicF = materialData.metallicRoughnessEmissive.r;
+    float roughnessF = materialData.metallicRoughnessEmissive.g;
+
+    vec4 metallicRoughness = texture(metallicRoughnessTex, inUV);
+
+    float roughness = roughnessF * metallicRoughness.g;
+    roughness *= roughness; // from perceptual to linear
     roughness = max(roughness, 1e-6); // 0.0 roughness leads to NaNs
 
-    // TODO: figure out if we need to do this!
-    // roughness *= roughness; // from perceptual to linear
+    float metallic = metallicF * metallicRoughness.b;
+
     vec3 dielectricSpecular = vec3(0.04);
     vec3 black = vec3(0.0);
     vec3 diffuseColor = mix(baseColor * (1.0 - dielectricSpecular.r), black, metallic);
@@ -40,7 +56,8 @@ void main()
 
     vec3 cameraPos = sceneData.cameraPos.xyz;
 
-    vec3 n = normalize(inNormal);
+    // vec3 n = normalize(normal);
+    vec3 n = normal;
     vec3 l = sceneData.sunlightDirection.xyz;
     vec3 v = normalize(cameraPos - inPos);
     vec3 h = normalize(v + l);
@@ -54,7 +71,7 @@ void main()
             diffuseColor, roughness, metallic, f0,
             n, v, l, h);
     // TODO: figure out how to properly compute light intensity for PBR
-    sunIntensity *= 4.6;
+    sunIntensity *= 2.6;
 #else
     vec3 fr = blinnPhongBRDF(diffuseColor, n, v, l, h);
 #endif
@@ -76,8 +93,18 @@ void main()
     vec3 emissiveColor = emissive * texture(emissiveTex, inUV).rgb;
     fragColor += emissiveColor;
 
-    // uint cascadeIndex = chooseCascade(inPos, cameraPos, sceneData.cascadeFarPlaneZs);
-    // fragColor *= debugShadowsFactor(cascadeIndex);
+    // CSM debug
+#if 0
+    uint cascadeIndex = chooseCascade(inPos, cameraPos, sceneData.cascadeFarPlaneZs);
+    fragColor *= debugShadowsFactor(cascadeIndex);
+#endif
+
+    // tangent debug
+#if 0
+    if (inTangent == vec4(0.0)) {
+        fragColor = vec3(1.0f, 0.0f, 0.0f);
+    }
+#endif
 
 	outFragColor = vec4(fragColor, 1.0f);
 }

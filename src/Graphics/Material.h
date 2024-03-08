@@ -18,7 +18,7 @@ struct MaterialData {
 struct Material {
     glm::vec4 baseColor{1.f, 1.f, 1.f, 1.f};
     float metallicFactor{0.f};
-    float roughnessFactor{0.5f};
+    float roughnessFactor{0.7f};
     float emissiveFactor{0.f};
 
     ImageId diffuseTexture{NULL_IMAGE_ID};

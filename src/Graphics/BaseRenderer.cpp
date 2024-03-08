@@ -33,6 +33,7 @@ void BaseRenderer::cleanup()
     vkDestroySampler(device, defaultShadowMapSampler, nullptr);
 
     gfxDevice.destroyImage(whiteTexture);
+    gfxDevice.destroyImage(placeholderNormalMapTexture);
 
     executor.cleanup(device);
 }
@@ -88,6 +89,21 @@ void BaseRenderer::initDefaultTextures()
 
         std::uint32_t white = 0xFFFFFFFF;
         gfxDevice.uploadImageData(whiteTexture, (void*)&white);
+    }
+
+    { // create white texture
+        placeholderNormalMapTexture = gfxDevice.createImage({
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .extent = VkExtent3D{1, 1, 1},
+        });
+        vkutil::addDebugLabel(
+            gfxDevice.getDevice(),
+            placeholderNormalMapTexture.image,
+            "normal map placeholder texture");
+
+        std::uint32_t normal = 0xFFFF8080; // (0.5, 0.5, 1.0, 1.0)
+        gfxDevice.uploadImageData(placeholderNormalMapTexture, (void*)&normal);
     }
 }
 
@@ -180,6 +196,12 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
 
     gpuMesh.buffers = buffers;
 
+    const auto vtxBufferName = cpuMesh.name + "(vtx)";
+    const auto idxBufferName = cpuMesh.name + "(idx)";
+    vkutil::
+        addDebugLabel(gfxDevice.getDevice(), buffers.vertexBuffer.buffer, vtxBufferName.c_str());
+    vkutil::addDebugLabel(gfxDevice.getDevice(), buffers.indexBuffer.buffer, idxBufferName.c_str());
+
     if (gpuMesh.hasSkeleton) {
         // create skinning data buffer
         const auto skinningDataSize = cpuMesh.vertices.size() * sizeof(CPUMesh::SkinningData);
@@ -242,7 +264,7 @@ MaterialId BaseRenderer::addMaterial(Material material)
     };
     const std::array<ImageBinding, 4> imageBindings{{
         {1, material.diffuseTexture, whiteTexture.imageView},
-        {2, material.normalMapTexture, whiteTexture.imageView},
+        {2, material.normalMapTexture, placeholderNormalMapTexture.imageView},
         {3, material.metallicRoughnessTexture, whiteTexture.imageView},
         {4, material.emissiveTexture, whiteTexture.imageView},
     }};
