@@ -389,7 +389,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
         vkCmdEndRendering(cmd);
 
-        // sync
+        // sync with post fx
         vkutil::transitionImage(
             cmd,
             resolveDepthImage.image,
@@ -399,18 +399,16 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         vkutil::cmdEndLabel(cmd);
     }
 
-    // Now we'll draw into another draw image and use drawImage and
-    // depthImage as attachments
-    vkutil::transitionImage(
-        cmd,
-        postFXDrawImage.image,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
     { // post FX
         ZoneScopedN("Post FX");
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Post FX", tracy::Color::Purple);
         vkutil::cmdBeginLabel(cmd, "Post FX");
+
+        vkutil::transitionImage(
+            cmd,
+            postFXDrawImage.image,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         const auto renderInfo = vkutil::createRenderingInfo({
             .renderExtent = postFXDrawImage.getExtent2D(),

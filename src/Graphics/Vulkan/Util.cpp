@@ -291,8 +291,8 @@ void generateMipmaps(
 
         if (mip < mipLevels - 1) {
             const auto halfSize = VkExtent2D{
-                .width = imageSize.width / 2,
-                .height = imageSize.height / 2,
+                .width = std::max(imageSize.width / 2, 1u),
+                .height = std::max(imageSize.height / 2, 1u),
             };
 
             const auto blitRegion = VkImageBlit2{
