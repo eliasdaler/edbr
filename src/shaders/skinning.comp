@@ -30,30 +30,30 @@ layout (push_constant) uniform constants
 	VertexBuffer inputBuffer;
     SkinningData skinningData;
 	VertexBuffer outputBuffer;
-};
+} pcs;
 
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 mat4 getJointMatrix(int jointId) {
-    return jointMatrices.matrices[jointMatricesStartIndex + jointId];
+    return pcs.jointMatrices.matrices[pcs.jointMatricesStartIndex + jointId];
 }
 
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
-    if (index >= numVertices) {
+    if (index >= pcs.numVertices) {
         return;
     }
 
-    SkinningDataType sd = skinningData.data[index];
+    SkinningDataType sd = pcs.skinningData.data[index];
     mat4 skinMatrix =
         sd.weights.x * getJointMatrix(sd.jointIds.x) +
         sd.weights.y * getJointMatrix(sd.jointIds.y) +
         sd.weights.z * getJointMatrix(sd.jointIds.z) +
         sd.weights.w * getJointMatrix(sd.jointIds.w);
 
-    Vertex v = inputBuffer.vertices[index];
+    Vertex v = pcs.inputBuffer.vertices[index];
     v.position = vec3(skinMatrix * vec4(v.position, 1.0));
 
-    outputBuffer.vertices[index] = v;
+    pcs.outputBuffer.vertices[index] = v;
 }

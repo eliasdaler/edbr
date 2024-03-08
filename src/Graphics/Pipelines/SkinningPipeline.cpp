@@ -14,7 +14,7 @@ void SkinningPipeline::init(GfxDevice& gfxDevice)
     const auto pushConstant = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         .offset = 0,
-        .size = sizeof(SkinningPushConstants),
+        .size = sizeof(PushConstants),
     };
 
     const auto pushConstants = std::array{pushConstant};
@@ -80,7 +80,7 @@ void SkinningPipeline::doSkinning(
     assert(mesh.hasSkeleton);
     assert(dc.skinnedMesh);
 
-    const auto cs = SkinningPushConstants{
+    const auto cs = PushConstants{
         .jointMatricesBuffer = getCurrentFrameData(frameIndex).jointMatricesBufferAddress,
         .jointMatricesStartIndex = dc.jointMatricesStartIndex,
         .numVertices = mesh.numVertices,
@@ -89,12 +89,7 @@ void SkinningPipeline::doSkinning(
         .outputBuffer = dc.skinnedMesh->skinnedVertexBufferAddress,
     };
     vkCmdPushConstants(
-        cmd,
-        skinningPipelineLayout,
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SkinningPushConstants),
-        &cs);
+        cmd, skinningPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &cs);
 
     static const auto workgroupSize = 256;
     const auto groupSizeX = (std::uint32_t)std::ceil(mesh.numVertices / (float)workgroupSize);

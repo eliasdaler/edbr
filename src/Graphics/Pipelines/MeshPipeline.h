@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/mat4x4.hpp>
+
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -31,6 +33,11 @@ public:
         const std::vector<std::size_t>& sortedDrawCommands);
 
 private:
-    VkPipelineLayout meshPipelineLayout;
-    VkPipeline meshPipeline;
+    struct PushConstants {
+        glm::mat4 transform;
+        VkDeviceAddress vertexBuffer;
+    };
+
+    VkPipelineLayout pipelineLayout;
+    VkPipeline pipeline;
 };

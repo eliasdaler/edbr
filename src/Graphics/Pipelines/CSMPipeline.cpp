@@ -21,24 +21,24 @@ void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
         .offset = 0,
-        .size = sizeof(DepthOnlyPushConstants),
+        .size = sizeof(PushConstants),
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    meshDepthOnlyPipelineLayout = vkutil::createPipelineLayout(device, {}, pushConstantRanges);
+    pipelineLayout = vkutil::createPipelineLayout(device, {}, pushConstantRanges);
 
-    meshDepthOnlyPipeline = PipelineBuilder{meshDepthOnlyPipelineLayout}
-                                .setShaders(vertexShader, VK_NULL_HANDLE)
-                                .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                                .setPolygonMode(VK_POLYGON_MODE_FILL)
-                                .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
-                                .setMultisamplingNone()
-                                .disableBlending()
-                                .setDepthFormat(VK_FORMAT_D32_SFLOAT)
-                                .enableDepthClamp()
-                                .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
-                                .build(device);
-    vkutil::addDebugLabel(device, meshDepthOnlyPipeline, "mesh depth only pipeline");
+    pipeline = PipelineBuilder{pipelineLayout}
+                   .setShaders(vertexShader, VK_NULL_HANDLE)
+                   .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                   .setPolygonMode(VK_POLYGON_MODE_FILL)
+                   .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+                   .setMultisamplingNone()
+                   .disableBlending()
+                   .setDepthFormat(VK_FORMAT_D32_SFLOAT)
+                   .enableDepthClamp()
+                   .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                   .build(device);
+    vkutil::addDebugLabel(device, pipeline, "mesh depth only pipeline");
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
 
@@ -80,8 +80,8 @@ void CSMPipeline::initCSMData(GfxDevice& gfxDevice)
 
 void CSMPipeline::cleanup(GfxDevice& gfxDevice)
 {
-    vkDestroyPipelineLayout(gfxDevice.getDevice(), meshDepthOnlyPipelineLayout, nullptr);
-    vkDestroyPipeline(gfxDevice.getDevice(), meshDepthOnlyPipeline, nullptr);
+    vkDestroyPipelineLayout(gfxDevice.getDevice(), pipelineLayout, nullptr);
+    vkDestroyPipeline(gfxDevice.getDevice(), pipeline, nullptr);
     gfxDevice.destroyImage(csmShadowMap);
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         vkDestroyImageView(gfxDevice.getDevice(), csmShadowMapViews[i], nullptr);
@@ -131,7 +131,7 @@ void CSMPipeline::draw(
         });
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshDepthOnlyPipeline);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         const auto viewport = VkViewport{
             .x = 0,
@@ -172,17 +172,17 @@ void CSMPipeline::draw(
                 vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
             }
 
-            const auto pushConstants = DepthOnlyPushConstants{
+            const auto pushConstants = PushConstants{
                 .mvp = csmLightSpaceTMs[i] * dc.transformMatrix,
                 .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBufferAddress :
                                                  mesh.buffers.vertexBufferAddress,
             };
             vkCmdPushConstants(
                 cmd,
-                meshDepthOnlyPipelineLayout,
+                pipelineLayout,
                 VK_SHADER_STAGE_VERTEX_BIT,
                 0,
-                sizeof(DepthOnlyPushConstants),
+                sizeof(PushConstants),
                 &pushConstants);
 
             vkCmdDrawIndexed(cmd, mesh.numIndices, 1, 0, 0, 0);

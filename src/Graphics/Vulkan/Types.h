@@ -1,10 +1,6 @@
 #pragma once
 
-#include <array>
-
-#include <glm/mat4x4.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
+#include <cstdint>
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -33,14 +29,4 @@ struct GPUMeshBuffers {
     AllocatedBuffer indexBuffer;
     AllocatedBuffer vertexBuffer;
     VkDeviceAddress vertexBufferAddress{};
-};
-
-struct GPUDrawPushConstants {
-    glm::mat4 transform;
-    VkDeviceAddress vertexBuffer;
-};
-
-struct DepthOnlyPushConstants {
-    glm::mat4 mvp;
-    VkDeviceAddress vertexBuffer;
 };

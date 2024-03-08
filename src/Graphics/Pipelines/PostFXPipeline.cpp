@@ -15,9 +15,9 @@ void PostFXPipeline::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
     }};
-    postFXDescSetLayout = vkutil::
+    imagesDescSetLayout = vkutil::
         buildDescriptorSetLayout(gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
-    postFXDescSet = gfxDevice.allocateDescriptorSet(postFXDescSetLayout);
+    imagesDescSet = gfxDevice.allocateDescriptorSet(imagesDescSetLayout);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -26,23 +26,23 @@ void PostFXPipeline::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    const auto layouts = std::array{postFXDescSetLayout};
-    postFXPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+    const auto layouts = std::array{imagesDescSetLayout};
+    pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     const auto vertexShader =
         vkutil::loadShaderModule("shaders/fullscreen_triangle.vert.spv", device);
     const auto fragShader = vkutil::loadShaderModule("shaders/postfx.frag.spv", device);
-    postFXPipeline = PipelineBuilder{postFXPipelineLayout}
-                         .setShaders(vertexShader, fragShader)
-                         .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                         .setPolygonMode(VK_POLYGON_MODE_FILL)
-                         .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-                         .setMultisamplingNone()
-                         .disableBlending()
-                         .setColorAttachmentFormat(drawImageFormat)
-                         .disableDepthTest()
-                         .build(device);
-    vkutil::addDebugLabel(device, postFXPipeline, "postFX pipeline");
+    pipeline = PipelineBuilder{pipelineLayout}
+                   .setShaders(vertexShader, fragShader)
+                   .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                   .setPolygonMode(VK_POLYGON_MODE_FILL)
+                   .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                   .setMultisamplingNone()
+                   .disableBlending()
+                   .setColorAttachmentFormat(drawImageFormat)
+                   .disableDepthTest()
+                   .build(device);
+    vkutil::addDebugLabel(device, pipeline, "postFX pipeline");
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
@@ -50,9 +50,9 @@ void PostFXPipeline::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
 
 void PostFXPipeline::cleanup(VkDevice device)
 {
-    vkDestroyDescriptorSetLayout(device, postFXDescSetLayout, nullptr);
-    vkDestroyPipeline(device, postFXPipeline, nullptr);
-    vkDestroyPipelineLayout(device, postFXPipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, imagesDescSetLayout, nullptr);
+    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
 void PostFXPipeline::setImages(
@@ -74,29 +74,17 @@ void PostFXPipeline::setImages(
         nearestSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(gfxDevice.getDevice(), postFXDescSet);
+    writer.updateSet(gfxDevice.getDevice(), imagesDescSet);
 }
 
 void PostFXPipeline::draw(VkCommandBuffer cmd, const PostFXPushContants& pcs)
 {
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, postFXPipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
-        cmd,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        postFXPipelineLayout,
-        0,
-        1,
-        &postFXDescSet,
-        0,
-        nullptr);
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &imagesDescSet, 0, nullptr);
 
     vkCmdPushConstants(
-        cmd,
-        postFXPipelineLayout,
-        VK_SHADER_STAGE_FRAGMENT_BIT,
-        0,
-        sizeof(PostFXPushContants),
-        &pcs);
+        cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PostFXPushContants), &pcs);
 
     vkCmdDraw(cmd, 3, 1, 0, 0);
 }

@@ -27,8 +27,8 @@ public:
         VkSampler sampler);
 
 private:
-    VkPipelineLayout skyboxPipelineLayout;
-    VkPipeline skyboxPipeline;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline pipeline;
 
     VkDescriptorSetLayout skyboxDescSetLayout;
     VkDescriptorSet skyboxDescSet;

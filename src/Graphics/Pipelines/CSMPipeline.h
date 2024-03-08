@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <vector>
 
 #include <Graphics/Camera.h>
@@ -42,6 +43,11 @@ private:
     std::array<Camera, NUM_SHADOW_CASCADES> cascadeCameras;
     std::array<VkImageView, NUM_SHADOW_CASCADES> csmShadowMapViews;
 
-    VkPipelineLayout meshDepthOnlyPipelineLayout;
-    VkPipeline meshDepthOnlyPipeline;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline pipeline;
+
+    struct PushConstants {
+        glm::mat4 mvp;
+        VkDeviceAddress vertexBuffer;
+    };
 };

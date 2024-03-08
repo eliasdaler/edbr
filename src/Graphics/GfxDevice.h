@@ -15,7 +15,6 @@
 
 #include <Graphics/Common.h>
 #include <Graphics/Swapchain.h>
-#include <Graphics/Vulkan/DeletionQueue.h>
 #include <Graphics/Vulkan/Descriptors.h>
 #include <Graphics/Vulkan/Types.h>
 #include <Graphics/Vulkan/VulkanImGui.h>
@@ -64,7 +63,7 @@ public:
     void destroyImage(const AllocatedImage& image) const;
 
     bool deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const;
-    VkSampleCountFlagBits getHighestSupportedSamplingCount() const;
+    VkSampleCountFlagBits getMaxSupportedSamplingCount() const;
     float getMaxAnisotropy() const { return maxSamplerAnisotropy; }
 
     VulkanImmediateExecutor createImmediateExecutor() const;
@@ -99,18 +98,17 @@ private: // data
     VkSurfaceKHR surface;
     Swapchain swapchain;
 
-    DeletionQueue deletionQueue;
     DescriptorAllocatorGrowable descriptorAllocator;
 
     std::array<FrameData, graphics::FRAME_OVERLAP> frames{};
     std::uint32_t frameNumber{0};
 
     VulkanImmediateExecutor executor;
+
     VulkanImGuiData imguiData;
+    bool imguiDrawn{true};
 
     VkSampleCountFlagBits supportedSampleCounts;
     VkSampleCountFlagBits highestSupportedSamples{VK_SAMPLE_COUNT_1_BIT};
     float maxSamplerAnisotropy{1.f};
-
-    bool imguiDrawn{true};
 };

@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <glm/mat4x4.hpp>
+
 #include <Graphics/Common.h>
 #include <Graphics/Vulkan/AppendableBuffer.h>
 
@@ -30,7 +32,7 @@ public:
 private:
     VkPipelineLayout skinningPipelineLayout;
     VkPipeline skinningPipeline;
-    struct SkinningPushConstants {
+    struct PushConstants {
         VkDeviceAddress jointMatricesBuffer;
         std::uint32_t jointMatricesStartIndex;
         std::uint32_t numVertices;

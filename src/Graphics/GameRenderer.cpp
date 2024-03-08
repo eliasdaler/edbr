@@ -18,11 +18,10 @@ GameRenderer::GameRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice), baseRen
 void GameRenderer::init()
 {
     baseRenderer.init();
-
-    samples = gfxDevice.getHighestSupportedSamplingCount();
-
     initSceneData();
 
+    samples = gfxDevice.getMaxSupportedSamplingCount(); // needs to be called before
+                                                        // createDrawImage
     createDrawImage(gfxDevice.getSwapchainExtent(), true);
 
     skinningPipeline.init(gfxDevice);

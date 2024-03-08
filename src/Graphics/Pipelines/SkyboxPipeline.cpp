@@ -35,22 +35,22 @@ void SkyboxPipeline::init(
 
     const auto pushConstantRanges = std::array{bufferRange};
     const auto layouts = std::array{skyboxDescSetLayout};
-    skyboxPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+    pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
-    skyboxPipeline = PipelineBuilder{skyboxPipelineLayout}
-                         .setShaders(vertexShader, fragShader)
-                         .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                         .setPolygonMode(VK_POLYGON_MODE_FILL)
-                         .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-                         // .setMultisamplingNone()
-                         .setMultisampling(samples)
-                         .disableBlending()
-                         .setColorAttachmentFormat(drawImageFormat)
-                         .setDepthFormat(depthImageFormat)
-                         // only draw to fragments with depth == 0.0 only
-                         .enableDepthTest(false, VK_COMPARE_OP_EQUAL)
-                         .build(device);
-    vkutil::addDebugLabel(device, skyboxPipeline, "skybox pipeline");
+    pipeline = PipelineBuilder{pipelineLayout}
+                   .setShaders(vertexShader, fragShader)
+                   .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                   .setPolygonMode(VK_POLYGON_MODE_FILL)
+                   .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                   // .setMultisamplingNone()
+                   .setMultisampling(samples)
+                   .disableBlending()
+                   .setColorAttachmentFormat(drawImageFormat)
+                   .setDepthFormat(depthImageFormat)
+                   // only draw to fragments with depth == 0.0 only
+                   .enableDepthTest(false, VK_COMPARE_OP_EQUAL)
+                   .build(device);
+    vkutil::addDebugLabel(device, pipeline, "skybox pipeline");
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
@@ -59,8 +59,8 @@ void SkyboxPipeline::init(
 void SkyboxPipeline::cleanup(VkDevice device)
 {
     vkDestroyDescriptorSetLayout(device, skyboxDescSetLayout, nullptr);
-    vkDestroyPipeline(device, skyboxPipeline, nullptr);
-    vkDestroyPipelineLayout(device, skyboxPipelineLayout, nullptr);
+    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
 void SkyboxPipeline::setSkyboxImage(
@@ -80,28 +80,16 @@ void SkyboxPipeline::setSkyboxImage(
 
 void SkyboxPipeline::draw(VkCommandBuffer cmd, const Camera& camera)
 {
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
-        cmd,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        skyboxPipelineLayout,
-        0,
-        1,
-        &skyboxDescSet,
-        0,
-        nullptr);
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &skyboxDescSet, 0, nullptr);
 
     const auto pc = SkyboxPushConstants{
         .invViewProj = glm::inverse(camera.getViewProj()),
         .cameraPos = glm::vec4{camera.getPosition(), 1.f},
     };
     vkCmdPushConstants(
-        cmd,
-        skyboxPipelineLayout,
-        VK_SHADER_STAGE_FRAGMENT_BIT,
-        0,
-        sizeof(SkyboxPushConstants),
-        &pc);
+        cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SkyboxPushConstants), &pc);
 
     vkCmdDraw(cmd, 3, 1, 0, 0);
 }

@@ -51,7 +51,6 @@ void GfxDevice::init(SDL_Window* window, bool vSync)
     for (std::size_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
         frames[i].tracyVkCtx =
             TracyVkContext(physicalDevice, device, graphicsQueue, frames[i].mainCommandBuffer);
-        deletionQueue.pushFunction([this, i](VkDevice) { TracyVkDestroy(frames[i].tracyVkCtx); });
     }
 }
 
@@ -120,8 +119,6 @@ void GfxDevice::initVulkan(SDL_Window* window)
         };
         vmaCreateAllocator(&allocatorInfo, &allocator);
     }
-
-    deletionQueue.pushFunction([&](VkDevice) { vmaDestroyAllocator(allocator); });
 }
 
 void GfxDevice::checkDeviceCapabilities()
@@ -173,11 +170,14 @@ void GfxDevice::createCommandBuffers()
 void GfxDevice::initDescriptorAllocator()
 {
     const auto sizes = std::vector<DescriptorAllocatorGrowable::PoolSizeRatio>{
-        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
+
     };
 
-    descriptorAllocator.init(device, 10, sizes);
+    descriptorAllocator.init(device, 1000, sizes);
 }
 
 VkCommandBuffer GfxDevice::beginFrame()
@@ -252,9 +252,8 @@ void GfxDevice::cleanup()
 {
     for (auto& frame : frames) {
         vkDestroyCommandPool(device, frame.commandPool, 0);
+        TracyVkDestroy(frame.tracyVkCtx);
     }
-
-    deletionQueue.flush(device);
 
     vkutil::cleanupImGui(imguiData, device);
     swapchain.cleanup(device);
@@ -264,6 +263,7 @@ void GfxDevice::cleanup()
     executor.cleanup(device);
 
     vkb::destroy_surface(instance, surface);
+    vmaDestroyAllocator(allocator);
     vkb::destroy_device(device);
     vkb::destroy_instance(instance);
 }
@@ -342,7 +342,7 @@ bool GfxDevice::deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const
     return (supportedSampleCounts & sample) != 0;
 }
 
-VkSampleCountFlagBits GfxDevice::getHighestSupportedSamplingCount() const
+VkSampleCountFlagBits GfxDevice::getMaxSupportedSamplingCount() const
 {
     return highestSupportedSamples;
 }

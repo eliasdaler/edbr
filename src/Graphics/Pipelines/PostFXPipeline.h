@@ -31,11 +31,11 @@ public:
         VkSampler nearestSampler);
 
 private:
-    VkPipelineLayout postFXPipelineLayout;
-    VkPipeline postFXPipeline;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline pipeline;
 
-    VkDescriptorSetLayout postFXDescSetLayout;
-    VkDescriptorSet postFXDescSet;
+    VkDescriptorSetLayout imagesDescSetLayout;
+    VkDescriptorSet imagesDescSet;
 
     PostFXPushContants pcs;
 };

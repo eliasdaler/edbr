@@ -29,25 +29,25 @@ void MeshPipeline::init(
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
         .offset = 0,
-        .size = sizeof(GPUDrawPushConstants),
+        .size = sizeof(PushConstants),
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
     const auto layouts = std::array{sceneDataDescriptorLayout, materialDataDescSetLayout};
-    meshPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+    pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
-    meshPipeline = PipelineBuilder{meshPipelineLayout}
-                       .setShaders(vertexShader, fragShader)
-                       .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                       .setPolygonMode(VK_POLYGON_MODE_FILL)
-                       .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
-                       .setMultisampling(samples)
-                       .disableBlending()
-                       .setColorAttachmentFormat(drawImageFormat)
-                       .setDepthFormat(depthImageFormat)
-                       .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
-                       .build(device);
-    vkutil::addDebugLabel(device, meshPipeline, "mesh pipeline");
+    pipeline = PipelineBuilder{pipelineLayout}
+                   .setShaders(vertexShader, fragShader)
+                   .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                   .setPolygonMode(VK_POLYGON_MODE_FILL)
+                   .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+                   .setMultisampling(samples)
+                   .disableBlending()
+                   .setColorAttachmentFormat(drawImageFormat)
+                   .setDepthFormat(depthImageFormat)
+                   .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                   .build(device);
+    vkutil::addDebugLabel(device, pipeline, "mesh pipeline");
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
@@ -62,12 +62,12 @@ void MeshPipeline::draw(
     const std::vector<DrawCommand>& drawCommands,
     const std::vector<std::size_t>& sortedDrawCommands)
 {
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     vkCmdBindDescriptorSets(
         cmd,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        meshPipelineLayout,
+        pipelineLayout,
         0,
         1,
         &sceneDataDescriptorSet,
@@ -109,7 +109,7 @@ void MeshPipeline::draw(
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                meshPipelineLayout,
+                pipelineLayout,
                 1,
                 1,
                 &material.materialSet,
@@ -122,17 +122,17 @@ void MeshPipeline::draw(
             vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         }
 
-        const auto pushConstants = GPUDrawPushConstants{
+        const auto pushConstants = PushConstants{
             .transform = dc.transformMatrix,
             .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBufferAddress :
                                              mesh.buffers.vertexBufferAddress,
         };
         vkCmdPushConstants(
             cmd,
-            meshPipelineLayout,
+            pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
-            sizeof(GPUDrawPushConstants),
+            sizeof(PushConstants),
             &pushConstants);
 
         vkCmdDrawIndexed(cmd, mesh.numIndices, 1, 0, 0, 0);
@@ -141,6 +141,6 @@ void MeshPipeline::draw(
 
 void MeshPipeline::cleanup(VkDevice device)
 {
-    vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
-    vkDestroyPipeline(device, meshPipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyPipeline(device, pipeline, nullptr);
 }

@@ -8,6 +8,7 @@
 
 #include <util/ImageLoader.h>
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 
