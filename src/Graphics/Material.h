@@ -6,6 +6,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <Graphics/IdTypes.h>
 #include <Graphics/Vulkan/Types.h>
 
 struct MaterialData {
@@ -17,8 +18,7 @@ struct MaterialData {
 struct Material {
     glm::vec4 baseColor{1.f, 1.f, 1.f, 1.f};
 
-    AllocatedImage diffuseTexture;
-    bool hasDiffuseTexture{false};
+    ImageId diffuseTexture{NULL_IMAGE_ID};
 
     float metallicFactor{0.f};
     float roughnessFactor{0.5f};

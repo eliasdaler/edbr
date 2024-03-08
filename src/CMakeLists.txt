@@ -4,6 +4,7 @@ add_executable(game
   Graphics/FrustumCulling.cpp
   Graphics/GfxDevice.cpp
   Graphics/MaterialCache.cpp
+  Graphics/ImageCache.cpp
   Graphics/MeshCache.cpp
   Graphics/ShadowMapping.cpp
   Graphics/SkeletonAnimator.cpp

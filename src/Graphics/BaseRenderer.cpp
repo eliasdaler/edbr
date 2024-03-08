@@ -21,7 +21,7 @@ void BaseRenderer::init()
 void BaseRenderer::cleanup()
 {
     meshCache.cleanup(gfxDevice);
-    materialCache.cleanup(gfxDevice);
+    imageCache.cleanup(gfxDevice);
 
     auto device = gfxDevice.getDevice();
 
@@ -241,7 +241,8 @@ MaterialId BaseRenderer::addMaterial(Material material)
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     writer.writeImage(
         1,
-        material.hasDiffuseTexture ? material.diffuseTexture.imageView : whiteTexture.imageView,
+        (material.diffuseTexture == NULL_IMAGE_ID) ? whiteTexture.imageView :
+                                                     getImage(material.diffuseTexture).imageView,
         defaultLinearSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -261,4 +262,18 @@ const Material& BaseRenderer::getMaterial(MaterialId id) const
 const GPUMesh& BaseRenderer::getMesh(MeshId id) const
 {
     return meshCache.getMesh(id);
+}
+
+ImageId BaseRenderer::loadImageFromFile(
+    const std::filesystem::path& path,
+    VkFormat format,
+    VkImageUsageFlags usage,
+    bool mipMap)
+{
+    return imageCache.loadImageFromFile(gfxDevice, path, format, usage, mipMap);
+}
+
+const AllocatedImage& BaseRenderer::getImage(ImageId id) const
+{
+    return imageCache.getImage(id);
 }

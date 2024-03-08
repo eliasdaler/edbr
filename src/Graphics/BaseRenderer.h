@@ -1,9 +1,12 @@
 #pragma once
 
+#include <filesystem>
+
 #include <vulkan/vulkan.h>
 
 #include <Graphics/Vulkan/VulkanImmediateExecutor.h>
 
+#include <Graphics/ImageCache.h>
 #include <Graphics/MaterialCache.h>
 #include <Graphics/MeshCache.h>
 
@@ -36,6 +39,13 @@ public:
 
     GfxDevice& getGfxDevice() { return gfxDevice; }
 
+    ImageId loadImageFromFile(
+        const std::filesystem::path& path,
+        VkFormat format,
+        VkImageUsageFlags usage,
+        bool mipMap);
+    const AllocatedImage& getImage(ImageId id) const;
+
 private:
     void initSamplers();
     void initDefaultTextures();
@@ -46,6 +56,7 @@ private: // data
     GfxDevice& gfxDevice;
     VulkanImmediateExecutor executor;
 
+    ImageCache imageCache;
     MeshCache meshCache;
 
     static const auto MAX_MATERIALS = 1000;
