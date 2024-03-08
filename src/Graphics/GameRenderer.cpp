@@ -222,8 +222,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
     { // CSM
         ZoneScopedN("CSM");
-        TracyVkZoneC(
-            gfxDevice.getCurrentFrame().tracyVkCtx, cmd, "CSM", tracy::Color::CornflowerBlue);
+        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "CSM", tracy::Color::CornflowerBlue);
         vkutil::cmdBeginLabel(cmd, "CSM");
 
         vkutil::transitionImage(
@@ -264,8 +263,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
     { // Geometry + Sky
         ZoneScopedN("Geometry");
-        TracyVkZoneC(
-            gfxDevice.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
+        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Geometry", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Geometry");
 
         // upload scene data
@@ -370,11 +368,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
     if (isMultisamplingEnabled()) {
         ZoneScopedN("Depth resolve");
-        TracyVkZoneC(
-            gfxDevice.getCurrentFrame().tracyVkCtx,
-            cmd,
-            "Depth resolve",
-            tracy::Color::ForestGreen);
+        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Depth resolve", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Depth resolve");
 
         vkutil::transitionImage(
@@ -414,7 +408,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
     { // post FX
         ZoneScopedN("Post FX");
-        TracyVkZoneC(gfxDevice.getCurrentFrame().tracyVkCtx, cmd, "Post FX", tracy::Color::Purple);
+        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Post FX", tracy::Color::Purple);
         vkutil::cmdBeginLabel(cmd, "Post FX");
 
         const auto renderInfo = vkutil::createRenderingInfo({

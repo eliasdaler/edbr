@@ -2,12 +2,13 @@ add_executable(game
   Graphics/Camera.cpp
   Graphics/Cubemap.cpp
   Graphics/FrustumCulling.cpp
+  Graphics/GfxDevice.cpp
   Graphics/MaterialCache.cpp
   Graphics/MeshCache.cpp
   Graphics/ShadowMapping.cpp
   Graphics/SkeletonAnimator.cpp
+  Graphics/Swapchain.cpp
   Graphics/Texture.cpp
-  Graphics/GfxDevice.cpp
 
   Graphics/BaseRenderer.cpp
   Graphics/GameRenderer.cpp

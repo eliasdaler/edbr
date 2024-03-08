@@ -3,7 +3,6 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
-#include <vector>
 
 // don't sort these includes
 // clang-format off
@@ -15,6 +14,7 @@
 // clang-format on
 
 #include <Graphics/Common.h>
+#include <Graphics/Swapchain.h>
 #include <Graphics/Vulkan/DeletionQueue.h>
 #include <Graphics/Vulkan/Descriptors.h>
 #include <Graphics/Vulkan/Types.h>
@@ -31,15 +31,14 @@ public:
     struct FrameData {
         VkCommandPool commandPool;
         VkCommandBuffer mainCommandBuffer;
-
-        VkSemaphore swapchainSemaphore;
-        VkSemaphore renderSemaphore;
-        VkFence renderFence;
-
         TracyVkCtx tracyVkCtx;
     };
 
 public:
+    GfxDevice() = default;
+    GfxDevice(const GfxDevice&) = delete;
+    GfxDevice& operator=(const GfxDevice&) = delete;
+
     void init(SDL_Window* window, bool vSync);
 
     VkCommandBuffer beginFrame();
@@ -74,19 +73,19 @@ public:
     VkDevice getDevice() const { return device; }
     VmaAllocator getAllocator() const { return allocator; }
 
-    FrameData& getCurrentFrame();
     std::uint32_t getCurrentFrameIndex() const;
-    VkExtent2D getSwapchainExtent() const { return swapchainExtent; }
+    VkExtent2D getSwapchainExtent() const { return swapchain.getExtent(); }
+    const TracyVkCtx& getTracyVkCtx() const;
 
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout layout);
 
 private:
     void initVulkan(SDL_Window* window);
     void checkDeviceCapabilities();
-    void createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync);
     void createCommandBuffers();
-    void initSyncStructures();
     void initDescriptorAllocator();
+
+    FrameData& getCurrentFrame();
 
 private: // data
     vkb::Instance instance;
@@ -98,11 +97,7 @@ private: // data
     VkQueue graphicsQueue;
 
     VkSurfaceKHR surface;
-
-    vkb::Swapchain swapchain;
-    VkExtent2D swapchainExtent;
-    std::vector<VkImage> swapchainImages;
-    std::vector<VkImageView> swapchainImageViews;
+    Swapchain swapchain;
 
     DeletionQueue deletionQueue;
     DescriptorAllocatorGrowable descriptorAllocator;

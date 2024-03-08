@@ -13,6 +13,8 @@ class GfxDevice;
 class BaseRenderer {
 public:
     BaseRenderer(GfxDevice& gfxDevice);
+    BaseRenderer(const BaseRenderer&) = delete;
+    BaseRenderer& operator=(const BaseRenderer&) = delete;
 
     void init();
     void cleanup();

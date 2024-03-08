@@ -27,16 +27,17 @@ void GfxDevice::init(SDL_Window* window, bool vSync)
     initVulkan(window);
     executor = createImmediateExecutor();
 
+    swapchain.initSyncStructures(device);
+
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
-    createSwapchain((std::uint32_t)w, (std::uint32_t)h, vSync);
+    swapchain.create(device, (std::uint32_t)w, (std::uint32_t)h, vSync);
 
     createCommandBuffers();
-    initSyncStructures();
     initDescriptorAllocator();
 
     { // Dear ImGui
-        vkutil::initSwapchainViews(imguiData, device, swapchainImages);
+        vkutil::initSwapchainViews(imguiData, device, swapchain.getImages());
         vkutil::initImGui(
             imguiData,
             instance,
@@ -154,40 +155,6 @@ void GfxDevice::checkDeviceCapabilities()
     }
 }
 
-void GfxDevice::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
-{
-    // vSync = false;
-    const std::array<VkFormat, 2> formats{{
-        VK_FORMAT_B8G8R8A8_SRGB,
-        VK_FORMAT_B8G8R8A8_UNORM,
-    }};
-    auto formatList = VkImageFormatListCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
-        .viewFormatCount = 2,
-        .pViewFormats = formats.data(),
-    };
-    swapchain = vkb::SwapchainBuilder{device}
-                    .add_pNext(&formatList)
-                    .set_desired_format(VkSurfaceFormatKHR{
-                        .format = VK_FORMAT_B8G8R8A8_SRGB,
-                        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-                    })
-                    .set_create_flags(VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)
-                    .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-                    .set_desired_present_mode(
-                        vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)
-                    .set_desired_extent(width, height)
-                    .build()
-                    .value();
-    swapchainExtent = VkExtent2D{.width = width, .height = height};
-
-    swapchainImages = swapchain.get_images().value();
-    swapchainImageViews = swapchain.get_image_views().value();
-
-    // TODO: if re-creation of swapchain is supported, don't forget to call
-    // vkutil::initSwapchainViews here.
-}
-
 void GfxDevice::createCommandBuffers()
 {
     const auto poolCreateInfo = vkinit::
@@ -203,24 +170,6 @@ void GfxDevice::createCommandBuffers()
     }
 }
 
-void GfxDevice::initSyncStructures()
-{
-    const auto fenceCreateInfo = VkFenceCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
-    const auto semaphoreCreateInfo = VkSemaphoreCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-    };
-    for (std::uint32_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
-        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i].renderFence));
-        VK_CHECK(vkCreateSemaphore(
-            device, &semaphoreCreateInfo, nullptr, &frames[i].swapchainSemaphore));
-        VK_CHECK(
-            vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i].renderSemaphore));
-    }
-}
-
 void GfxDevice::initDescriptorAllocator()
 {
     const auto sizes = std::vector<DescriptorAllocatorGrowable::PoolSizeRatio>{
@@ -233,11 +182,9 @@ void GfxDevice::initDescriptorAllocator()
 
 VkCommandBuffer GfxDevice::beginFrame()
 {
+    swapchain.beginFrame(device, getCurrentFrameIndex());
+
     const auto& frame = getCurrentFrame();
-
-    VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, NO_TIMEOUT));
-    VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
-
     const auto& cmd = frame.mainCommandBuffer;
     const auto cmdBeginInfo = VkCommandBufferBeginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -253,25 +200,14 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
     const auto& frame = getCurrentFrame();
 
     // get swapchain image
-    std::uint32_t swapchainImageIndex{};
-    VK_CHECK(vkAcquireNextImageKHR(
-        device,
-        swapchain,
-        NO_TIMEOUT,
-        frame.swapchainSemaphore,
-        VK_NULL_HANDLE,
-        &swapchainImageIndex));
-    const auto& swapchainImage = swapchainImages[swapchainImageIndex];
+    const auto [swapchainImage, swapchainImageIndex] =
+        swapchain.acquireImage(device, getCurrentFrameIndex());
 
     // copy from draw image into swapchain
     vkutil::transitionImage(
         cmd, swapchainImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     vkutil::copyImageToImage(
-        cmd,
-        drawImage.image,
-        swapchainImage,
-        {drawImage.extent.width, drawImage.extent.height},
-        swapchainExtent);
+        cmd, drawImage.image, swapchainImage, drawImage.getExtent2D(), swapchain.getExtent());
 
     if (imguiDrawn) {
         vkutil::transitionImage(
@@ -283,7 +219,7 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
         { // draw Dear ImGui
             TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
             vkutil::cmdBeginLabel(cmd, "Draw Dear ImGui");
-            vkutil::drawImGui(imguiData, cmd, swapchainExtent, swapchainImageIndex);
+            vkutil::drawImGui(imguiData, cmd, swapchain.getExtent(), swapchainImageIndex);
             vkutil::cmdEndLabel(cmd);
         }
 
@@ -307,32 +243,8 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
-    { // submit
-        const auto submitInfo = VkCommandBufferSubmitInfo{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-            .commandBuffer = cmd,
-        };
-        const auto waitInfo = vkinit::semaphoreSubmitInfo(
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, frame.swapchainSemaphore);
-        const auto signalInfo = vkinit::
-            semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, frame.renderSemaphore);
+    swapchain.submitAndPresent(cmd, graphicsQueue, getCurrentFrameIndex(), swapchainImageIndex);
 
-        const auto submit = vkinit::submitInfo(&submitInfo, &waitInfo, &signalInfo);
-        VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, frame.renderFence));
-    }
-
-    { // present
-        const auto presentInfo = VkPresentInfoKHR{
-            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &frame.renderSemaphore,
-            .swapchainCount = 1,
-            .pSwapchains = &swapchain.swapchain,
-            .pImageIndices = &swapchainImageIndex,
-        };
-
-        VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
-    }
     frameNumber++;
 }
 
@@ -340,25 +252,14 @@ void GfxDevice::cleanup()
 {
     for (auto& frame : frames) {
         vkDestroyCommandPool(device, frame.commandPool, 0);
-        vkDestroyFence(device, frame.renderFence, nullptr);
-        vkDestroySemaphore(device, frame.swapchainSemaphore, nullptr);
-        vkDestroySemaphore(device, frame.renderSemaphore, nullptr);
     }
 
     deletionQueue.flush(device);
 
     vkutil::cleanupImGui(imguiData, device);
+    swapchain.cleanup(device);
 
     descriptorAllocator.destroyPools(device);
-
-    { // destroy swapchain and its views
-        for (auto imageView : swapchainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
-        swapchainImageViews.clear();
-
-        vkb::destroy_swapchain(swapchain);
-    }
 
     executor.cleanup(device);
 
@@ -419,6 +320,11 @@ void GfxDevice::destroyImage(const AllocatedImage& image) const
 GfxDevice::FrameData& GfxDevice::getCurrentFrame()
 {
     return frames[getCurrentFrameIndex()];
+}
+
+const TracyVkCtx& GfxDevice::getTracyVkCtx() const
+{
+    return frames[getCurrentFrameIndex()].tracyVkCtx;
 }
 
 std::uint32_t GfxDevice::getCurrentFrameIndex() const
