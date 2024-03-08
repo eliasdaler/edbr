@@ -1,13 +1,13 @@
 #include "Cubemap.h"
 
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 #include <Graphics/Vulkan/Util.h>
 
 #include <util/ImageLoader.h>
 
 namespace graphics
 {
-AllocatedImage loadCubemap(const Renderer& renderer, const std::filesystem::path& imagesDir)
+AllocatedImage loadCubemap(const GfxDevice& gfxDevice, const std::filesystem::path& imagesDir)
 {
     VkImageUsageFlags usages{};
     usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -29,7 +29,7 @@ AllocatedImage loadCubemap(const Renderer& renderer, const std::filesystem::path
         assert(data.pixels != nullptr);
 
         if (!imageCreated) {
-            img = renderer.createImage({
+            img = gfxDevice.createImage({
                 .format = VK_FORMAT_R8G8B8A8_SRGB,
                 .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 .flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
@@ -50,12 +50,12 @@ AllocatedImage loadCubemap(const Renderer& renderer, const std::filesystem::path
                 "All images for cubemap must have the same size");
         }
 
-        renderer.uploadImageData(img, data.pixels, face);
+        gfxDevice.uploadImageData(img, data.pixels, face);
         ++face;
     }
 
     const auto cubemapLabel = "cubemap, dir=" + imagesDir.string();
-    vkutil::addDebugLabel(renderer.getDevice(), img.image, cubemapLabel.c_str());
+    vkutil::addDebugLabel(gfxDevice.getDevice(), img.image, cubemapLabel.c_str());
 
     return img;
 }

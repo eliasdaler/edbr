@@ -5,7 +5,7 @@
 #include <Graphics/IdTypes.h>
 #include <Graphics/Material.h>
 
-class Renderer;
+class GfxDevice;
 
 class MaterialCache {
 public:
@@ -14,7 +14,7 @@ public:
 
     MaterialId getFreeMaterialId() const;
 
-    void cleanup(const Renderer& renderer);
+    void cleanup(const GfxDevice& gfxDevice);
 
 private:
     std::vector<Material> materials;

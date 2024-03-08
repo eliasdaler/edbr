@@ -25,7 +25,7 @@ namespace vkutil
 struct CreateImageInfo;
 }
 
-class Renderer {
+class GfxDevice {
 public:
     static constexpr std::size_t FRAME_OVERLAP = 2;
 

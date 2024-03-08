@@ -50,6 +50,7 @@ public:
     };
 
 public:
+    Game();
     void init();
     void run();
     void cleanup();
@@ -76,6 +77,7 @@ private:
     void generateDrawList();
     void sortDrawList();
 
+    GfxDevice gfxDevice;
     GameRenderer renderer;
 
     SDL_Window* window;

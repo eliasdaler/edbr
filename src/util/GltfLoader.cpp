@@ -7,7 +7,7 @@
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/CPUMesh.h>
 #include <Graphics/GPUMesh.h>
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 #include <Graphics/Scene.h>
 #include <Graphics/Skeleton.h>
 #include <Math/Util.h>
@@ -262,7 +262,7 @@ void loadMaterial(
     }
     if (!diffusePath.empty()) {
         // TODO: use texture cache and don't load same textures
-        material.diffuseTexture = ctx.renderer.getRenderer().loadImageFromFile(
+        material.diffuseTexture = ctx.renderer.getGfxDevice().loadImageFromFile(
             diffusePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
         material.hasDiffuseTexture = true;
     }

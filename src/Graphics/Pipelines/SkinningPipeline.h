@@ -4,7 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 #include <Graphics/Vulkan/AppendableBuffer.h>
 
 struct DrawCommand;
@@ -12,18 +12,21 @@ class BaseRenderer;
 
 class SkinningPipeline {
 public:
-    SkinningPipeline(Renderer& renderer);
+    void init(GfxDevice& gfxDevice);
+    void cleanup(GfxDevice& gfxDevice);
 
-    void cleanup(VkDevice device);
+    void doSkinning(
+        VkCommandBuffer cmd,
+        std::size_t frameIndex,
+        const BaseRenderer& baseRenderer,
+        const DrawCommand& dc);
 
-    void doSkinning(VkCommandBuffer cmd, const BaseRenderer& baseRenderer, const DrawCommand& dc);
-
-    void beginDrawing();
-    std::size_t appendJointMatrices(std::span<const glm::mat4> jointMatrices);
+    void beginDrawing(std::size_t frameIndex);
+    std::size_t appendJointMatrices(
+        std::span<const glm::mat4> jointMatrices,
+        std::size_t frameIndex);
 
 private:
-    Renderer& renderer;
-
     VkPipelineLayout skinningPipelineLayout;
     VkPipeline skinningPipeline;
     struct SkinningPushConstants {
@@ -41,7 +44,7 @@ private:
         VkDeviceAddress jointMatricesBufferAddress;
     };
 
-    std::array<PerFrameData, Renderer::FRAME_OVERLAP> framesData;
+    std::array<PerFrameData, GfxDevice::FRAME_OVERLAP> framesData;
 
-    PerFrameData& getCurrentFrameData();
+    PerFrameData& getCurrentFrameData(std::size_t frameIndex);
 };

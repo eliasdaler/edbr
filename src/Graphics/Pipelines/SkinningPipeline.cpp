@@ -6,9 +6,9 @@
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
 
-SkinningPipeline::SkinningPipeline(Renderer& renderer) : renderer(renderer)
+void SkinningPipeline::init(GfxDevice& gfxDevice)
 {
-    const auto& device = renderer.getDevice();
+    const auto& device = gfxDevice.getDevice();
 
     const auto pushConstant = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -27,39 +27,41 @@ SkinningPipeline::SkinningPipeline(Renderer& renderer) : renderer(renderer)
 
     vkDestroyShaderModule(device, shader, nullptr);
 
-    for (std::size_t i = 0; i < Renderer::FRAME_OVERLAP; ++i) {
+    for (std::size_t i = 0; i < GfxDevice::FRAME_OVERLAP; ++i) {
         auto& jointMatricesBuffer = framesData[i].jointMatricesBuffer;
         jointMatricesBuffer.capacity = MAX_JOINT_MATRICES;
-        jointMatricesBuffer.buffer = renderer.createBuffer(
+        jointMatricesBuffer.buffer = gfxDevice.createBuffer(
             MAX_JOINT_MATRICES * sizeof(glm::mat4),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
         framesData[i].jointMatricesBufferAddress =
-            renderer.getBufferAddress(jointMatricesBuffer.buffer);
+            gfxDevice.getBufferAddress(jointMatricesBuffer.buffer);
     }
 }
 
-void SkinningPipeline::cleanup(VkDevice device)
+void SkinningPipeline::cleanup(GfxDevice& gfxDevice)
 {
-    for (std::size_t i = 0; i < Renderer::FRAME_OVERLAP; ++i) {
-        renderer.destroyBuffer(framesData[i].jointMatricesBuffer.buffer);
+    for (std::size_t i = 0; i < GfxDevice::FRAME_OVERLAP; ++i) {
+        gfxDevice.destroyBuffer(framesData[i].jointMatricesBuffer.buffer);
     }
-    vkDestroyPipelineLayout(device, skinningPipelineLayout, nullptr);
-    vkDestroyPipeline(device, skinningPipeline, nullptr);
+    vkDestroyPipelineLayout(gfxDevice.getDevice(), skinningPipelineLayout, nullptr);
+    vkDestroyPipeline(gfxDevice.getDevice(), skinningPipeline, nullptr);
 }
 
-void SkinningPipeline::beginDrawing()
+void SkinningPipeline::beginDrawing(std::size_t frameIndex)
 {
-    getCurrentFrameData().jointMatricesBuffer.clear();
+    getCurrentFrameData(frameIndex).jointMatricesBuffer.clear();
 }
 
-SkinningPipeline::PerFrameData& SkinningPipeline::getCurrentFrameData()
+SkinningPipeline::PerFrameData& SkinningPipeline::getCurrentFrameData(std::size_t frameIndex)
 {
-    return framesData[renderer.getCurrentFrameIndex()];
+    return framesData[frameIndex];
 }
 
-std::size_t SkinningPipeline::appendJointMatrices(std::span<const glm::mat4> jointMatrices)
+std::size_t SkinningPipeline::appendJointMatrices(
+    std::span<const glm::mat4> jointMatrices,
+    std::size_t frameIndex)
 {
-    auto& jointMatricesBuffer = getCurrentFrameData().jointMatricesBuffer;
+    auto& jointMatricesBuffer = getCurrentFrameData(frameIndex).jointMatricesBuffer;
     const auto startIndex = jointMatricesBuffer.size;
     jointMatricesBuffer.append(jointMatrices);
     return startIndex;
@@ -67,6 +69,7 @@ std::size_t SkinningPipeline::appendJointMatrices(std::span<const glm::mat4> joi
 
 void SkinningPipeline::doSkinning(
     VkCommandBuffer cmd,
+    std::size_t frameIndex,
     const BaseRenderer& baseRenderer,
     const DrawCommand& dc)
 {
@@ -77,7 +80,7 @@ void SkinningPipeline::doSkinning(
     assert(dc.skinnedMesh);
 
     const auto cs = SkinningPushConstants{
-        .jointMatricesBuffer = getCurrentFrameData().jointMatricesBufferAddress,
+        .jointMatricesBuffer = getCurrentFrameData(frameIndex).jointMatricesBufferAddress,
         .jointMatricesStartIndex = dc.jointMatricesStartIndex,
         .numVertices = mesh.numVertices,
         .inputBuffer = mesh.buffers.vertexBufferAddress,

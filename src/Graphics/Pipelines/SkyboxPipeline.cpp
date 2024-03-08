@@ -3,19 +3,18 @@
 #include <volk.h>
 
 #include <Graphics/Camera.h>
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
-SkyboxPipeline::SkyboxPipeline(
-    Renderer& renderer,
+void SkyboxPipeline::init(
+    GfxDevice& gfxDevice,
     VkFormat drawImageFormat,
     VkFormat depthImageFormat,
-    VkSampleCountFlagBits samples) :
-    renderer(renderer)
+    VkSampleCountFlagBits samples)
 {
-    const auto& device = renderer.getDevice();
+    const auto& device = gfxDevice.getDevice();
 
     const auto vertexShader =
         vkutil::loadShaderModule("shaders/fullscreen_triangle.vert.spv", device);
@@ -25,8 +24,8 @@ SkyboxPipeline::SkyboxPipeline(
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
     }};
     skyboxDescSetLayout = vkutil::
-        buildDescriptorSetLayout(renderer.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
-    skyboxDescSet = renderer.allocateDescriptorSet(skyboxDescSetLayout);
+        buildDescriptorSetLayout(gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
+    skyboxDescSet = gfxDevice.allocateDescriptorSet(skyboxDescSetLayout);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -64,7 +63,10 @@ void SkyboxPipeline::cleanup(VkDevice device)
     vkDestroyPipelineLayout(device, skyboxPipelineLayout, nullptr);
 }
 
-void SkyboxPipeline::setSkyboxImage(const AllocatedImage& skybox, VkSampler sampler)
+void SkyboxPipeline::setSkyboxImage(
+    const GfxDevice& gfxDevice,
+    const AllocatedImage& skybox,
+    VkSampler sampler)
 {
     DescriptorWriter writer;
     writer.writeImage(
@@ -73,7 +75,7 @@ void SkyboxPipeline::setSkyboxImage(const AllocatedImage& skybox, VkSampler samp
         sampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(renderer.getDevice(), skyboxDescSet);
+    writer.updateSet(gfxDevice.getDevice(), skyboxDescSet);
 }
 
 void SkyboxPipeline::draw(VkCommandBuffer cmd, const Camera& camera)

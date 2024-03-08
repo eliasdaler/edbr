@@ -4,7 +4,7 @@
 
 #include <Graphics/GPUMesh.h>
 
-class Renderer;
+class GfxDevice;
 
 class MeshCache {
 public:
@@ -12,7 +12,7 @@ public:
 
     const GPUMesh& getMesh(MeshId id) const;
 
-    void cleanup(const Renderer& renderer);
+    void cleanup(const GfxDevice& gfxDevice);
 
 private:
     std::vector<GPUMesh> meshes;

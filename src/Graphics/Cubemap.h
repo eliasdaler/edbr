@@ -3,9 +3,9 @@
 #include <filesystem>
 
 struct AllocatedImage;
-class Renderer;
+class GfxDevice;
 
 namespace graphics
 {
-AllocatedImage loadCubemap(const Renderer& renderer, const std::filesystem::path& imagesDir);
+AllocatedImage loadCubemap(const GfxDevice& gfxDevice, const std::filesystem::path& imagesDir);
 }

@@ -2,15 +2,17 @@
 
 #include <vulkan/vulkan.h>
 
-#include <Graphics/MaterialCache.h>
-#include <Graphics/MeshCache.h>
 #include <Graphics/Vulkan/VulkanImmediateExecutor.h>
 
+#include <Graphics/MaterialCache.h>
+#include <Graphics/MeshCache.h>
+
 struct CPUMesh;
+class GfxDevice;
 
 class BaseRenderer {
 public:
-    BaseRenderer(Renderer& renderer);
+    BaseRenderer(GfxDevice& gfxDevice);
 
     void init();
     void cleanup();
@@ -30,7 +32,7 @@ public:
     MaterialId addMaterial(Material material);
     const Material& getMaterial(MaterialId id) const;
 
-    Renderer& getRenderer() { return renderer; }
+    GfxDevice& getGfxDevice() { return gfxDevice; }
 
 private:
     void initSamplers();
@@ -39,7 +41,7 @@ private:
     void initDescriptors();
 
 private: // data
-    Renderer& renderer;
+    GfxDevice& gfxDevice;
     VulkanImmediateExecutor executor;
 
     MeshCache meshCache;

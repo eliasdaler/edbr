@@ -7,8 +7,8 @@ add_executable(game
   Graphics/ShadowMapping.cpp
   Graphics/SkeletonAnimator.cpp
   Graphics/Texture.cpp
+  Graphics/GfxDevice.cpp
 
-  Graphics/Renderer.cpp
   Graphics/BaseRenderer.cpp
   Graphics/GameRenderer.cpp
 

@@ -12,47 +12,46 @@
 
 #include <numeric> // iota
 
-GameRenderer::GameRenderer() : baseRenderer(renderer)
+GameRenderer::GameRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice), baseRenderer(gfxDevice)
 {}
 
-void GameRenderer::init(SDL_Window* window, bool vSync)
+void GameRenderer::init()
 {
-    renderer.init(window, vSync);
     baseRenderer.init();
 
-    samples = renderer.getHighestSupportedSamplingCount();
+    samples = gfxDevice.getHighestSupportedSamplingCount();
 
     initSceneData();
 
-    createDrawImage(renderer.getSwapchainExtent(), true);
+    createDrawImage(gfxDevice.getSwapchainExtent(), true);
 
-    skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
-    csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
-    meshPipeline = std::make_unique<MeshPipeline>(
-        renderer,
+    skinningPipeline.init(gfxDevice);
+    csmPipeline.init(gfxDevice, std::array{0.08f, 0.2f, 0.5f});
+    meshPipeline.init(
+        gfxDevice,
         drawImage.format,
         depthImage.format,
         sceneDataDescriptorLayout,
         baseRenderer.getMaterialDataDescSetLayout(),
         samples);
 
-    depthResolvePipeline = std::make_unique<DepthResolvePipeline>(renderer, depthImage);
+    depthResolvePipeline.init(gfxDevice, depthImage);
     depthResolvePipeline
-        ->setDepthImage(renderer, depthImage, baseRenderer.getDefaultNearestSampler());
+        .setDepthImage(gfxDevice, depthImage, baseRenderer.getDefaultNearestSampler());
 
-    skyboxPipeline =
-        std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
-    postFXPipeline = std::make_unique<PostFXPipeline>(renderer, drawImage.format);
+    skyboxPipeline.init(gfxDevice, drawImage.format, depthImage.format, samples);
+    postFXPipeline.init(gfxDevice, drawImage.format);
 
     if (isMultisamplingEnabled()) {
-        postFXPipeline
-            ->setImages(resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
+        postFXPipeline.setImages(
+            gfxDevice, resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
     } else {
-        postFXPipeline->setImages(drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
+        postFXPipeline
+            .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
     }
 
-    skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
-    skyboxPipeline->setSkyboxImage(skyboxImage, baseRenderer.getDefaultLinearSampler());
+    skyboxImage = graphics::loadCubemap(gfxDevice, "assets/images/skybox/distant_sunset");
+    skyboxPipeline.setSkyboxImage(gfxDevice, skyboxImage, baseRenderer.getDefaultLinearSampler());
 
     // depends on csm pipeline being created
     updateSceneDataDescriptorSet();
@@ -79,18 +78,18 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
             .extent = drawImageExtent,
             .samples = samples,
         };
-        drawImage = renderer.createImage(createImageInfo);
+        drawImage = gfxDevice.createImage(createImageInfo);
 
-        vkutil::addDebugLabel(renderer.getDevice(), drawImage.image, "draw image");
-        vkutil::addDebugLabel(renderer.getDevice(), drawImage.imageView, "draw image view");
+        vkutil::addDebugLabel(gfxDevice.getDevice(), drawImage.image, "draw image");
+        vkutil::addDebugLabel(gfxDevice.getDevice(), drawImage.imageView, "draw image view");
 
         if (firstCreate) {
             createImageInfo.samples = VK_SAMPLE_COUNT_1_BIT; // no MSAA
-            postFXDrawImage = renderer.createImage(createImageInfo);
+            postFXDrawImage = gfxDevice.createImage(createImageInfo);
             vkutil::
-                addDebugLabel(renderer.getDevice(), postFXDrawImage.image, "post FX draw image");
+                addDebugLabel(gfxDevice.getDevice(), postFXDrawImage.image, "post FX draw image");
             vkutil::addDebugLabel(
-                renderer.getDevice(), postFXDrawImage.imageView, "post FX draw image view");
+                gfxDevice.getDevice(), postFXDrawImage.imageView, "post FX draw image view");
         }
     }
 
@@ -106,10 +105,10 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
             .usage = usages,
             .extent = drawImageExtent,
         };
-        resolveImage = renderer.createImage(createImageInfo);
+        resolveImage = gfxDevice.createImage(createImageInfo);
 
-        vkutil::addDebugLabel(renderer.getDevice(), resolveImage.image, "resolve image");
-        vkutil::addDebugLabel(renderer.getDevice(), resolveImage.imageView, "resolve image");
+        vkutil::addDebugLabel(gfxDevice.getDevice(), resolveImage.image, "resolve image");
+        vkutil::addDebugLabel(gfxDevice.getDevice(), resolveImage.imageView, "resolve image");
     }
 
     { // setup depth image
@@ -120,18 +119,20 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
             .samples = samples,
         };
 
-        depthImage = renderer.createImage(createInfo);
-        vkutil::addDebugLabel(renderer.getDevice(), depthImage.image, "draw image (depth)");
-        vkutil::addDebugLabel(renderer.getDevice(), depthImage.imageView, "draw image depth view");
+        depthImage = gfxDevice.createImage(createInfo);
+        vkutil::addDebugLabel(gfxDevice.getDevice(), depthImage.image, "draw image (depth)");
+        vkutil::addDebugLabel(gfxDevice.getDevice(), depthImage.imageView, "draw image depth view");
 
         if (firstCreate) {
             createInfo.samples = VK_SAMPLE_COUNT_1_BIT; // NO MSAA
-            resolveDepthImage = renderer.createImage(createInfo);
+            resolveDepthImage = gfxDevice.createImage(createInfo);
 
             vkutil::addDebugLabel(
-                renderer.getDevice(), resolveDepthImage.image, "draw image (depth resolve)");
+                gfxDevice.getDevice(), resolveDepthImage.image, "draw image (depth resolve)");
             vkutil::addDebugLabel(
-                renderer.getDevice(), resolveDepthImage.imageView, "draw image depth resolve view");
+                gfxDevice.getDevice(),
+                resolveDepthImage.imageView,
+                "draw image depth resolve view");
         }
     }
 }
@@ -143,24 +144,23 @@ void GameRenderer::initSceneData()
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
     }};
     sceneDataDescriptorLayout = vkutil::buildDescriptorSetLayout(
-        renderer.getDevice(),
+        gfxDevice.getDevice(),
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         sceneDataBindings);
 
     sceneDataBuffer.init(
-        renderer.getDevice(),
-        renderer.getAllocator(),
+        gfxDevice.getDevice(),
+        gfxDevice.getAllocator(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         sizeof(GPUSceneData),
-        Renderer::FRAME_OVERLAP,
+        GfxDevice::FRAME_OVERLAP,
         "scene data");
 
-    sceneDataDescriptorSet = renderer.allocateDescriptorSet(sceneDataDescriptorLayout);
+    sceneDataDescriptorSet = gfxDevice.allocateDescriptorSet(sceneDataDescriptorLayout);
 }
 
 void GameRenderer::updateSceneDataDescriptorSet()
 {
-    assert(csmPipeline);
     DescriptorWriter writer;
     writer.writeBuffer(
         0,
@@ -170,16 +170,16 @@ void GameRenderer::updateSceneDataDescriptorSet()
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     writer.writeImage(
         1,
-        csmPipeline->getShadowMap().imageView,
+        csmPipeline.getShadowMap().imageView,
         baseRenderer.getDefaultShadowMapSampler(),
         VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(renderer.getDevice(), sceneDataDescriptorSet);
+    writer.updateSet(gfxDevice.getDevice(), sceneDataDescriptorSet);
 }
 
 void GameRenderer::draw(const Camera& camera, const SceneData& sceneData)
 {
-    auto cmd = renderer.beginFrame();
+    auto cmd = gfxDevice.beginFrame();
     draw(cmd, camera, sceneData);
 
     // we'll copy from post FX draw image to swapchain
@@ -189,7 +189,7 @@ void GameRenderer::draw(const Camera& camera, const SceneData& sceneData)
         VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    renderer.endFrame(cmd, postFXDrawImage);
+    gfxDevice.endFrame(cmd, postFXDrawImage);
 }
 
 void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData)
@@ -200,7 +200,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             if (!dc.skinnedMesh) {
                 continue;
             }
-            skinningPipeline->doSkinning(cmd, baseRenderer, dc);
+            skinningPipeline.doSkinning(cmd, gfxDevice.getCurrentFrameIndex(), baseRenderer, dc);
         }
         vkutil::cmdEndLabel(cmd);
 
@@ -223,16 +223,16 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
     { // CSM
         ZoneScopedN("CSM");
         TracyVkZoneC(
-            renderer.getCurrentFrame().tracyVkCtx, cmd, "CSM", tracy::Color::CornflowerBlue);
+            gfxDevice.getCurrentFrame().tracyVkCtx, cmd, "CSM", tracy::Color::CornflowerBlue);
         vkutil::cmdBeginLabel(cmd, "CSM");
 
         vkutil::transitionImage(
             cmd,
-            csmPipeline->getShadowMap().image,
+            csmPipeline.getShadowMap().image,
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-        csmPipeline->draw(
+        csmPipeline.draw(
             cmd,
             baseRenderer,
             camera,
@@ -251,7 +251,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
             .oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
             .newLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
-            .image = csmPipeline->getShadowMap().image,
+            .image = csmPipeline.getShadowMap().image,
             .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_DEPTH_BIT),
         };
         const auto dependencyInfo = VkDependencyInfo{
@@ -265,7 +265,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
     { // Geometry + Sky
         ZoneScopedN("Geometry");
         TracyVkZoneC(
-            renderer.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
+            gfxDevice.getCurrentFrame().tracyVkCtx, cmd, "Geometry", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Geometry");
 
         // upload scene data
@@ -279,15 +279,15 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
             .cascadeFarPlaneZs =
                 glm::vec4{
-                    csmPipeline->cascadeFarPlaneZs[0],
-                    csmPipeline->cascadeFarPlaneZs[1],
-                    csmPipeline->cascadeFarPlaneZs[2],
+                    csmPipeline.cascadeFarPlaneZs[0],
+                    csmPipeline.cascadeFarPlaneZs[1],
+                    csmPipeline.cascadeFarPlaneZs[2],
                     0.f,
                 },
-            .csmLightSpaceTMs = csmPipeline->csmLightSpaceTMs,
+            .csmLightSpaceTMs = csmPipeline.csmLightSpaceTMs,
         };
         sceneDataBuffer.uploadNewData(
-            cmd, renderer.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
+            cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
 
         vkutil::transitionImage(
             cmd,
@@ -320,7 +320,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
-        meshPipeline->draw(
+        meshPipeline.draw(
             cmd,
             drawImage.getExtent2D(),
             baseRenderer,
@@ -330,7 +330,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             sortedDrawCommands);
 
         // sky
-        skyboxPipeline->draw(cmd, camera);
+        skyboxPipeline.draw(cmd, camera);
 
         vkCmdEndRendering(cmd);
         vkutil::cmdEndLabel(cmd);
@@ -371,7 +371,10 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
     if (isMultisamplingEnabled()) {
         ZoneScopedN("Depth resolve");
         TracyVkZoneC(
-            renderer.getCurrentFrame().tracyVkCtx, cmd, "Depth resolve", tracy::Color::ForestGreen);
+            gfxDevice.getCurrentFrame().tracyVkCtx,
+            cmd,
+            "Depth resolve",
+            tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Depth resolve");
 
         vkutil::transitionImage(
@@ -387,8 +390,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
-        depthResolvePipeline
-            ->draw(cmd, depthImage.getExtent2D(), vkutil::sampleCountToInt(samples));
+        depthResolvePipeline.draw(cmd, depthImage.getExtent2D(), vkutil::sampleCountToInt(samples));
 
         vkCmdEndRendering(cmd);
 
@@ -412,7 +414,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
     { // post FX
         ZoneScopedN("Post FX");
-        TracyVkZoneC(renderer.getCurrentFrame().tracyVkCtx, cmd, "Post FX", tracy::Color::Purple);
+        TracyVkZoneC(gfxDevice.getCurrentFrame().tracyVkCtx, cmd, "Post FX", tracy::Color::Purple);
         vkutil::cmdBeginLabel(cmd, "Post FX");
 
         const auto renderInfo = vkutil::createRenderingInfo({
@@ -427,7 +429,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
             .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
         };
-        postFXPipeline->draw(cmd, pcs);
+        postFXPipeline.draw(cmd, pcs);
         vkCmdEndRendering(cmd);
 
         vkutil::cmdEndLabel(cmd);
@@ -436,35 +438,34 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
 void GameRenderer::cleanup()
 {
-    const auto& device = renderer.getDevice();
+    const auto& device = gfxDevice.getDevice();
 
     vkDeviceWaitIdle(device);
 
-    sceneDataBuffer.cleanup(device, renderer.getAllocator());
+    sceneDataBuffer.cleanup(device, gfxDevice.getAllocator());
     vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr);
 
-    postFXPipeline->cleanup(device);
-    depthResolvePipeline->cleanup(device);
-    skyboxPipeline->cleanup(device);
-    meshPipeline->cleanup(device);
-    csmPipeline->cleanup(device);
-    skinningPipeline->cleanup(device);
+    postFXPipeline.cleanup(device);
+    depthResolvePipeline.cleanup(device);
+    skyboxPipeline.cleanup(device);
+    meshPipeline.cleanup(device);
+    csmPipeline.cleanup(gfxDevice);
+    skinningPipeline.cleanup(gfxDevice);
 
-    renderer.destroyImage(skyboxImage);
+    gfxDevice.destroyImage(skyboxImage);
 
-    renderer.destroyImage(postFXDrawImage);
-    renderer.destroyImage(resolveDepthImage);
-    renderer.destroyImage(depthImage);
-    renderer.destroyImage(resolveImage);
-    renderer.destroyImage(drawImage);
+    gfxDevice.destroyImage(postFXDrawImage);
+    gfxDevice.destroyImage(resolveDepthImage);
+    gfxDevice.destroyImage(depthImage);
+    gfxDevice.destroyImage(resolveImage);
+    gfxDevice.destroyImage(drawImage);
 
     baseRenderer.cleanup();
-    renderer.cleanup();
 }
 
 void GameRenderer::updateDevTools(float dt)
 {
-    ImGui::DragFloat3("Cascades", csmPipeline->percents.data(), 0.1f, 0.f, 1.f);
+    ImGui::DragFloat3("Cascades", csmPipeline.percents.data(), 0.1f, 0.f, 1.f);
 
     ImGui::Checkbox("Shadows", &shadowsEnabled);
 
@@ -479,7 +480,7 @@ void GameRenderer::updateDevTools(float dt)
             VK_SAMPLE_COUNT_64_BIT,
         };
         for (const auto& count : counts) {
-            if (!renderer.deviceSupportsSamplingCount(count)) {
+            if (!gfxDevice.deviceSupportsSamplingCount(count)) {
                 continue;
             }
             bool isSelected = (count == samples);
@@ -499,37 +500,37 @@ bool GameRenderer::isMultisamplingEnabled() const
 
 void GameRenderer::onMultisamplingStateUpdate()
 {
-    vkDeviceWaitIdle(renderer.getDevice());
+    vkDeviceWaitIdle(gfxDevice.getDevice());
 
     { // cleanup old state
-        meshPipeline->cleanup(renderer.getDevice());
-        skyboxPipeline->cleanup(renderer.getDevice());
+        meshPipeline.cleanup(gfxDevice.getDevice());
+        skyboxPipeline.cleanup(gfxDevice.getDevice());
 
-        renderer.destroyImage(depthImage);
-        renderer.destroyImage(drawImage);
+        gfxDevice.destroyImage(depthImage);
+        gfxDevice.destroyImage(drawImage);
     }
 
     // recreate pipelines
-    meshPipeline = std::make_unique<MeshPipeline>(
-        renderer,
+    meshPipeline.init(
+        gfxDevice,
         drawImage.format,
         depthImage.format,
         sceneDataDescriptorLayout,
         baseRenderer.getMaterialDataDescSetLayout(),
         samples);
-    skyboxPipeline =
-        std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
-    skyboxPipeline->setSkyboxImage(skyboxImage, baseRenderer.getDefaultLinearSampler());
+    skyboxPipeline.init(gfxDevice, drawImage.format, depthImage.format, samples);
+    skyboxPipeline.setSkyboxImage(gfxDevice, skyboxImage, baseRenderer.getDefaultLinearSampler());
 
-    createDrawImage(renderer.getSwapchainExtent(), false);
+    createDrawImage(gfxDevice.getSwapchainExtent(), false);
 
     if (isMultisamplingEnabled()) {
         depthResolvePipeline
-            ->setDepthImage(renderer, depthImage, baseRenderer.getDefaultNearestSampler());
-        postFXPipeline
-            ->setImages(resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
+            .setDepthImage(gfxDevice, depthImage, baseRenderer.getDefaultNearestSampler());
+        postFXPipeline.setImages(
+            gfxDevice, resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
     } else {
-        postFXPipeline->setImages(drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
+        postFXPipeline
+            .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
     }
 }
 
@@ -548,7 +549,7 @@ Scene GameRenderer::loadScene(const std::filesystem::path& path)
 void GameRenderer::beginDrawing()
 {
     drawCommands.clear();
-    skinningPipeline->beginDrawing();
+    skinningPipeline.beginDrawing(gfxDevice.getCurrentFrameIndex());
 }
 
 void GameRenderer::endDrawing()
@@ -576,7 +577,8 @@ void GameRenderer::addDrawSkinnedMeshCommand(
     const glm::mat4& transform,
     std::span<const glm::mat4> jointMatrices)
 {
-    const auto startIndex = skinningPipeline->appendJointMatrices(jointMatrices);
+    const auto startIndex =
+        skinningPipeline.appendJointMatrices(jointMatrices, gfxDevice.getCurrentFrameIndex());
 
     assert(meshes.size() == skinnedMeshes.size());
     for (std::size_t i = 0; i < meshes.size(); ++i) {

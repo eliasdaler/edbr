@@ -1,7 +1,7 @@
 #include "MeshPipeline.h"
 
 #include <Graphics/DrawCommand.h>
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/FrustumCulling.h>
@@ -10,15 +10,15 @@
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
-MeshPipeline::MeshPipeline(
-    Renderer& renderer,
+void MeshPipeline::init(
+    GfxDevice& gfxDevice,
     VkFormat drawImageFormat,
     VkFormat depthImageFormat,
     VkDescriptorSetLayout sceneDataDescriptorLayout,
     VkDescriptorSetLayout materialDataDescSetLayout,
     VkSampleCountFlagBits samples)
 {
-    const auto& device = renderer.getDevice();
+    const auto& device = gfxDevice.getDevice();
 
     const auto vertexShader = vkutil::loadShaderModule("shaders/mesh.vert.spv", device);
     const auto fragShader = vkutil::loadShaderModule("shaders/mesh.frag.spv", device);

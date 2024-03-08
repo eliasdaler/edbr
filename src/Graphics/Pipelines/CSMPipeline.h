@@ -6,7 +6,7 @@
 
 #include <Graphics/Vulkan/Types.h>
 
-class Renderer;
+class GfxDevice;
 class BaseRenderer;
 struct DrawCommand;
 
@@ -15,8 +15,8 @@ public:
     static const int NUM_SHADOW_CASCADES = 3;
 
 public:
-    CSMPipeline(Renderer& renderer, const std::array<float, NUM_SHADOW_CASCADES>& percents);
-    void cleanup(VkDevice device);
+    void init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_CASCADES>& percents);
+    void cleanup(GfxDevice& gfxDevice);
 
     void draw(
         VkCommandBuffer cmd,
@@ -35,9 +35,7 @@ public:
     std::array<float, NUM_SHADOW_CASCADES> percents;
 
 private:
-    void initCSMData();
-
-    Renderer& renderer;
+    void initCSMData(GfxDevice& device);
 
     AllocatedImage csmShadowMap;
     float shadowMapTextureSize{4096.f};

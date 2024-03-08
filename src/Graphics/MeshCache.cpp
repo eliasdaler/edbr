@@ -1,6 +1,6 @@
 #include "MeshCache.h"
 
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 
 MeshId MeshCache::addMesh(GPUMesh mesh)
 {
@@ -14,13 +14,13 @@ const GPUMesh& MeshCache::getMesh(MeshId id) const
     return meshes.at(id);
 }
 
-void MeshCache::cleanup(const Renderer& renderer)
+void MeshCache::cleanup(const GfxDevice& gfxDevice)
 {
     for (const auto& mesh : meshes) {
-        renderer.destroyBuffer(mesh.buffers.indexBuffer);
-        renderer.destroyBuffer(mesh.buffers.vertexBuffer);
+        gfxDevice.destroyBuffer(mesh.buffers.indexBuffer);
+        gfxDevice.destroyBuffer(mesh.buffers.vertexBuffer);
         if (mesh.hasSkeleton) {
-            renderer.destroyBuffer(mesh.skinningDataBuffer);
+            gfxDevice.destroyBuffer(mesh.skinningDataBuffer);
         }
     }
 }

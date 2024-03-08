@@ -1,4 +1,4 @@
-#include "Renderer.h"
+#include "GfxDevice.h"
 
 #include <array>
 #include <iostream>
@@ -22,7 +22,7 @@ namespace
 static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 }
 
-void Renderer::init(SDL_Window* window, bool vSync)
+void GfxDevice::init(SDL_Window* window, bool vSync)
 {
     initVulkan(window);
     executor = createImmediateExecutor();
@@ -54,7 +54,7 @@ void Renderer::init(SDL_Window* window, bool vSync)
     }
 }
 
-void Renderer::initVulkan(SDL_Window* window)
+void GfxDevice::initVulkan(SDL_Window* window)
 {
     VK_CHECK(volkInitialize());
 
@@ -123,7 +123,7 @@ void Renderer::initVulkan(SDL_Window* window)
     deletionQueue.pushFunction([&](VkDevice) { vmaDestroyAllocator(allocator); });
 }
 
-void Renderer::checkDeviceCapabilities()
+void GfxDevice::checkDeviceCapabilities()
 {
     // check limits
     VkPhysicalDeviceProperties props{};
@@ -154,7 +154,7 @@ void Renderer::checkDeviceCapabilities()
     }
 }
 
-void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
+void GfxDevice::createSwapchain(std::uint32_t width, std::uint32_t height, bool vSync)
 {
     // vSync = false;
     const std::array<VkFormat, 2> formats{{
@@ -188,7 +188,7 @@ void Renderer::createSwapchain(std::uint32_t width, std::uint32_t height, bool v
     // vkutil::initSwapchainViews here.
 }
 
-void Renderer::createCommandBuffers()
+void GfxDevice::createCommandBuffers()
 {
     const auto poolCreateInfo = vkinit::
         commandPoolCreateInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamily);
@@ -203,7 +203,7 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::initSyncStructures()
+void GfxDevice::initSyncStructures()
 {
     const auto fenceCreateInfo = VkFenceCreateInfo{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -221,7 +221,7 @@ void Renderer::initSyncStructures()
     }
 }
 
-void Renderer::initDescriptorAllocator()
+void GfxDevice::initDescriptorAllocator()
 {
     const auto sizes = std::vector<DescriptorAllocatorGrowable::PoolSizeRatio>{
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
@@ -231,7 +231,7 @@ void Renderer::initDescriptorAllocator()
     descriptorAllocator.init(device, 10, sizes);
 }
 
-VkCommandBuffer Renderer::beginFrame()
+VkCommandBuffer GfxDevice::beginFrame()
 {
     const auto& frame = getCurrentFrame();
 
@@ -248,7 +248,7 @@ VkCommandBuffer Renderer::beginFrame()
     return cmd;
 }
 
-void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
+void GfxDevice::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
 {
     const auto& frame = getCurrentFrame();
 
@@ -336,7 +336,7 @@ void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
     frameNumber++;
 }
 
-void Renderer::cleanup()
+void GfxDevice::cleanup()
 {
     for (auto& frame : frames) {
         vkDestroyCommandPool(device, frame.commandPool, 0);
@@ -367,7 +367,7 @@ void Renderer::cleanup()
     vkb::destroy_instance(instance);
 }
 
-AllocatedBuffer Renderer::createBuffer(
+AllocatedBuffer GfxDevice::createBuffer(
     std::size_t allocSize,
     VkBufferUsageFlags usage,
     VmaMemoryUsage memoryUsage) const
@@ -375,7 +375,7 @@ AllocatedBuffer Renderer::createBuffer(
     return vkutil::createBuffer(allocator, allocSize, usage, memoryUsage);
 }
 
-VkDeviceAddress Renderer::getBufferAddress(const AllocatedBuffer& buffer) const
+VkDeviceAddress GfxDevice::getBufferAddress(const AllocatedBuffer& buffer) const
 {
     const auto deviceAdressInfo = VkBufferDeviceAddressInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -384,24 +384,24 @@ VkDeviceAddress Renderer::getBufferAddress(const AllocatedBuffer& buffer) const
     return vkGetBufferDeviceAddress(device, &deviceAdressInfo);
 }
 
-void Renderer::destroyBuffer(const AllocatedBuffer& buffer) const
+void GfxDevice::destroyBuffer(const AllocatedBuffer& buffer) const
 {
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
 }
 
-AllocatedImage Renderer::createImage(const vkutil::CreateImageInfo& createInfo) const
+AllocatedImage GfxDevice::createImage(const vkutil::CreateImageInfo& createInfo) const
 {
     return vkutil::createImage(device, allocator, createInfo);
 }
 
-void Renderer::uploadImageData(const AllocatedImage& image, void* pixelData, std::uint32_t layer)
+void GfxDevice::uploadImageData(const AllocatedImage& image, void* pixelData, std::uint32_t layer)
     const
 {
     vkutil::uploadImageData(
         device, graphicsQueueFamily, graphicsQueue, allocator, image, pixelData, layer);
 }
 
-AllocatedImage Renderer::loadImageFromFile(
+AllocatedImage GfxDevice::loadImageFromFile(
     const std::filesystem::path& path,
     VkFormat format,
     VkImageUsageFlags usage,
@@ -411,37 +411,37 @@ AllocatedImage Renderer::loadImageFromFile(
         device, graphicsQueueFamily, graphicsQueue, allocator, path, format, usage, mipMap);
 }
 
-void Renderer::destroyImage(const AllocatedImage& image) const
+void GfxDevice::destroyImage(const AllocatedImage& image) const
 {
     vkutil::destroyImage(device, allocator, image);
 }
 
-Renderer::FrameData& Renderer::getCurrentFrame()
+GfxDevice::FrameData& GfxDevice::getCurrentFrame()
 {
     return frames[getCurrentFrameIndex()];
 }
 
-std::uint32_t Renderer::getCurrentFrameIndex() const
+std::uint32_t GfxDevice::getCurrentFrameIndex() const
 {
     return frameNumber % FRAME_OVERLAP;
 }
 
-VkDescriptorSet Renderer::allocateDescriptorSet(VkDescriptorSetLayout layout)
+VkDescriptorSet GfxDevice::allocateDescriptorSet(VkDescriptorSetLayout layout)
 {
     return descriptorAllocator.allocate(device, layout);
 }
 
-bool Renderer::deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const
+bool GfxDevice::deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const
 {
     return (supportedSampleCounts & sample) != 0;
 }
 
-VkSampleCountFlagBits Renderer::getHighestSupportedSamplingCount() const
+VkSampleCountFlagBits GfxDevice::getHighestSupportedSamplingCount() const
 {
     return highestSupportedSamples;
 }
 
-VulkanImmediateExecutor Renderer::createImmediateExecutor() const
+VulkanImmediateExecutor GfxDevice::createImmediateExecutor() const
 {
     VulkanImmediateExecutor executor;
     executor.init(device, graphicsQueueFamily, graphicsQueue);

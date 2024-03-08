@@ -2,22 +2,22 @@
 
 #include <volk.h>
 
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
-PostFXPipeline::PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat) : renderer(renderer)
+void PostFXPipeline::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
 {
-    const auto& device = renderer.getDevice();
+    const auto& device = gfxDevice.getDevice();
 
     const auto bindings = std::array<DescriptorLayoutBinding, 2>{{
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
     }};
     postFXDescSetLayout = vkutil::
-        buildDescriptorSetLayout(renderer.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
-    postFXDescSet = renderer.allocateDescriptorSet(postFXDescSetLayout);
+        buildDescriptorSetLayout(gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
+    postFXDescSet = gfxDevice.allocateDescriptorSet(postFXDescSetLayout);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -56,6 +56,7 @@ void PostFXPipeline::cleanup(VkDevice device)
 }
 
 void PostFXPipeline::setImages(
+    const GfxDevice& gfxDevice,
     const AllocatedImage& drawImage,
     const AllocatedImage& depthImage,
     VkSampler nearestSampler)
@@ -73,7 +74,7 @@ void PostFXPipeline::setImages(
         nearestSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(renderer.getDevice(), postFXDescSet);
+    writer.updateSet(gfxDevice.getDevice(), postFXDescSet);
 }
 
 void PostFXPipeline::draw(VkCommandBuffer cmd, const PostFXPushContants& pcs)

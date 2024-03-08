@@ -2,21 +2,21 @@
 
 #include <array>
 
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 #include <Graphics/Vulkan/Descriptors.h>
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
-DepthResolvePipeline::DepthResolvePipeline(Renderer& renderer, const AllocatedImage& depthImage)
+void DepthResolvePipeline::init(GfxDevice& gfxDevice, const AllocatedImage& depthImage)
 {
-    const auto& device = renderer.getDevice();
+    const auto& device = gfxDevice.getDevice();
 
     const auto drawImageBindings = std::array<DescriptorLayoutBinding, 1>{{
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
     }};
     drawImageDescriptorLayout =
         vkutil::buildDescriptorSetLayout(device, VK_SHADER_STAGE_FRAGMENT_BIT, drawImageBindings);
-    drawImageDescriptors = renderer.allocateDescriptorSet(drawImageDescriptorLayout);
+    drawImageDescriptors = gfxDevice.allocateDescriptorSet(drawImageDescriptorLayout);
 
     const auto pcRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -48,7 +48,7 @@ DepthResolvePipeline::DepthResolvePipeline(Renderer& renderer, const AllocatedIm
 }
 
 void DepthResolvePipeline::setDepthImage(
-    const Renderer& renderer,
+    const GfxDevice& gfxDevice,
     const AllocatedImage& depthImage,
     VkSampler nearestSampler)
 {
@@ -59,7 +59,7 @@ void DepthResolvePipeline::setDepthImage(
         nearestSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(renderer.getDevice(), drawImageDescriptors);
+    writer.updateSet(gfxDevice.getDevice(), drawImageDescriptors);
 }
 
 void DepthResolvePipeline::cleanup(VkDevice device)

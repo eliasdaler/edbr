@@ -5,7 +5,7 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-class Renderer;
+class GfxDevice;
 struct AllocatedImage;
 
 class PostFXPipeline {
@@ -18,20 +18,19 @@ public:
     };
 
 public:
-    PostFXPipeline(Renderer& renderer, VkFormat drawImageFormat);
+    void init(GfxDevice& renderer, VkFormat drawImageFormat);
     void cleanup(VkDevice device);
 
     void draw(VkCommandBuffer cmd, const PostFXPushContants& pcs);
 
     // updating images requires sync (vkDeviceWaitIdle)
     void setImages(
+        const GfxDevice& gfxDevice,
         const AllocatedImage& drawImage,
         const AllocatedImage& depthImage,
         VkSampler nearestSampler);
 
 private:
-    Renderer& renderer;
-
     VkPipelineLayout postFXPipelineLayout;
     VkPipeline postFXPipeline;
 

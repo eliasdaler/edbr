@@ -1,18 +1,18 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
-#include <vulkan/vulkan.h>
-
-class Renderer;
+class GfxDevice;
 struct AllocatedImage;
 
 class DepthResolvePipeline {
 public:
-    DepthResolvePipeline(Renderer& renderer, const AllocatedImage& depthImage);
+    void init(GfxDevice& renderer, const AllocatedImage& depthImage);
     void setDepthImage(
-        const Renderer& renderer,
+        const GfxDevice& renderer,
         const AllocatedImage& depthImage,
         VkSampler nearestSampler);
     void cleanup(VkDevice device);

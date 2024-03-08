@@ -1,6 +1,6 @@
 #include "MaterialCache.h"
 
-#include "Renderer.h"
+#include "GfxDevice.h"
 
 void MaterialCache::addMaterial(MaterialId id, Material material)
 {
@@ -17,11 +17,11 @@ MaterialId MaterialCache::getFreeMaterialId() const
     return materials.size();
 }
 
-void MaterialCache::cleanup(const Renderer& renderer)
+void MaterialCache::cleanup(const GfxDevice& gfxDevice)
 {
     for (const auto& material : materials) {
         if (material.hasDiffuseTexture) {
-            renderer.destroyImage(material.diffuseTexture);
+            gfxDevice.destroyImage(material.diffuseTexture);
         }
     }
     materials.clear();

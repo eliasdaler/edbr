@@ -7,15 +7,13 @@
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
 #include <Graphics/FrustumCulling.h>
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 #include <Graphics/ShadowMapping.h>
 
-CSMPipeline::CSMPipeline(
-    Renderer& renderer,
-    const std::array<float, NUM_SHADOW_CASCADES>& percents) :
-    percents(percents), renderer(renderer)
+void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_CASCADES>& percents)
 {
-    const auto& device = renderer.getDevice();
+    this->percents = percents;
+    const auto& device = gfxDevice.getDevice();
     const auto vertexShader = vkutil::loadShaderModule("shaders/mesh_depth_only.vert.spv", device);
 
     vkutil::addDebugLabel(device, vertexShader, "mesh_depth_only.vert");
@@ -44,20 +42,20 @@ CSMPipeline::CSMPipeline(
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
 
-    initCSMData();
+    initCSMData(gfxDevice);
 }
 
-void CSMPipeline::initCSMData()
+void CSMPipeline::initCSMData(GfxDevice& gfxDevice)
 {
-    csmShadowMap = renderer.createImage({
+    csmShadowMap = gfxDevice.createImage({
         .format = VK_FORMAT_D32_SFLOAT,
         .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         .extent =
             VkExtent3D{(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize, 1},
         .numLayers = NUM_SHADOW_CASCADES,
     });
-    vkutil::addDebugLabel(renderer.getDevice(), csmShadowMap.image, "CSM shadow map");
-    vkutil::addDebugLabel(renderer.getDevice(), csmShadowMap.imageView, "CSM shadow map view");
+    vkutil::addDebugLabel(gfxDevice.getDevice(), csmShadowMap.image, "CSM shadow map");
+    vkutil::addDebugLabel(gfxDevice.getDevice(), csmShadowMap.imageView, "CSM shadow map view");
 
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         const auto createInfo = VkImageViewCreateInfo{
@@ -75,18 +73,18 @@ void CSMPipeline::initCSMData()
                 },
         };
         VK_CHECK(
-            vkCreateImageView(renderer.getDevice(), &createInfo, nullptr, &csmShadowMapViews[i]));
-        vkutil::addDebugLabel(renderer.getDevice(), csmShadowMapViews[i], "CSM shadow map view");
+            vkCreateImageView(gfxDevice.getDevice(), &createInfo, nullptr, &csmShadowMapViews[i]));
+        vkutil::addDebugLabel(gfxDevice.getDevice(), csmShadowMapViews[i], "CSM shadow map view");
     }
 }
 
-void CSMPipeline::cleanup(VkDevice device)
+void CSMPipeline::cleanup(GfxDevice& gfxDevice)
 {
-    vkDestroyPipelineLayout(device, meshDepthOnlyPipelineLayout, nullptr);
-    vkDestroyPipeline(device, meshDepthOnlyPipeline, nullptr);
-    renderer.destroyImage(csmShadowMap);
+    vkDestroyPipelineLayout(gfxDevice.getDevice(), meshDepthOnlyPipelineLayout, nullptr);
+    vkDestroyPipeline(gfxDevice.getDevice(), meshDepthOnlyPipeline, nullptr);
+    gfxDevice.destroyImage(csmShadowMap);
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
-        vkDestroyImageView(device, csmShadowMapViews[i], nullptr);
+        vkDestroyImageView(gfxDevice.getDevice(), csmShadowMapViews[i], nullptr);
     }
 }
 

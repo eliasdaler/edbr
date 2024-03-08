@@ -39,6 +39,9 @@ static constexpr std::uint32_t SCREEN_HEIGHT = 960;
 static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 }
 
+Game::Game() : renderer(gfxDevice)
+{}
+
 void Game::init()
 {
     // Initialize SDL
@@ -62,7 +65,8 @@ void Game::init()
         std::exit(1);
     }
 
-    renderer.init(window, vSync);
+    gfxDevice.init(window, vSync);
+    renderer.init();
 
     {
         // const auto scene = renderer.loadScene("assets/levels/house/house.gltf");
@@ -311,6 +315,7 @@ void Game::cleanup()
     entities.clear();
 
     renderer.cleanup();
+    gfxDevice.cleanup();
 
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -404,7 +409,7 @@ void Game::destroyEntity(const Entity& e)
 {
     if (e.hasSkeleton) {
         for (const auto& skinnedMesh : e.skinnedMeshes) {
-            renderer.getRenderer().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+            renderer.getGfxDevice().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
         }
     }
 }

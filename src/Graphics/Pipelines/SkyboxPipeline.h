@@ -5,14 +5,14 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-class Renderer;
+class GfxDevice;
 struct AllocatedImage;
 class Camera;
 
 class SkyboxPipeline {
 public:
-    SkyboxPipeline(
-        Renderer& renderer,
+    void init(
+        GfxDevice& gfxDevice,
         VkFormat drawImageFormat,
         VkFormat depthImageFormat,
         VkSampleCountFlagBits samples);
@@ -21,11 +21,12 @@ public:
     void draw(VkCommandBuffer cmd, const Camera& camera);
 
     // updating the image requires sync (vkDeviceWaitIdle)
-    void setSkyboxImage(const AllocatedImage& skybox, VkSampler sampler);
+    void setSkyboxImage(
+        const GfxDevice& gfxDevice,
+        const AllocatedImage& skybox,
+        VkSampler sampler);
 
 private:
-    Renderer& renderer;
-
     VkPipelineLayout skyboxPipelineLayout;
     VkPipeline skyboxPipeline;
 

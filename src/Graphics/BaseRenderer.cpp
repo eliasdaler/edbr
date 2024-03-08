@@ -1,17 +1,17 @@
 #include "BaseRenderer.h"
 
-#include "Renderer.h"
+#include "GfxDevice.h"
 
 #include <Graphics/CPUMesh.h>
 #include <Graphics/Vulkan/Util.h>
 #include <Math/Util.h>
 
-BaseRenderer::BaseRenderer(Renderer& renderer) : renderer(renderer)
+BaseRenderer::BaseRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice)
 {}
 
 void BaseRenderer::init()
 {
-    executor = renderer.createImmediateExecutor();
+    executor = gfxDevice.createImmediateExecutor();
     initSamplers();
     initDefaultTextures();
     allocateMaterialDataBuffer();
@@ -20,19 +20,19 @@ void BaseRenderer::init()
 
 void BaseRenderer::cleanup()
 {
-    meshCache.cleanup(renderer);
-    materialCache.cleanup(renderer);
+    meshCache.cleanup(gfxDevice);
+    materialCache.cleanup(gfxDevice);
 
-    auto device = renderer.getDevice();
+    auto device = gfxDevice.getDevice();
 
-    renderer.destroyBuffer(materialDataBuffer);
+    gfxDevice.destroyBuffer(materialDataBuffer);
     vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr);
 
     vkDestroySampler(device, defaultNearestSampler, nullptr);
     vkDestroySampler(device, defaultLinearSampler, nullptr);
     vkDestroySampler(device, defaultShadowMapSampler, nullptr);
 
-    renderer.destroyImage(whiteTexture);
+    gfxDevice.destroyImage(whiteTexture);
 
     executor.cleanup(device);
 }
@@ -46,7 +46,7 @@ void BaseRenderer::initSamplers()
             .minFilter = VK_FILTER_NEAREST,
         };
         VK_CHECK(vkCreateSampler(
-            renderer.getDevice(), &samplerCreateInfo, nullptr, &defaultNearestSampler));
+            gfxDevice.getDevice(), &samplerCreateInfo, nullptr, &defaultNearestSampler));
     }
 
     { // init linear sampler
@@ -57,10 +57,10 @@ void BaseRenderer::initSamplers()
             .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
             // TODO: make possible to disable anisotropy or set other values?
             .anisotropyEnable = VK_TRUE,
-            .maxAnisotropy = renderer.getMaxAnisotropy(),
+            .maxAnisotropy = gfxDevice.getMaxAnisotropy(),
         };
         VK_CHECK(vkCreateSampler(
-            renderer.getDevice(), &samplerCreateInfo, nullptr, &defaultLinearSampler));
+            gfxDevice.getDevice(), &samplerCreateInfo, nullptr, &defaultLinearSampler));
     }
 
     { // init shadow map sampler
@@ -72,22 +72,22 @@ void BaseRenderer::initSamplers()
             .compareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
         };
         VK_CHECK(vkCreateSampler(
-            renderer.getDevice(), &samplerCreateInfo, nullptr, &defaultShadowMapSampler));
+            gfxDevice.getDevice(), &samplerCreateInfo, nullptr, &defaultShadowMapSampler));
     }
 }
 
 void BaseRenderer::initDefaultTextures()
 {
     { // create white texture
-        whiteTexture = renderer.createImage({
+        whiteTexture = gfxDevice.createImage({
             .format = VK_FORMAT_R8G8B8A8_UNORM,
             .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .extent = VkExtent3D{1, 1, 1},
         });
-        vkutil::addDebugLabel(renderer.getDevice(), whiteTexture.image, "white texture");
+        vkutil::addDebugLabel(gfxDevice.getDevice(), whiteTexture.image, "white texture");
 
         std::uint32_t white = 0xFFFFFFFF;
-        renderer.uploadImageData(whiteTexture, (void*)&white);
+        gfxDevice.uploadImageData(whiteTexture, (void*)&white);
     }
 }
 
@@ -98,15 +98,15 @@ void BaseRenderer::initDescriptors()
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
     }};
     meshMaterialLayout = vkutil::buildDescriptorSetLayout(
-        renderer.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, meshMaterialBindings);
+        gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, meshMaterialBindings);
 }
 
 void BaseRenderer::allocateMaterialDataBuffer()
 {
     materialDataBuffer =
-        renderer
+        gfxDevice
             .createBuffer(MAX_MATERIALS * sizeof(MaterialData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    vkutil::addDebugLabel(renderer.getDevice(), materialDataBuffer.buffer, "material data");
+    vkutil::addDebugLabel(gfxDevice.getDevice(), materialDataBuffer.buffer, "material data");
 }
 
 MeshId BaseRenderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)
@@ -137,19 +137,20 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
 
     // create index buffer
     const auto indexBufferSize = cpuMesh.indices.size() * sizeof(std::uint32_t);
-    buffers.indexBuffer = renderer.createBuffer(
+    buffers.indexBuffer = gfxDevice.createBuffer(
         indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
     // create vertex buffer
     const auto vertexBufferSize = cpuMesh.vertices.size() * sizeof(CPUMesh::Vertex);
-    buffers.vertexBuffer = renderer.createBuffer(
+    buffers.vertexBuffer = gfxDevice.createBuffer(
         vertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    buffers.vertexBufferAddress = renderer.getBufferAddress(buffers.vertexBuffer);
+    buffers.vertexBufferAddress = gfxDevice.getBufferAddress(buffers.vertexBuffer);
 
     const auto staging =
-        renderer.createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        gfxDevice
+            .createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
     // copy data
     void* data = staging.info.pMappedData;
@@ -172,21 +173,21 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
         vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
     });
 
-    renderer.destroyBuffer(staging);
+    gfxDevice.destroyBuffer(staging);
 
     gpuMesh.buffers = buffers;
 
     if (gpuMesh.hasSkeleton) {
         // create skinning data buffer
         const auto skinningDataSize = cpuMesh.vertices.size() * sizeof(CPUMesh::SkinningData);
-        gpuMesh.skinningDataBuffer = renderer.createBuffer(
+        gpuMesh.skinningDataBuffer = gfxDevice.createBuffer(
             skinningDataSize,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-        gpuMesh.skinningDataBufferAddress = renderer.getBufferAddress(gpuMesh.skinningDataBuffer);
+        gpuMesh.skinningDataBufferAddress = gfxDevice.getBufferAddress(gpuMesh.skinningDataBuffer);
 
         const auto staging =
-            renderer.createBuffer(skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+            gfxDevice.createBuffer(skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
         // copy data
         void* data = staging.info.pMappedData;
@@ -201,7 +202,7 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
             vkCmdCopyBuffer(cmd, staging.buffer, gpuMesh.skinningDataBuffer.buffer, 1, &vertexCopy);
         });
 
-        renderer.destroyBuffer(staging);
+        gfxDevice.destroyBuffer(staging);
     }
 }
 
@@ -209,11 +210,11 @@ SkinnedMesh BaseRenderer::createSkinnedMeshBuffer(MeshId meshId) const
 {
     const auto& mesh = getMesh(meshId);
     SkinnedMesh sm;
-    sm.skinnedVertexBuffer = renderer.createBuffer(
+    sm.skinnedVertexBuffer = gfxDevice.createBuffer(
         mesh.numVertices * sizeof(CPUMesh::Vertex),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    sm.skinnedVertexBufferAddress = renderer.getBufferAddress(sm.skinnedVertexBuffer);
+    sm.skinnedVertexBufferAddress = gfxDevice.getBufferAddress(sm.skinnedVertexBuffer);
     return sm;
 }
 
@@ -229,7 +230,7 @@ MaterialId BaseRenderer::addMaterial(Material material)
             glm::vec4{material.metallicFactor, material.roughnessFactor, 0.f, 0.f},
     };
 
-    material.materialSet = renderer.allocateDescriptorSet(meshMaterialLayout);
+    material.materialSet = gfxDevice.allocateDescriptorSet(meshMaterialLayout);
 
     DescriptorWriter writer;
     writer.writeBuffer(
@@ -245,7 +246,7 @@ MaterialId BaseRenderer::addMaterial(Material material)
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-    writer.updateSet(renderer.getDevice(), material.materialSet);
+    writer.updateSet(gfxDevice.getDevice(), material.materialSet);
 
     materialCache.addMaterial(materialId, std::move(material));
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <memory>
 #include <span>
 
 #include <glm/vec4.hpp>
@@ -9,7 +8,7 @@
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
 #include <Graphics/GPUMesh.h>
-#include <Graphics/Renderer.h>
+#include <Graphics/GfxDevice.h>
 
 #include <Graphics/Pipelines/CSMPipeline.h>
 #include <Graphics/Pipelines/DepthResolvePipeline.h>
@@ -36,8 +35,8 @@ public:
     };
 
 public:
-    GameRenderer();
-    void init(SDL_Window* window, bool vSync);
+    GameRenderer(GfxDevice& gfxDevice);
+    void init();
 
     void draw(const Camera& camera, const SceneData& sceneData);
     void cleanup();
@@ -56,7 +55,7 @@ public:
         const glm::mat4& transform,
         std::span<const glm::mat4> jointMatrices);
 
-    Renderer& getRenderer() { return renderer; }
+    GfxDevice& getGfxDevice() { return gfxDevice; }
 
     SkinnedMesh createSkinnedMesh(MeshId id) const;
 
@@ -72,15 +71,15 @@ private:
 
     void sortDrawList();
 
-    Renderer renderer;
+    GfxDevice& gfxDevice;
     BaseRenderer baseRenderer;
 
-    std::unique_ptr<SkinningPipeline> skinningPipeline;
-    std::unique_ptr<CSMPipeline> csmPipeline;
-    std::unique_ptr<MeshPipeline> meshPipeline;
-    std::unique_ptr<SkyboxPipeline> skyboxPipeline;
-    std::unique_ptr<DepthResolvePipeline> depthResolvePipeline;
-    std::unique_ptr<PostFXPipeline> postFXPipeline;
+    SkinningPipeline skinningPipeline;
+    CSMPipeline csmPipeline;
+    MeshPipeline meshPipeline;
+    SkyboxPipeline skyboxPipeline;
+    DepthResolvePipeline depthResolvePipeline;
+    PostFXPipeline postFXPipeline;
 
     std::vector<DrawCommand> drawCommands;
     std::vector<std::size_t> sortedDrawCommands;

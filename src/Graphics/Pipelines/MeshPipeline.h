@@ -4,7 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
-class Renderer;
+class GfxDevice;
 class BaseRenderer;
 class Camera;
 struct AllocatedImage;
@@ -12,8 +12,8 @@ struct DrawCommand;
 
 class MeshPipeline {
 public:
-    MeshPipeline(
-        Renderer& renderer,
+    void init(
+        GfxDevice& gfxDevice,
         VkFormat drawImageFormat,
         VkFormat depthImageFormat,
         VkDescriptorSetLayout sceneDataDescriptorLayout,
