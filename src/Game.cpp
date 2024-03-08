@@ -359,7 +359,7 @@ Game::EntityId Game::createEntitiesFromNode(
 
             e.skinnedMeshes.reserve(e.meshes.size());
             for (const auto meshId : e.meshes) {
-                e.skinnedMeshes.push_back(renderer.getRenderer().createSkinnedMeshBuffer(meshId));
+                e.skinnedMeshes.push_back(renderer.createSkinnedMesh(meshId));
             }
         }
     }

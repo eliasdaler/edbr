@@ -9,6 +9,7 @@ add_executable(game
   Graphics/Texture.cpp
 
   Graphics/Renderer.cpp
+  Graphics/BaseRenderer.cpp
   Graphics/GameRenderer.cpp
 
   Graphics/Pipelines/CSMPipeline.cpp

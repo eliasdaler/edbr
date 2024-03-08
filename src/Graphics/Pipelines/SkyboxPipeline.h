@@ -21,7 +21,7 @@ public:
     void draw(VkCommandBuffer cmd, const Camera& camera);
 
     // updating the image requires sync (vkDeviceWaitIdle)
-    void setSkyboxImage(const AllocatedImage& skybox);
+    void setSkyboxImage(const AllocatedImage& skybox, VkSampler sampler);
 
 private:
     Renderer& renderer;

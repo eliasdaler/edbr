@@ -8,6 +8,7 @@
 #include <Graphics/Vulkan/AppendableBuffer.h>
 
 struct DrawCommand;
+class BaseRenderer;
 
 class SkinningPipeline {
 public:
@@ -15,7 +16,7 @@ public:
 
     void cleanup(VkDevice device);
 
-    void doSkinning(VkCommandBuffer cmd, const DrawCommand& dc);
+    void doSkinning(VkCommandBuffer cmd, const BaseRenderer& baseRenderer, const DrawCommand& dc);
 
     void beginDrawing();
     std::size_t appendJointMatrices(std::span<const glm::mat4> jointMatrices);

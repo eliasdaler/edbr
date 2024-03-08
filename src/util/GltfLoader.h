@@ -7,12 +7,12 @@
 
 struct Scene;
 
-class Renderer;
+class BaseRenderer;
 
 namespace util
 {
 struct LoadContext {
-    Renderer& renderer;
+    BaseRenderer& renderer;
 };
 
 class SceneLoader {

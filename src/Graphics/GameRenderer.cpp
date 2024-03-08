@@ -12,9 +12,14 @@
 
 #include <numeric> // iota
 
+GameRenderer::GameRenderer() : baseRenderer(renderer)
+{}
+
 void GameRenderer::init(SDL_Window* window, bool vSync)
 {
     renderer.init(window, vSync);
+    baseRenderer.init();
+
     samples = renderer.getHighestSupportedSamplingCount();
 
     initSceneData();
@@ -24,20 +29,30 @@ void GameRenderer::init(SDL_Window* window, bool vSync)
     skinningPipeline = std::make_unique<SkinningPipeline>(renderer);
     csmPipeline = std::make_unique<CSMPipeline>(renderer, std::array{0.08f, 0.2f, 0.5f});
     meshPipeline = std::make_unique<MeshPipeline>(
-        renderer, drawImage.format, depthImage.format, sceneDataDescriptorLayout, samples);
+        renderer,
+        drawImage.format,
+        depthImage.format,
+        sceneDataDescriptorLayout,
+        baseRenderer.getMaterialDataDescSetLayout(),
+        samples);
+
     depthResolvePipeline = std::make_unique<DepthResolvePipeline>(renderer, depthImage);
+    depthResolvePipeline
+        ->setDepthImage(renderer, depthImage, baseRenderer.getDefaultNearestSampler());
+
     skyboxPipeline =
         std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
     postFXPipeline = std::make_unique<PostFXPipeline>(renderer, drawImage.format);
 
     if (isMultisamplingEnabled()) {
-        postFXPipeline->setImages(resolveImage, resolveDepthImage);
+        postFXPipeline
+            ->setImages(resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
     } else {
-        postFXPipeline->setImages(drawImage, depthImage);
+        postFXPipeline->setImages(drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
     }
 
     skyboxImage = graphics::loadCubemap(renderer, "assets/images/skybox/distant_sunset");
-    skyboxPipeline->setSkyboxImage(skyboxImage);
+    skyboxPipeline->setSkyboxImage(skyboxImage, baseRenderer.getDefaultLinearSampler());
 
     // depends on csm pipeline being created
     updateSceneDataDescriptorSet();
@@ -156,7 +171,7 @@ void GameRenderer::updateSceneDataDescriptorSet()
     writer.writeImage(
         1,
         csmPipeline->getShadowMap().imageView,
-        renderer.getDefaultShadowMapSample(),
+        baseRenderer.getDefaultShadowMapSampler(),
         VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     writer.updateSet(renderer.getDevice(), sceneDataDescriptorSet);
@@ -185,7 +200,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             if (!dc.skinnedMesh) {
                 continue;
             }
-            skinningPipeline->doSkinning(cmd, dc);
+            skinningPipeline->doSkinning(cmd, baseRenderer, dc);
         }
         vkutil::cmdEndLabel(cmd);
 
@@ -218,7 +233,12 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
         csmPipeline->draw(
-            cmd, camera, glm::vec3{sceneData.sunlightDirection}, drawCommands, shadowsEnabled);
+            cmd,
+            baseRenderer,
+            camera,
+            glm::vec3{sceneData.sunlightDirection},
+            drawCommands,
+            shadowsEnabled);
 
         vkutil::cmdEndLabel(cmd);
 
@@ -303,6 +323,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         meshPipeline->draw(
             cmd,
             drawImage.getExtent2D(),
+            baseRenderer,
             camera,
             sceneDataDescriptorSet,
             drawCommands,
@@ -437,6 +458,7 @@ void GameRenderer::cleanup()
     renderer.destroyImage(resolveImage);
     renderer.destroyImage(drawImage);
 
+    baseRenderer.cleanup();
     renderer.cleanup();
 }
 
@@ -489,25 +511,32 @@ void GameRenderer::onMultisamplingStateUpdate()
 
     // recreate pipelines
     meshPipeline = std::make_unique<MeshPipeline>(
-        renderer, drawImage.format, depthImage.format, sceneDataDescriptorLayout, samples);
+        renderer,
+        drawImage.format,
+        depthImage.format,
+        sceneDataDescriptorLayout,
+        baseRenderer.getMaterialDataDescSetLayout(),
+        samples);
     skyboxPipeline =
         std::make_unique<SkyboxPipeline>(renderer, drawImage.format, depthImage.format, samples);
-    skyboxPipeline->setSkyboxImage(skyboxImage);
+    skyboxPipeline->setSkyboxImage(skyboxImage, baseRenderer.getDefaultLinearSampler());
 
     createDrawImage(renderer.getSwapchainExtent(), false);
 
     if (isMultisamplingEnabled()) {
-        depthResolvePipeline->setDepthImage(renderer, depthImage);
-        postFXPipeline->setImages(resolveImage, resolveDepthImage);
+        depthResolvePipeline
+            ->setDepthImage(renderer, depthImage, baseRenderer.getDefaultNearestSampler());
+        postFXPipeline
+            ->setImages(resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
     } else {
-        postFXPipeline->setImages(drawImage, depthImage);
+        postFXPipeline->setImages(drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
     }
 }
 
 Scene GameRenderer::loadScene(const std::filesystem::path& path)
 {
     util::LoadContext loadContext{
-        .renderer = renderer,
+        .renderer = baseRenderer,
     };
     util::SceneLoader loader;
 
@@ -529,7 +558,7 @@ void GameRenderer::endDrawing()
 
 void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow)
 {
-    const auto& mesh = renderer.getMesh(id);
+    const auto& mesh = baseRenderer.getMesh(id);
     const auto worldBoundingSphere =
         edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
 
@@ -551,7 +580,7 @@ void GameRenderer::addDrawSkinnedMeshCommand(
 
     assert(meshes.size() == skinnedMeshes.size());
     for (std::size_t i = 0; i < meshes.size(); ++i) {
-        const auto& mesh = renderer.getMesh(meshes[i]);
+        const auto& mesh = baseRenderer.getMesh(meshes[i]);
         assert(mesh.hasSkeleton);
 
         const auto worldBoundingSphere =
@@ -578,11 +607,16 @@ void GameRenderer::sortDrawList()
         [this](const auto& i1, const auto& i2) {
             const auto& dc1 = drawCommands[i1];
             const auto& dc2 = drawCommands[i2];
-            const auto& mesh1 = renderer.getMesh(dc1.meshId);
-            const auto& mesh2 = renderer.getMesh(dc2.meshId);
+            const auto& mesh1 = baseRenderer.getMesh(dc1.meshId);
+            const auto& mesh2 = baseRenderer.getMesh(dc2.meshId);
             if (mesh1.materialId == mesh2.materialId) {
                 return dc1.meshId < dc2.meshId;
             }
             return mesh1.materialId < mesh2.materialId;
         });
+}
+
+SkinnedMesh GameRenderer::createSkinnedMesh(MeshId id) const
+{
+    return baseRenderer.createSkinnedMeshBuffer(id);
 }

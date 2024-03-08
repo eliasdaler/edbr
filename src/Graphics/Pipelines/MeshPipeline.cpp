@@ -3,6 +3,7 @@
 #include <Graphics/DrawCommand.h>
 #include <Graphics/Renderer.h>
 
+#include <Graphics/BaseRenderer.h>
 #include <Graphics/FrustumCulling.h>
 #include <Graphics/Vulkan/Descriptors.h>
 #include <Graphics/Vulkan/Init.h>
@@ -14,8 +15,8 @@ MeshPipeline::MeshPipeline(
     VkFormat drawImageFormat,
     VkFormat depthImageFormat,
     VkDescriptorSetLayout sceneDataDescriptorLayout,
-    VkSampleCountFlagBits samples) :
-    renderer(renderer)
+    VkDescriptorSetLayout materialDataDescSetLayout,
+    VkSampleCountFlagBits samples)
 {
     const auto& device = renderer.getDevice();
 
@@ -32,8 +33,7 @@ MeshPipeline::MeshPipeline(
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    const auto layouts =
-        std::array{sceneDataDescriptorLayout, renderer.getMaterialDataDescSetLayout()};
+    const auto layouts = std::array{sceneDataDescriptorLayout, materialDataDescSetLayout};
     meshPipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     meshPipeline = PipelineBuilder{meshPipelineLayout}
@@ -56,6 +56,7 @@ MeshPipeline::MeshPipeline(
 void MeshPipeline::draw(
     VkCommandBuffer cmd,
     VkExtent2D renderExtent,
+    const BaseRenderer& baseRenderer,
     const Camera& camera,
     VkDescriptorSet sceneDataDescriptorSet,
     const std::vector<DrawCommand>& drawCommands,
@@ -100,11 +101,11 @@ void MeshPipeline::draw(
             continue;
         }
 
-        const auto& mesh = renderer.getMesh(dc.meshId);
+        const auto& mesh = baseRenderer.getMesh(dc.meshId);
         if (mesh.materialId != prevMaterialIdx) {
             prevMaterialIdx = mesh.materialId;
 
-            const auto& material = renderer.getMaterial(mesh.materialId);
+            const auto& material = baseRenderer.getMaterial(mesh.materialId);
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,

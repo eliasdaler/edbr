@@ -7,6 +7,7 @@
 #include <Graphics/Vulkan/Types.h>
 
 class Renderer;
+class BaseRenderer;
 struct DrawCommand;
 
 class CSMPipeline {
@@ -19,6 +20,7 @@ public:
 
     void draw(
         VkCommandBuffer cmd,
+        const BaseRenderer& baseRenderer,
         const Camera& camera,
         const glm::vec3& sunlightDirection,
         const std::vector<DrawCommand>& drawCommands,

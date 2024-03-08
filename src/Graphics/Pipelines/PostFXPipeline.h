@@ -24,7 +24,10 @@ public:
     void draw(VkCommandBuffer cmd, const PostFXPushContants& pcs);
 
     // updating images requires sync (vkDeviceWaitIdle)
-    void setImages(const AllocatedImage& drawImage, const AllocatedImage& depthImage);
+    void setImages(
+        const AllocatedImage& drawImage,
+        const AllocatedImage& depthImage,
+        VkSampler nearestSampler);
 
 private:
     Renderer& renderer;

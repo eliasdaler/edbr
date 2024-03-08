@@ -8,22 +8,17 @@
 // don't sort these includes
 // clang-format off
 #include <vulkan/vulkan.h>
-#include <volk.h>
+#include <volk.h> // include needed for TracyVulkan.hpp
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 #include <tracy/TracyVulkan.hpp>
 // clang-format on
-
-#include <Graphics/MaterialCache.h>
-#include <Graphics/MeshCache.h>
 
 #include <Graphics/Vulkan/DeletionQueue.h>
 #include <Graphics/Vulkan/Descriptors.h>
 #include <Graphics/Vulkan/Types.h>
 #include <Graphics/Vulkan/VulkanImGui.h>
 #include <Graphics/Vulkan/VulkanImmediateExecutor.h>
-
-struct CPUMesh;
 
 namespace vkutil
 {
@@ -70,12 +65,11 @@ public:
         bool mipMap) const;
     void destroyImage(const AllocatedImage& image) const;
 
-    VkSampler getDefaultNearestSampler() const { return defaultNearestSampler; }
-    VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
-    VkSampler getDefaultShadowMapSample() const { return defaultShadowMapSampler; }
-
     bool deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const;
     VkSampleCountFlagBits getHighestSupportedSamplingCount() const;
+    float getMaxAnisotropy() const { return maxSamplerAnisotropy; }
+
+    VulkanImmediateExecutor createImmediateExecutor() const;
 
 public:
     VkDevice getDevice() const { return device; }
@@ -87,16 +81,6 @@ public:
 
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout layout);
 
-    VkDescriptorSetLayout getMaterialDataDescSetLayout() const { return meshMaterialLayout; }
-
-    MeshId addMesh(const CPUMesh& cpuMesh, MaterialId material);
-    void uploadMesh(const CPUMesh& cpuMesh, GPUMesh& mesh) const;
-    SkinnedMesh createSkinnedMeshBuffer(MeshId meshId) const;
-    const GPUMesh& getMesh(MeshId id) const;
-
-    MaterialId addMaterial(Material material);
-    const Material& getMaterial(MaterialId id) const;
-
 private:
     void initVulkan(SDL_Window* window);
     void checkDeviceCapabilities();
@@ -104,9 +88,6 @@ private:
     void createCommandBuffers();
     void initSyncStructures();
     void initDescriptorAllocator();
-    void initDescriptors();
-    void initSamplers();
-    void initDefaultTextures();
 
 private: // data
     vkb::Instance instance;
@@ -132,20 +113,6 @@ private: // data
 
     VulkanImmediateExecutor executor;
     VulkanImGuiData imguiData;
-
-    MeshCache meshCache;
-
-    void allocateMaterialDataBuffer();
-    static const auto MAX_MATERIALS = 1000;
-    AllocatedBuffer materialDataBuffer;
-
-    MaterialCache materialCache;
-    VkDescriptorSetLayout meshMaterialLayout;
-
-    VkSampler defaultNearestSampler;
-    VkSampler defaultLinearSampler;
-    VkSampler defaultShadowMapSampler;
-    AllocatedImage whiteTexture;
 
     VkSampleCountFlagBits supportedSampleCounts;
     VkSampleCountFlagBits highestSupportedSamples{VK_SAMPLE_COUNT_1_BIT};

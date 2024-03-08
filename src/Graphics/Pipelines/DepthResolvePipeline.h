@@ -11,7 +11,10 @@ struct AllocatedImage;
 class DepthResolvePipeline {
 public:
     DepthResolvePipeline(Renderer& renderer, const AllocatedImage& depthImage);
-    void setDepthImage(const Renderer& renderer, const AllocatedImage& depthImage);
+    void setDepthImage(
+        const Renderer& renderer,
+        const AllocatedImage& depthImage,
+        VkSampler nearestSampler);
     void cleanup(VkDevice device);
 
     void draw(VkCommandBuffer cmd, const VkExtent2D& screenSize, int numSamples);

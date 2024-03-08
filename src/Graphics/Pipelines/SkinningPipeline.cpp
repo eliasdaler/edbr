@@ -3,6 +3,7 @@
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
+#include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
 
 SkinningPipeline::SkinningPipeline(Renderer& renderer) : renderer(renderer)
@@ -64,11 +65,14 @@ std::size_t SkinningPipeline::appendJointMatrices(std::span<const glm::mat4> joi
     return startIndex;
 }
 
-void SkinningPipeline::doSkinning(VkCommandBuffer cmd, const DrawCommand& dc)
+void SkinningPipeline::doSkinning(
+    VkCommandBuffer cmd,
+    const BaseRenderer& baseRenderer,
+    const DrawCommand& dc)
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, skinningPipeline);
 
-    const auto& mesh = renderer.getMesh(dc.meshId);
+    const auto& mesh = baseRenderer.getMesh(dc.meshId);
     assert(mesh.hasSkeleton);
     assert(dc.skinnedMesh);
 

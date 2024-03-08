@@ -6,6 +6,7 @@
 
 #include <glm/vec4.hpp>
 
+#include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
 #include <Graphics/GPUMesh.h>
 #include <Graphics/Renderer.h>
@@ -35,6 +36,7 @@ public:
     };
 
 public:
+    GameRenderer();
     void init(SDL_Window* window, bool vSync);
 
     void draw(const Camera& camera, const SceneData& sceneData);
@@ -56,6 +58,8 @@ public:
 
     Renderer& getRenderer() { return renderer; }
 
+    SkinnedMesh createSkinnedMesh(MeshId id) const;
+
 private:
     void createDrawImage(VkExtent2D extent, bool firstCreate);
     void initSceneData();
@@ -69,6 +73,7 @@ private:
     void sortDrawList();
 
     Renderer renderer;
+    BaseRenderer baseRenderer;
 
     std::unique_ptr<SkinningPipeline> skinningPipeline;
     std::unique_ptr<CSMPipeline> csmPipeline;

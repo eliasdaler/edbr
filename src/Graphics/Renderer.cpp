@@ -13,12 +13,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 
-#include <Graphics/CPUMesh.h>
 #include <Graphics/Vulkan/Init.h>
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
-
-#include <Math/Util.h>
 
 namespace
 {
@@ -28,7 +25,7 @@ static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 void Renderer::init(SDL_Window* window, bool vSync)
 {
     initVulkan(window);
-    executor.init(device, graphicsQueueFamily, graphicsQueue);
+    executor = createImmediateExecutor();
 
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
@@ -37,10 +34,6 @@ void Renderer::init(SDL_Window* window, bool vSync)
     createCommandBuffers();
     initSyncStructures();
     initDescriptorAllocator();
-
-    initDescriptors();
-    initSamplers();
-    initDefaultTextures();
 
     { // Dear ImGui
         vkutil::initSwapchainViews(imguiData, device, swapchainImages);
@@ -59,8 +52,6 @@ void Renderer::init(SDL_Window* window, bool vSync)
             TracyVkContext(physicalDevice, device, graphicsQueue, frames[i].mainCommandBuffer);
         deletionQueue.pushFunction([this, i](VkDevice) { TracyVkDestroy(frames[i].tracyVkCtx); });
     }
-
-    allocateMaterialDataBuffer();
 }
 
 void Renderer::initVulkan(SDL_Window* window)
@@ -96,17 +87,15 @@ void Renderer::initVulkan(SDL_Window* window)
         .dynamicRendering = true,
     };
 
-    physicalDevice =
-        vkb::PhysicalDeviceSelector{instance}
-            .set_minimum_version(1, 3)
-            .add_required_extension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
-            // .add_required_extension(VK_EXT_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_EXTENSION_NAME)
-            .set_required_features(deviceFeatures)
-            .set_required_features_12(features12)
-            .set_required_features_13(features13)
-            .set_surface(surface)
-            .select()
-            .value();
+    physicalDevice = vkb::PhysicalDeviceSelector{instance}
+                         .set_minimum_version(1, 3)
+                         .add_required_extension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
+                         .set_required_features(deviceFeatures)
+                         .set_required_features_12(features12)
+                         .set_required_features_13(features13)
+                         .set_surface(surface)
+                         .select()
+                         .value();
 
     checkDeviceCapabilities();
 
@@ -242,78 +231,6 @@ void Renderer::initDescriptorAllocator()
     descriptorAllocator.init(device, 10, sizes);
 }
 
-void Renderer::initDescriptors()
-{
-    const auto meshMaterialBindings = std::array<DescriptorLayoutBinding, 2>{{
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
-    }};
-    meshMaterialLayout = vkutil::
-        buildDescriptorSetLayout(device, VK_SHADER_STAGE_FRAGMENT_BIT, meshMaterialBindings);
-
-    deletionQueue.pushFunction(
-        [this](VkDevice) { vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr); });
-}
-
-void Renderer::initSamplers()
-{
-    { // init nearest sampler
-        const auto samplerCreateInfo = VkSamplerCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_NEAREST,
-            .minFilter = VK_FILTER_NEAREST,
-        };
-        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultNearestSampler));
-        deletionQueue.pushFunction(
-            [this](VkDevice) { vkDestroySampler(device, defaultNearestSampler, nullptr); });
-    }
-
-    { // init linear sampler
-        const auto samplerCreateInfo = VkSamplerCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_LINEAR,
-            .minFilter = VK_FILTER_LINEAR,
-            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-            // TODO: make possible to disable anisotropy or set other values?
-            .anisotropyEnable = VK_TRUE,
-            .maxAnisotropy = maxSamplerAnisotropy,
-        };
-        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultLinearSampler));
-        deletionQueue.pushFunction(
-            [this](VkDevice) { vkDestroySampler(device, defaultLinearSampler, nullptr); });
-    }
-
-    { // init shadow map sampler
-        const auto samplerCreateInfo = VkSamplerCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_LINEAR,
-            .minFilter = VK_FILTER_LINEAR,
-            .compareEnable = VK_TRUE,
-            .compareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
-        };
-        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &defaultShadowMapSampler));
-        deletionQueue.pushFunction(
-            [this](VkDevice) { vkDestroySampler(device, defaultShadowMapSampler, nullptr); });
-    }
-}
-
-void Renderer::initDefaultTextures()
-{
-    { // create white texture
-        whiteTexture = createImage({
-            .format = VK_FORMAT_R8G8B8A8_UNORM,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .extent = VkExtent3D{1, 1, 1},
-        });
-        vkutil::addDebugLabel(device, whiteTexture.image, "white texture");
-
-        std::uint32_t white = 0xFFFFFFFF;
-        uploadImageData(whiteTexture, (void*)&white);
-
-        deletionQueue.pushFunction([this](VkDevice) { destroyImage(whiteTexture); });
-    }
-}
-
 VkCommandBuffer Renderer::beginFrame()
 {
     const auto& frame = getCurrentFrame();
@@ -421,9 +338,6 @@ void Renderer::endFrame(VkCommandBuffer cmd, const AllocatedImage& drawImage)
 
 void Renderer::cleanup()
 {
-    meshCache.cleanup(*this);
-    materialCache.cleanup(*this);
-
     for (auto& frame : frames) {
         vkDestroyCommandPool(device, frame.commandPool, 0);
         vkDestroyFence(device, frame.renderFence, nullptr);
@@ -517,167 +431,6 @@ VkDescriptorSet Renderer::allocateDescriptorSet(VkDescriptorSetLayout layout)
     return descriptorAllocator.allocate(device, layout);
 }
 
-MeshId Renderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)
-{
-    auto gpuMesh = GPUMesh{
-        .numVertices = (std::uint32_t)cpuMesh.vertices.size(),
-        .numIndices = (std::uint32_t)cpuMesh.indices.size(),
-        .materialId = materialId,
-        .minPos = cpuMesh.minPos,
-        .maxPos = cpuMesh.maxPos,
-        .hasSkeleton = cpuMesh.hasSkeleton,
-    };
-
-    std::vector<glm::vec3> positions(cpuMesh.vertices.size());
-    for (std::size_t i = 0; i < cpuMesh.vertices.size(); ++i) {
-        positions[i] = cpuMesh.vertices[i].position;
-    }
-    gpuMesh.boundingSphere = util::calculateBoundingSphere(positions);
-
-    uploadMesh(cpuMesh, gpuMesh);
-
-    return meshCache.addMesh(std::move(gpuMesh));
-}
-
-void Renderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
-{
-    GPUMeshBuffers buffers;
-
-    // create index buffer
-    const auto indexBufferSize = cpuMesh.indices.size() * sizeof(std::uint32_t);
-    buffers.indexBuffer = createBuffer(
-        indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-
-    // create vertex buffer
-    const auto vertexBufferSize = cpuMesh.vertices.size() * sizeof(CPUMesh::Vertex);
-    buffers.vertexBuffer = createBuffer(
-        vertexBufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    buffers.vertexBufferAddress = getBufferAddress(buffers.vertexBuffer);
-
-    const auto staging =
-        createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-
-    // copy data
-    void* data = staging.info.pMappedData;
-    memcpy(data, cpuMesh.vertices.data(), vertexBufferSize);
-    memcpy((char*)data + vertexBufferSize, cpuMesh.indices.data(), indexBufferSize);
-
-    executor.immediateSubmit([&](VkCommandBuffer cmd) {
-        const auto vertexCopy = VkBufferCopy{
-            .srcOffset = 0,
-            .dstOffset = 0,
-            .size = vertexBufferSize,
-        };
-        vkCmdCopyBuffer(cmd, staging.buffer, buffers.vertexBuffer.buffer, 1, &vertexCopy);
-
-        const auto indexCopy = VkBufferCopy{
-            .srcOffset = vertexBufferSize,
-            .dstOffset = 0,
-            .size = indexBufferSize,
-        };
-        vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
-    });
-
-    destroyBuffer(staging);
-
-    gpuMesh.buffers = buffers;
-
-    if (gpuMesh.hasSkeleton) {
-        // create skinning data buffer
-        const auto skinningDataSize = cpuMesh.vertices.size() * sizeof(CPUMesh::SkinningData);
-        gpuMesh.skinningDataBuffer = createBuffer(
-            skinningDataSize,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-        gpuMesh.skinningDataBufferAddress = getBufferAddress(gpuMesh.skinningDataBuffer);
-
-        const auto staging = createBuffer(skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-
-        // copy data
-        void* data = staging.info.pMappedData;
-        memcpy(data, cpuMesh.skinningData.data(), vertexBufferSize);
-
-        executor.immediateSubmit([&](VkCommandBuffer cmd) {
-            const auto vertexCopy = VkBufferCopy{
-                .srcOffset = 0,
-                .dstOffset = 0,
-                .size = skinningDataSize,
-            };
-            vkCmdCopyBuffer(cmd, staging.buffer, gpuMesh.skinningDataBuffer.buffer, 1, &vertexCopy);
-        });
-
-        destroyBuffer(staging);
-    }
-}
-
-SkinnedMesh Renderer::createSkinnedMeshBuffer(MeshId meshId) const
-{
-    const auto& mesh = getMesh(meshId);
-    SkinnedMesh sm;
-    sm.skinnedVertexBuffer = createBuffer(
-        mesh.numVertices * sizeof(CPUMesh::Vertex),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    sm.skinnedVertexBufferAddress = getBufferAddress(sm.skinnedVertexBuffer);
-    return sm;
-}
-
-const GPUMesh& Renderer::getMesh(MeshId id) const
-{
-    return meshCache.getMesh(id);
-}
-
-void Renderer::allocateMaterialDataBuffer()
-{
-    materialDataBuffer =
-        createBuffer(MAX_MATERIALS * sizeof(MaterialData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    vkutil::addDebugLabel(device, materialDataBuffer.buffer, "material data");
-
-    deletionQueue.pushFunction([this](VkDevice) { destroyBuffer(materialDataBuffer); });
-}
-
-MaterialId Renderer::addMaterial(Material material)
-{
-    const auto materialId = materialCache.getFreeMaterialId();
-    assert(materialId < MAX_MATERIALS - 1);
-
-    MaterialData* data = (MaterialData*)materialDataBuffer.info.pMappedData;
-    data[materialId] = MaterialData{
-        .baseColor = material.baseColor,
-        .metalRoughnessFactors =
-            glm::vec4{material.metallicFactor, material.roughnessFactor, 0.f, 0.f},
-    };
-
-    material.materialSet = descriptorAllocator.allocate(device, meshMaterialLayout);
-
-    DescriptorWriter writer;
-    writer.writeBuffer(
-        0,
-        materialDataBuffer.buffer,
-        sizeof(MaterialData),
-        materialId * sizeof(MaterialData),
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.writeImage(
-        1,
-        material.hasDiffuseTexture ? material.diffuseTexture.imageView : whiteTexture.imageView,
-        defaultLinearSampler,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-    writer.updateSet(device, material.materialSet);
-
-    materialCache.addMaterial(materialId, std::move(material));
-
-    return materialId;
-}
-
-const Material& Renderer::getMaterial(MaterialId id) const
-{
-    return materialCache.getMaterial(id);
-}
-
 bool Renderer::deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const
 {
     return (supportedSampleCounts & sample) != 0;
@@ -686,4 +439,11 @@ bool Renderer::deviceSupportsSamplingCount(VkSampleCountFlagBits sample) const
 VkSampleCountFlagBits Renderer::getHighestSupportedSamplingCount() const
 {
     return highestSupportedSamples;
+}
+
+VulkanImmediateExecutor Renderer::createImmediateExecutor() const
+{
+    VulkanImmediateExecutor executor;
+    executor.init(device, graphicsQueueFamily, graphicsQueue);
+    return executor;
 }

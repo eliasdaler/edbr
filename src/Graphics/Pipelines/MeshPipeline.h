@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.h>
 
 class Renderer;
+class BaseRenderer;
 class Camera;
 struct AllocatedImage;
 struct DrawCommand;
@@ -16,20 +17,20 @@ public:
         VkFormat drawImageFormat,
         VkFormat depthImageFormat,
         VkDescriptorSetLayout sceneDataDescriptorLayout,
+        VkDescriptorSetLayout materialDataDescSetLayout,
         VkSampleCountFlagBits samples);
     void cleanup(VkDevice device);
 
     void draw(
         VkCommandBuffer cmd,
         VkExtent2D renderExtent,
+        const BaseRenderer& baseRenderer,
         const Camera& camera,
         VkDescriptorSet sceneDataDescriptorSet,
         const std::vector<DrawCommand>& drawCommands,
         const std::vector<std::size_t>& sortedDrawCommands);
 
 private:
-    Renderer& renderer;
-
     VkPipelineLayout meshPipelineLayout;
     VkPipeline meshPipeline;
 };

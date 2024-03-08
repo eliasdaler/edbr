@@ -18,8 +18,6 @@ DepthResolvePipeline::DepthResolvePipeline(Renderer& renderer, const AllocatedIm
         vkutil::buildDescriptorSetLayout(device, VK_SHADER_STAGE_FRAGMENT_BIT, drawImageBindings);
     drawImageDescriptors = renderer.allocateDescriptorSet(drawImageDescriptorLayout);
 
-    setDepthImage(renderer, depthImage);
-
     const auto pcRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
@@ -49,13 +47,16 @@ DepthResolvePipeline::DepthResolvePipeline(Renderer& renderer, const AllocatedIm
     vkDestroyShaderModule(device, fragShader, nullptr);
 }
 
-void DepthResolvePipeline::setDepthImage(const Renderer& renderer, const AllocatedImage& depthImage)
+void DepthResolvePipeline::setDepthImage(
+    const Renderer& renderer,
+    const AllocatedImage& depthImage,
+    VkSampler nearestSampler)
 {
     DescriptorWriter writer;
     writer.writeImage(
         0,
         depthImage.imageView,
-        renderer.getDefaultNearestSampler(),
+        nearestSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     writer.updateSet(renderer.getDevice(), drawImageDescriptors);

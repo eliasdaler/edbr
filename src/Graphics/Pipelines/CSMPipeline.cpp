@@ -4,6 +4,7 @@
 #include <Graphics/Vulkan/Pipelines.h>
 #include <Graphics/Vulkan/Util.h>
 
+#include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
 #include <Graphics/FrustumCulling.h>
 #include <Graphics/Renderer.h>
@@ -91,6 +92,7 @@ void CSMPipeline::cleanup(VkDevice device)
 
 void CSMPipeline::draw(
     VkCommandBuffer cmd,
+    const BaseRenderer& baseRenderer,
     const Camera& camera,
     const glm::vec3& sunlightDirection,
     const std::vector<DrawCommand>& drawCommands,
@@ -165,7 +167,7 @@ void CSMPipeline::draw(
                 }
             }
 
-            const auto& mesh = renderer.getMesh(dc.meshId);
+            const auto& mesh = baseRenderer.getMesh(dc.meshId);
 
             if (dc.meshId != prevMeshId) {
                 prevMeshId = dc.meshId;

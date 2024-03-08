@@ -55,19 +55,22 @@ void PostFXPipeline::cleanup(VkDevice device)
     vkDestroyPipelineLayout(device, postFXPipelineLayout, nullptr);
 }
 
-void PostFXPipeline::setImages(const AllocatedImage& drawImage, const AllocatedImage& depthImage)
+void PostFXPipeline::setImages(
+    const AllocatedImage& drawImage,
+    const AllocatedImage& depthImage,
+    VkSampler nearestSampler)
 {
     DescriptorWriter writer;
     writer.writeImage(
         0,
         drawImage.imageView,
-        renderer.getDefaultNearestSampler(),
+        nearestSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     writer.writeImage(
         1,
         depthImage.imageView,
-        renderer.getDefaultNearestSampler(),
+        nearestSampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     writer.updateSet(renderer.getDevice(), postFXDescSet);
