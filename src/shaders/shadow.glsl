@@ -26,7 +26,7 @@ float calculateCSMOcclusion(
     projCoords.xy = projCoords.xy * vec2(0.5, 0.5) + vec2(0.5);
 
     float bias = 0.001 * tan(acos(NoL));
-    bias = clamp(bias, 0.0, 0.1);
+    bias = clamp(bias, 0.0, 0.05);
     projCoords.z = projCoords.z + bias;
 
 #ifdef SMOOTH_SHADOW

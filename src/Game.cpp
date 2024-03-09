@@ -152,15 +152,9 @@ void Game::init()
 #endif
 
     sunlightDir = glm::vec4{0.371477008, 0.470861048, 0.80018419, 0.f};
-    sunlightColorAndIntensity = glm::vec4{0.56425, 0.45503, 0.10117, 1.00};
-    ambientColorAndIntensity = glm::vec4{0.20784, 0.59216, 0.56078, 0.05f};
-    fogColorAndDensity = glm::vec4{0.5f, 0.5f, 0.5f, 0.05f};
-
-#if 1
     sunlightColorAndIntensity = glm::vec4{175.f / 255.f, 120.f / 255.f, 42.f / 255.f, 1.f};
     ambientColorAndIntensity = glm::vec4{53.f / 255.f, 151.f / 255.f, 143.f / 255.f, 0.05f};
     fogColorAndDensity = glm::vec4{0.5f, 0.5f, 0.5f, 0.03f};
-#endif
 }
 
 void Game::run()
