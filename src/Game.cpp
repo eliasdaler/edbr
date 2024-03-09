@@ -375,6 +375,11 @@ Game::EntityId Game::createEntitiesFromNode(
         }
     }
 
+    if (node.lightId != -1) {
+        e.isLight = true;
+        e.light = scene.lights[node.lightId];
+    }
+
     { // hierarchy
         e.parentId = parentId;
         for (const auto& childPtr : node.children) {
@@ -476,29 +481,12 @@ void Game::generateDrawList()
 
     renderer.beginDrawing();
 
-    const std::vector<GPULightData> lights{{
-        {
-            .positionAndType = glm::vec4{0.f, 0.f, 0.f, 0.f},
-            .directionAndRange = sunlightDir,
-            .colorAndIntensity = sunlightColorAndIntensity,
-            .scaleOffsetAndSMIndexAndUnused = glm::vec4{},
-        },
-        {
-            .positionAndType = glm::vec4{-56.04456, 2.53709, 0.587, 1.00},
-            .directionAndRange = glm::vec4{0.00439, 0.99984, 0.0174, 10.00},
-            .colorAndIntensity = glm::vec4{0.33346, 0.26018, 0.54128, 2.46717},
-            .scaleOffsetAndSMIndexAndUnused = glm::vec4{3.41421, -2.41421, 0.00, 0.00},
-        },
-        {
-            .positionAndType = glm::vec4{-56.04456, 2.53709, -3.64, 1.00},
-            .directionAndRange = glm::vec4{0.00439, 0.99984, 0.0174, 10.00},
-            .colorAndIntensity = glm::vec4{0.33346, 0.26018, 0.54128, 2.46717},
-            .scaleOffsetAndSMIndexAndUnused = glm::vec4{3.41421, -2.41421, 0.00, 0.00},
-        },
-    }};
-
-    for (const auto& light : lights) {
-        renderer.addLight(light);
+    // add lights
+    for (const auto& ePtr : entities) {
+        const auto& e = *ePtr;
+        if (e.isLight) {
+            renderer.addLight(e.light, e.transform);
+        }
     }
 
     for (const auto& ePtr : entities) {

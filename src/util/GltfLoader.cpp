@@ -67,7 +67,18 @@ static const std::string GLTF_EMISSIVE_STRENGTH_PARAM_NAME{"emissiveStrength"};
 
 glm::vec3 tg2glm(const std::vector<double>& vec)
 {
+    assert(vec.size() == 3);
     return {vec[0], vec[1], vec[2]};
+}
+
+glm::vec4 tg2glmVec4(const std::vector<double>& vec)
+{
+    if (vec.size() == 4) {
+        return {vec[0], vec[1], vec[2], vec[3]};
+    }
+
+    assert(vec.size() == 3);
+    return {vec[0], vec[1], vec[2], 1.f};
 }
 
 glm::quat tg2glmQuat(const std::vector<double>& vec)
@@ -364,9 +375,9 @@ bool shouldSkipNode(const tinygltf::Node& node)
         return true;
     } */
 
-    if (node.light != -1) {
+    /* if (node.light != -1) {
         return true;
-    }
+    } */
 
     if (node.camera != -1) {
         return true;
@@ -408,6 +419,7 @@ void loadNode(SceneNode& node, const tinygltf::Node& gltfNode, const tinygltf::M
     }
 
     node.skinId = gltfNode.skin;
+    node.lightId = gltfNode.light;
 
     // load children
     node.children.resize(gltfNode.children.size());
@@ -564,6 +576,39 @@ std::unordered_map<std::string, SkeletalAnimation> loadAnimations(
     return animations;
 }
 
+LightType fromGLTFLightType(const std::string& lt)
+{
+    if (lt == "point") {
+        return LightType::Point;
+    } else if (lt == "directional") {
+        return LightType::Directional;
+    } else if (lt == "spot") {
+        return LightType::Spot;
+    }
+    assert(false && "unexpected light type");
+    return LightType::None;
+}
+
+float gltfIntensityConvert(float intensity)
+{
+    // not accurate conversion, but will do for now
+    const auto PBR_WATTS_TO_LUMENS = 683.f;
+    // should be 4*PI, but it's too much
+    return intensity / (PBR_WATTS_TO_LUMENS * glm::pi<float>());
+}
+
+Light loadLight(const tinygltf::Light& tLight)
+{
+    Light light;
+    light.name = tLight.name;
+    light.type = fromGLTFLightType(tLight.type);
+    light.color = tg2glmVec4(tLight.color);
+    light.intensity = gltfIntensityConvert((float)tLight.intensity);
+    light.range = (float)tLight.range;
+    light.setConeAngles((float)tLight.spot.innerConeAngle, (float)tLight.spot.outerConeAngle);
+    return light;
+}
+
 }
 
 namespace util
@@ -624,6 +669,12 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
     if (!gltfModel.skins.empty()) {
         assert(gltfModel.skins.size() == 1); // for now only one skeleton supported
         scene.animations = loadAnimations(scene.skeletons[0], gltfNodeIdxToJointId, gltfModel);
+    }
+
+    // load lights
+    scene.lights.reserve(gltfModel.lights.size());
+    for (const auto& light : gltfModel.lights) {
+        scene.lights.push_back(loadLight(light));
     }
 
     // load nodes

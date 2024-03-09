@@ -47,6 +47,10 @@ public:
         // animation
         SkeletonAnimator skeletonAnimator;
         std::unordered_map<std::string, SkeletalAnimation> animations;
+
+        // light
+        Light light;
+        bool isLight{false};
     };
 
 public:

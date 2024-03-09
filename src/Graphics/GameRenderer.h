@@ -49,7 +49,7 @@ public:
     void beginDrawing();
     void endDrawing();
 
-    void addLight(const GPULightData& lightData);
+    void addLight(const Light& light, const Transform& transform);
     void addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow);
     void addDrawSkinnedMeshCommand(
         std::span<const MeshId> meshes,
@@ -129,4 +129,6 @@ private:
     NBuffer lightDataBuffer;
     static const int MAX_LIGHTS = 100;
     std::vector<GPULightData> lightDataCPU;
+    const float pointLightMaxRange{25.f};
+    const float spotLightMaxRange{64.f};
 };

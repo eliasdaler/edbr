@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <Graphics/GPUMesh.h>
+#include <Graphics/Light.h>
 #include <Graphics/Material.h>
 #include <Graphics/SkeletalAnimation.h>
 #include <Graphics/Skeleton.h>
@@ -17,6 +18,7 @@ struct SceneNode {
     std::size_t meshIndex;
     bool hasMesh{false};
     int skinId{-1};
+    int lightId{-1};
 
     SceneNode* parent{nullptr};
     std::vector<std::unique_ptr<SceneNode>> children;
@@ -31,4 +33,5 @@ struct Scene {
     std::vector<std::unique_ptr<SceneNode>> nodes;
     std::vector<Skeleton> skeletons;
     std::unordered_map<std::string, SkeletalAnimation> animations;
+    std::vector<Light> lights;
 };

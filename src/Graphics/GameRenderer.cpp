@@ -568,9 +568,32 @@ void GameRenderer::endDrawing()
     sortDrawList();
 }
 
-void GameRenderer::addLight(const GPULightData& lightData)
+void GameRenderer::addLight(const Light& light, const Transform& transform)
 {
-    lightDataCPU.push_back(lightData);
+    static const float pointLightMaxRange{25.f};
+    static const float spotLightMaxRange{64.f};
+
+    GPULightData ld{};
+
+    ld.positionAndType = {transform.getPosition(), light.getShaderType()};
+    ld.directionAndRange = {transform.getLocalFront(), light.range};
+    if (light.range == 0) {
+        if (light.type == LightType::Point) {
+            ld.directionAndRange.w = pointLightMaxRange;
+        } else if (light.type == LightType::Spot) {
+            ld.directionAndRange.w = spotLightMaxRange;
+        }
+    }
+
+    ld.colorAndIntensity = {glm::vec3{light.color}, light.intensity};
+    if (light.type == LightType::Directional) {
+        ld.colorAndIntensity.w = 1.0; // don't have intensity for directional light yet
+    }
+
+    ld.scaleOffsetAndSMIndexAndUnused.x = light.scaleOffset.x;
+    ld.scaleOffsetAndSMIndexAndUnused.y = light.scaleOffset.y;
+
+    lightDataCPU.push_back(ld);
 }
 
 void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow)
