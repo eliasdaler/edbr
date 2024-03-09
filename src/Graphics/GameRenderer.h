@@ -118,7 +118,7 @@ private:
 
         // CSM data
         glm::vec4 cascadeFarPlaneZs;
-        std::array<glm::mat4, 3> csmLightSpaceTMs;
+        std::array<glm::mat4, CSMPipeline::NUM_SHADOW_CASCADES> csmLightSpaceTMs;
 
         std::uint32_t numLights;
     };

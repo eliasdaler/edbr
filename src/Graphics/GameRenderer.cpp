@@ -570,9 +570,6 @@ void GameRenderer::endDrawing()
 
 void GameRenderer::addLight(const Light& light, const Transform& transform)
 {
-    static const float pointLightMaxRange{25.f};
-    static const float spotLightMaxRange{64.f};
-
     GPULightData ld{};
 
     ld.positionAndType = {transform.getPosition(), light.getShaderType()};
