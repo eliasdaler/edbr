@@ -9,6 +9,7 @@
 #include <Graphics/DrawCommand.h>
 #include <Graphics/GPUMesh.h>
 #include <Graphics/GfxDevice.h>
+#include <Graphics/Light.h>
 
 #include <Graphics/Pipelines/CSMPipeline.h>
 #include <Graphics/Pipelines/DepthResolvePipeline.h>
@@ -48,6 +49,7 @@ public:
     void beginDrawing();
     void endDrawing();
 
+    void addLight(const GPULightData& lightData);
     void addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow);
     void addDrawSkinnedMeshCommand(
         std::span<const MeshId> meshes,
@@ -117,8 +119,14 @@ private:
         // CSM data
         glm::vec4 cascadeFarPlaneZs;
         std::array<glm::mat4, 3> csmLightSpaceTMs;
+
+        std::uint32_t numLights;
     };
     NBuffer sceneDataBuffer;
     VkDescriptorSetLayout sceneDataDescriptorLayout;
     VkDescriptorSet sceneDataDescriptorSet;
+
+    NBuffer lightDataBuffer;
+    static const int MAX_LIGHTS = 100;
+    std::vector<GPULightData> lightDataCPU;
 };

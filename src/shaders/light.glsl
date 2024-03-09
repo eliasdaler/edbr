@@ -1,3 +1,8 @@
+#ifndef LIGHT_H
+#define LIGHT_H
+
+#include "light_data.glsl"
+
 #include "pbr.glsl"
 #include "blinn_phong.glsl"
 
@@ -8,15 +13,6 @@
 #define TYPE_DIRECTIONAL_LIGHT 0
 #define TYPE_POINT_LIGHT 1
 #define TYPE_SPOT_LIGHT 2
-
-// layout in the buffer
-struct LightData
-{
-    vec4 positionAndType;
-    vec4 directionAndRange;
-    vec4 colorAndIntensity;
-    vec4 scaleOffsetAndSMIndexAndUnused;
-};
 
 // layout in the shader
 struct Light
@@ -117,3 +113,4 @@ vec3 calculateLight(Light light, vec3 fragPos, vec3 n, vec3 v, vec3 cameraPos,
     return (fr * light.color) * (light.intensity * atten * NoL * occlusion);
 }
 
+#endif // LIGHT_H

@@ -59,7 +59,7 @@ void NBuffer::uploadNewData(
 {
     assert(initialized);
     assert(frameIndex < framesInFlight);
-    assert(dataSize == gpuBufferSize);
+    assert(dataSize <= gpuBufferSize);
 
     // sync with previous read
     const auto bufferBarrier = VkBufferMemoryBarrier2{

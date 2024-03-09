@@ -54,37 +54,14 @@ void main()
     vec3 f0 = vec3(0.0);
 #endif
 
-    // TODO: lights will be loaded from SSBO
-    LightData lights[3];
-
-    LightData ld;
-    ld.positionAndType = vec4(-56.04456, 2.53709, 0.587, 1.00);
-    ld.directionAndRange = vec4(0.00439, 0.99984, 0.0174, 10.00);
-    ld.colorAndIntensity = vec4(0.33346, 0.26018, 0.54128, 2.46717);
-    ld.scaleOffsetAndSMIndexAndUnused = vec4(3.41421, -2.41421, 0.00, 0.00);
-    lights[0] = ld;
-
-    ld.positionAndType = vec4(-56.04456, 2.53709, -3.64, 1.00);
-    ld.directionAndRange = vec4(0.00439, 0.99984, 0.0174, 10.00);
-    ld.colorAndIntensity = vec4(0.33346, 0.26018, 0.54128, 2.46717);
-    ld.scaleOffsetAndSMIndexAndUnused = vec4(3.41421, -2.41421, 0.00, 0.00);
-    lights[1] = ld;
-
-    ld.positionAndType = vec4(0.0, 0.0, 0.0, TYPE_DIRECTIONAL_LIGHT);
-    ld.directionAndRange = vec4(sceneData.sunlightDirection.xyz, 0.f);
-    ld.colorAndIntensity = sceneData.sunlightColor;
-    ld.scaleOffsetAndSMIndexAndUnused = vec4(0.0);
-    lights[2] = ld;
-    // end light loading
-
     vec3 cameraPos = sceneData.cameraPos.xyz;
     vec3 fragPos = inPos.xyz;
     vec3 n = normal;
     vec3 v = normalize(cameraPos - fragPos);
 
     vec3 fragColor = vec3(0.0);
-    for (int i = 0; i < 3; i++) {
-        Light light = loadLight(lights[i]);
+    for (int i = 0; i < sceneData.numLights; i++) {
+        Light light = loadLight(lightsBuffer.lights[i]);
         fragColor += calculateLight(light, fragPos, n, v, cameraPos,
                 diffuseColor, roughness, metallic, f0);
     }

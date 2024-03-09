@@ -138,9 +138,10 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
 
 void GameRenderer::initSceneData()
 {
-    const auto sceneDataBindings = std::array<DescriptorLayoutBinding, 2>{{
+    const auto sceneDataBindings = std::array<DescriptorLayoutBinding, 3>{{
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
     }};
     sceneDataDescriptorLayout = vkutil::buildDescriptorSetLayout(
         gfxDevice.getDevice(),
@@ -156,6 +157,15 @@ void GameRenderer::initSceneData()
         "scene data");
 
     sceneDataDescriptorSet = gfxDevice.allocateDescriptorSet(sceneDataDescriptorLayout);
+
+    lightDataBuffer.init(
+        gfxDevice.getDevice(),
+        gfxDevice.getAllocator(),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        sizeof(GPULightData) * MAX_LIGHTS,
+        graphics::FRAME_OVERLAP,
+        "light data");
+    lightDataCPU.resize(MAX_LIGHTS);
 }
 
 void GameRenderer::updateSceneDataDescriptorSet()
@@ -173,6 +183,12 @@ void GameRenderer::updateSceneDataDescriptorSet()
         baseRenderer.getDefaultShadowMapSampler(),
         VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    writer.writeBuffer(
+        2,
+        lightDataBuffer.getBuffer().buffer,
+        sizeof(GPULightData) * MAX_LIGHTS,
+        0,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     writer.updateSet(gfxDevice.getDevice(), sceneDataDescriptorSet);
 }
 
@@ -278,9 +294,15 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
                     0.f,
                 },
             .csmLightSpaceTMs = csmPipeline.csmLightSpaceTMs,
+            .numLights = (std::uint32_t)lightDataCPU.size(),
         };
         sceneDataBuffer.uploadNewData(
             cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
+        lightDataBuffer.uploadNewData(
+            cmd,
+            gfxDevice.getCurrentFrameIndex(),
+            (void*)lightDataCPU.data(),
+            sizeof(GPULightData) * lightDataCPU.size());
     }
 
     { // Geometry + Sky
@@ -429,6 +451,7 @@ void GameRenderer::cleanup()
 
     vkDeviceWaitIdle(device);
 
+    lightDataBuffer.cleanup(device, gfxDevice.getAllocator());
     sceneDataBuffer.cleanup(device, gfxDevice.getAllocator());
     vkDestroyDescriptorSetLayout(device, sceneDataDescriptorLayout, nullptr);
 
@@ -536,12 +559,18 @@ Scene GameRenderer::loadScene(const std::filesystem::path& path)
 void GameRenderer::beginDrawing()
 {
     drawCommands.clear();
+    lightDataCPU.clear();
     skinningPipeline.beginDrawing(gfxDevice.getCurrentFrameIndex());
 }
 
 void GameRenderer::endDrawing()
 {
     sortDrawList();
+}
+
+void GameRenderer::addLight(const GPULightData& lightData)
+{
+    lightDataCPU.push_back(lightData);
 }
 
 void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow)
