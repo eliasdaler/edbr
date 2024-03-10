@@ -67,6 +67,9 @@ public:
     float getMaxAnisotropy() const { return maxSamplerAnisotropy; }
 
     VulkanImmediateExecutor createImmediateExecutor() const;
+    void immediateSubmit(std::function<void(VkCommandBuffer)>&& f) const;
+
+    void waitIdle() const;
 
 public:
     VkDevice getDevice() const { return device; }

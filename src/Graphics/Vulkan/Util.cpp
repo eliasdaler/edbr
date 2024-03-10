@@ -469,6 +469,17 @@ void addDebugLabel(VkDevice device, VkPipeline pipeline, const char* label)
     vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
 }
 
+void addDebugLabel(VkDevice device, VkPipelineLayout layout, const char* label)
+{
+    const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+        .objectHandle = (std::uint64_t)layout,
+        .pObjectName = label,
+    };
+    vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+
 void addDebugLabel(VkDevice device, VkBuffer buffer, const char* label)
 {
     const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{

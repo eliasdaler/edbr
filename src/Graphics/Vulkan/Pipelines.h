@@ -26,6 +26,10 @@ public:
     PipelineBuilder& setMultisamplingNone();
     PipelineBuilder& setMultisampling(VkSampleCountFlagBits samples);
     PipelineBuilder& disableBlending();
+    PipelineBuilder& enableBlending(
+        VkBlendOp blendOp = VK_BLEND_OP_ADD,
+        VkBlendFactor srcBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        VkBlendFactor dstBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
     PipelineBuilder& setColorAttachmentFormat(VkFormat format);
     PipelineBuilder& setDepthFormat(VkFormat format);
     PipelineBuilder& enableDepthTest(bool depthWriteEnable, VkCompareOp op);

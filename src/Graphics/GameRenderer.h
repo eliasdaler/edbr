@@ -7,6 +7,8 @@
 
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
+#include <Graphics/DrawableString.h>
+#include <Graphics/Font.h>
 #include <Graphics/GPUMesh.h>
 #include <Graphics/GfxDevice.h>
 #include <Graphics/Light.h>
@@ -17,6 +19,7 @@
 #include <Graphics/Pipelines/PostFXPipeline.h>
 #include <Graphics/Pipelines/SkinningPipeline.h>
 #include <Graphics/Pipelines/SkyboxPipeline.h>
+#include <Graphics/Pipelines/UIDrawingPipeline.h>
 
 #include <Graphics/Vulkan/NBuffer.h>
 
@@ -131,4 +134,9 @@ private:
     std::vector<GPULightData> lightDataCPU;
     const float pointLightMaxRange{25.f};
     const float spotLightMaxRange{64.f};
+
+    Font defaultFont;
+    UIDrawingPipeline uiDrawingPipeline;
+    DrawableString drawableString;
+    DrawableString drawableString2;
 };

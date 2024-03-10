@@ -54,9 +54,36 @@ void Camera::initOrtho(float xScale, float yScale, float zNear, float zFar)
     initialized = true;
 }
 
+void Camera::initOrtho2D(const glm::vec2& size, float zNear, float zFar, OriginType origin)
+{
+    setClipSpaceYDown(true);
+    orthographic2D = true;
+    this->zFar = zFar;
+    this->zNear = zNear;
+    aspectRatio = size.x / size.y;
+
+    switch (origin) {
+    case OriginType::TopLeft:
+        projection = glm::ortho(0.f, size.x, 0.f, size.y, zNear, zFar);
+        break;
+    case OriginType::Center:
+        projection =
+            glm::ortho(-size.x / 2.f, size.x / 2.f, size.y / 2.f, -size.y / 2.f, zNear, zFar);
+        break;
+    default:
+        assert(false);
+    }
+
+    viewSize = size;
+    initialized = true;
+}
+
 glm::mat4 Camera::getView() const
 {
     assert(initialized);
+    if (orthographic2D) {
+        return glm::mat4{1.f};
+    }
     const auto up = transform.getLocalUp();
     const auto target = getPosition() + transform.getLocalFront();
     return glm::lookAt(getPosition(), target, up);

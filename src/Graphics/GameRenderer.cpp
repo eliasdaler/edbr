@@ -52,6 +52,27 @@ void GameRenderer::init()
     skyboxImage = graphics::loadCubemap(gfxDevice, "assets/images/skybox/distant_sunset");
     skyboxPipeline.setSkyboxImage(gfxDevice, skyboxImage, baseRenderer.getDefaultLinearSampler());
 
+    uiDrawingPipeline.init(gfxDevice, drawImage.format);
+
+    bool ok = defaultFont.load(gfxDevice, "assets/fonts/JF-Dot-Kappa20B.ttf", 32);
+    // bool ok = defaultFont.load(gfxDevice, "assets/fonts/jfdot_kappa.ttf", 32);
+    assert(ok && "font failed to load");
+    drawableString.color = glm::vec4{1.f, 1.f, 0.f, 1.f};
+    drawableString.init(
+        gfxDevice,
+        "Hello, world!",
+        defaultFont,
+        baseRenderer.getDefaultNearestSampler(),
+        uiDrawingPipeline.getUiElementDescSetLayout());
+
+    drawableString2.color = glm::vec4{1.f, 1.f, 1.f, 1.f};
+    drawableString2.init(
+        gfxDevice,
+        "Text rendering works!",
+        defaultFont,
+        baseRenderer.getDefaultNearestSampler(),
+        uiDrawingPipeline.getUiElementDescSetLayout());
+
     // depends on csm pipeline being created
     updateSceneDataDescriptorSet();
 }
@@ -443,6 +464,23 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
         vkutil::cmdEndLabel(cmd);
     }
+
+    { // UI
+        ZoneScopedN("UI");
+        TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "UI", tracy::Color::Purple);
+        vkutil::cmdBeginLabel(cmd, "UI");
+
+        Camera uiCamera;
+        uiCamera.initOrtho2D(
+            glm::vec2{postFXDrawImage.getExtent2D().width, postFXDrawImage.getExtent2D().height});
+        const auto vp = uiCamera.getViewProj();
+        const auto tm = glm::translate(glm::mat4{1.f}, glm::vec3{64.f, 64.f, 0.f});
+        const auto tm2 = glm::translate(glm::mat4{1.f}, glm::vec3{64.f, 90.f, 0.f});
+
+        uiDrawingPipeline.drawString(cmd, postFXDrawImage, drawableString, vp * tm);
+        uiDrawingPipeline.drawString(cmd, postFXDrawImage, drawableString2, vp * tm2);
+        vkutil::cmdEndLabel(cmd);
+    }
 }
 
 void GameRenderer::cleanup()
@@ -461,6 +499,12 @@ void GameRenderer::cleanup()
     meshPipeline.cleanup(device);
     csmPipeline.cleanup(gfxDevice);
     skinningPipeline.cleanup(gfxDevice);
+
+    drawableString2.cleanup(gfxDevice);
+    drawableString.cleanup(gfxDevice);
+    defaultFont.destroy(gfxDevice);
+
+    uiDrawingPipeline.cleanup(device);
 
     gfxDevice.destroyImage(skyboxImage);
 
@@ -510,7 +554,7 @@ bool GameRenderer::isMultisamplingEnabled() const
 
 void GameRenderer::onMultisamplingStateUpdate()
 {
-    vkDeviceWaitIdle(gfxDevice.getDevice());
+    gfxDevice.waitIdle();
 
     { // cleanup old state
         meshPipeline.cleanup(gfxDevice.getDevice());

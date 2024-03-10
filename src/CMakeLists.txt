@@ -1,7 +1,9 @@
 add_executable(game
   Graphics/Camera.cpp
   Graphics/Cubemap.cpp
+  Graphics/DrawableString.cpp
   Graphics/FrustumCulling.cpp
+  Graphics/Font.cpp
   Graphics/GfxDevice.cpp
   Graphics/MaterialCache.cpp
   Graphics/ImageCache.cpp
@@ -20,6 +22,7 @@ add_executable(game
   Graphics/Pipelines/PostFXPipeline.cpp
   Graphics/Pipelines/SkinningPipeline.cpp
   Graphics/Pipelines/SkyboxPipeline.cpp
+  Graphics/Pipelines/UIDrawingPipeline.cpp
 
   Graphics/Vulkan/DeletionQueue.cpp
   Graphics/Vulkan/Descriptors.cpp
@@ -55,7 +58,7 @@ target_add_extra_warnings(game)
 
 target_include_directories(game PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 
-find_package(Vulkan REQUIRED)
+# find_package(Vulkan REQUIRED)
 
 target_link_libraries(game PRIVATE
   # Vulkan::Vulkan
@@ -68,6 +71,8 @@ target_link_libraries(game PRIVATE
 
   tinygltf::tinygltf
   stb::image
+  freetype::freetype
+  utf8cpp::utf8cpp
 )
 
 target_compile_definitions(game
@@ -75,7 +80,6 @@ target_compile_definitions(game
     VK_NO_PROTOTYPES
     VMA_VULKAN_VERSION=1003000
 )
-
 
 # SDL
 if(BUILD_SHARED_LIBS)
@@ -111,6 +115,9 @@ set(SHADERS
   mesh.frag
   postfx.frag
   depth_resolve.frag
+  ui_element.vert
+  ui_element.frag
+  ui_text.frag
 )
 list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 

@@ -353,3 +353,13 @@ VulkanImmediateExecutor GfxDevice::createImmediateExecutor() const
     executor.init(device, graphicsQueueFamily, graphicsQueue);
     return executor;
 }
+
+void GfxDevice::immediateSubmit(std::function<void(VkCommandBuffer)>&& f) const
+{
+    executor.immediateSubmit(std::move(f));
+}
+
+void GfxDevice::waitIdle() const
+{
+    VK_CHECK(vkDeviceWaitIdle(device));
+}

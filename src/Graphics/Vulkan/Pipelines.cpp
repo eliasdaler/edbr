@@ -205,6 +205,24 @@ PipelineBuilder& PipelineBuilder::disableBlending()
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::enableBlending(
+    VkBlendOp blendOp,
+    VkBlendFactor srcBlendFactor,
+    VkBlendFactor dstBlendFactor)
+{
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.srcColorBlendFactor = srcBlendFactor;
+    colorBlendAttachment.dstColorBlendFactor = dstBlendFactor;
+    colorBlendAttachment.colorBlendOp = blendOp;
+    colorBlendAttachment.srcAlphaBlendFactor = srcBlendFactor;
+    colorBlendAttachment.dstAlphaBlendFactor = dstBlendFactor;
+    colorBlendAttachment.alphaBlendOp = blendOp;
+
+    return *this;
+}
+
 PipelineBuilder& PipelineBuilder::setColorAttachmentFormat(VkFormat format)
 {
     colorAttachmentformat = format;

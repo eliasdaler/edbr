@@ -22,6 +22,13 @@ public:
     void initOrtho(float scale, float zNear, float zFar);
     void initOrtho(float xScale, float yScale, float zNear, float zFar);
 
+    // +Y axis will point down, +X - right, +Z - into the camera
+    void initOrtho2D(
+        const glm::vec2& size,
+        float zNear = 0.f,
+        float zFar = 1.f,
+        OriginType origin = OriginType::TopLeft);
+
     glm::mat4 getView() const;
     glm::mat4 getViewProj() const;
 
@@ -59,6 +66,7 @@ private:
 
     glm::mat4 projection;
     bool orthographic{false};
+    bool orthographic2D{false};
 
     bool useInverseDepth{false};
     bool clipSpaceYDown{true}; // ifdef VULKAN?
