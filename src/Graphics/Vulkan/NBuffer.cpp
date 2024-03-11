@@ -22,6 +22,7 @@ void NBuffer::init(
     gpuBufferSize = dataSize;
 
     gpuBuffer = vkutil::createBuffer(
+        device,
         allocator,
         dataSize,
         usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -30,6 +31,7 @@ void NBuffer::init(
 
     for (std::size_t i = 0; i < numFramesInFlight; ++i) {
         stagingBuffers.push_back(vkutil::createBuffer(
+            device,
             allocator,
             dataSize,
             usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,

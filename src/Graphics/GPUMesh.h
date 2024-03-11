@@ -8,7 +8,9 @@
 #include <Graphics/Vulkan/Types.h>
 
 struct GPUMesh {
-    GPUMeshBuffers buffers;
+    AllocatedBuffer vertexBuffer;
+    AllocatedBuffer indexBuffer;
+
     std::uint32_t numVertices{0};
     std::uint32_t numIndices{0};
 
@@ -22,10 +24,8 @@ struct GPUMesh {
     bool hasSkeleton{false};
     // skinned meshes only
     AllocatedBuffer skinningDataBuffer;
-    VkDeviceAddress skinningDataBufferAddress;
 };
 
 struct SkinnedMesh {
     AllocatedBuffer skinnedVertexBuffer;
-    VkDeviceAddress skinnedVertexBufferAddress;
 };

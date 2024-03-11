@@ -44,7 +44,6 @@ private:
 
     struct PerFrameData {
         AppendableBuffer<glm::mat4> jointMatricesBuffer;
-        VkDeviceAddress jointMatricesBufferAddress;
     };
 
     std::array<PerFrameData, graphics::FRAME_OVERLAP> framesData;

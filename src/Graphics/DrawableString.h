@@ -30,7 +30,6 @@ struct DrawableString {
     AllocatedBuffer vertexBuffer;
     AllocatedBuffer indexBuffer;
     std::uint32_t numIndices{0};
-    VkDeviceAddress vertexBufferAddress;
 
     VkDescriptorSet uiElementDescSet;
 

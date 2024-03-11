@@ -111,7 +111,7 @@ void UIDrawingPipeline::drawString(
     const auto pushConstants = PushConstants{
         .transform = mvp,
         .color = str.color,
-        .vertexBuffer = str.vertexBufferAddress,
+        .vertexBuffer = str.vertexBuffer.address,
     };
     vkCmdPushConstants(
         cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);

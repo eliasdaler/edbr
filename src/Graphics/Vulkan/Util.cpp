@@ -115,7 +115,7 @@ void uploadImageData(
     const auto dataSize = image.extent.depth * image.extent.width * image.extent.height * 4;
 
     const auto uploadBuffer =
-        createBuffer(allocator, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO);
+        createBuffer(device, allocator, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     memcpy(uploadBuffer.info.pMappedData, pixelData, dataSize);
 
     executor.immediateSubmit([&](VkCommandBuffer cmd) {
@@ -380,6 +380,7 @@ AllocatedImage loadImageFromFile(
 }
 
 AllocatedBuffer createBuffer(
+    VkDevice device,
     VmaAllocator allocator,
     std::size_t allocSize,
     VkBufferUsageFlags usage,
@@ -401,6 +402,14 @@ AllocatedBuffer createBuffer(
     AllocatedBuffer buffer{};
     VK_CHECK(vmaCreateBuffer(
         allocator, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.info));
+    if ((usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) != 0) {
+        const auto deviceAdressInfo = VkBufferDeviceAddressInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = buffer.buffer,
+        };
+        buffer.address = vkGetBufferDeviceAddress(device, &deviceAdressInfo);
+    }
+
     return buffer;
 }
 

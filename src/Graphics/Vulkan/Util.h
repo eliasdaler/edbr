@@ -81,6 +81,7 @@ void generateMipmaps(
     std::uint32_t mipLevels);
 
 AllocatedBuffer createBuffer(
+    VkDevice device,
     VmaAllocator allocator,
     std::size_t allocSize,
     VkBufferUsageFlags usage,

@@ -273,7 +273,7 @@ AllocatedBuffer GfxDevice::createBuffer(
     VkBufferUsageFlags usage,
     VmaMemoryUsage memoryUsage) const
 {
-    return vkutil::createBuffer(allocator, allocSize, usage, memoryUsage);
+    return vkutil::createBuffer(device, allocator, allocSize, usage, memoryUsage);
 }
 
 VkDeviceAddress GfxDevice::getBufferAddress(const AllocatedBuffer& buffer) const

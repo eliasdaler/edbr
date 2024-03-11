@@ -152,20 +152,17 @@ MeshId BaseRenderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)
 
 void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
 {
-    GPUMeshBuffers buffers;
-
     // create index buffer
     const auto indexBufferSize = cpuMesh.indices.size() * sizeof(std::uint32_t);
-    buffers.indexBuffer = gfxDevice.createBuffer(
+    gpuMesh.indexBuffer = gfxDevice.createBuffer(
         indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
     // create vertex buffer
     const auto vertexBufferSize = cpuMesh.vertices.size() * sizeof(CPUMesh::Vertex);
-    buffers.vertexBuffer = gfxDevice.createBuffer(
+    gpuMesh.vertexBuffer = gfxDevice.createBuffer(
         vertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    buffers.vertexBufferAddress = gfxDevice.getBufferAddress(buffers.vertexBuffer);
 
     const auto staging =
         gfxDevice
@@ -182,25 +179,23 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
             .dstOffset = 0,
             .size = vertexBufferSize,
         };
-        vkCmdCopyBuffer(cmd, staging.buffer, buffers.vertexBuffer.buffer, 1, &vertexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, gpuMesh.vertexBuffer.buffer, 1, &vertexCopy);
 
         const auto indexCopy = VkBufferCopy{
             .srcOffset = vertexBufferSize,
             .dstOffset = 0,
             .size = indexBufferSize,
         };
-        vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, gpuMesh.indexBuffer.buffer, 1, &indexCopy);
     });
 
     gfxDevice.destroyBuffer(staging);
 
-    gpuMesh.buffers = buffers;
-
     const auto vtxBufferName = cpuMesh.name + " (vtx)";
     const auto idxBufferName = cpuMesh.name + " (idx)";
     vkutil::
-        addDebugLabel(gfxDevice.getDevice(), buffers.vertexBuffer.buffer, vtxBufferName.c_str());
-    vkutil::addDebugLabel(gfxDevice.getDevice(), buffers.indexBuffer.buffer, idxBufferName.c_str());
+        addDebugLabel(gfxDevice.getDevice(), gpuMesh.vertexBuffer.buffer, vtxBufferName.c_str());
+    vkutil::addDebugLabel(gfxDevice.getDevice(), gpuMesh.indexBuffer.buffer, idxBufferName.c_str());
 
     if (gpuMesh.hasSkeleton) {
         // create skinning data buffer
@@ -209,7 +204,6 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
             skinningDataSize,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-        gpuMesh.skinningDataBufferAddress = gfxDevice.getBufferAddress(gpuMesh.skinningDataBuffer);
 
         const auto staging =
             gfxDevice.createBuffer(skinningDataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
@@ -239,7 +233,6 @@ SkinnedMesh BaseRenderer::createSkinnedMeshBuffer(MeshId meshId) const
         mesh.numVertices * sizeof(CPUMesh::Vertex),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    sm.skinnedVertexBufferAddress = gfxDevice.getBufferAddress(sm.skinnedVertexBuffer);
     return sm;
 }
 

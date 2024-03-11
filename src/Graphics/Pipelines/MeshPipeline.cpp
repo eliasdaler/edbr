@@ -119,13 +119,13 @@ void MeshPipeline::draw(
 
         if (dc.meshId != prevMeshId) {
             prevMeshId = dc.meshId;
-            vkCmdBindIndexBuffer(cmd, mesh.buffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindIndexBuffer(cmd, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         }
 
         const auto pushConstants = PushConstants{
             .transform = dc.transformMatrix,
-            .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBufferAddress :
-                                             mesh.buffers.vertexBufferAddress,
+            .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
+                                             mesh.vertexBuffer.address,
         };
         vkCmdPushConstants(
             cmd,

@@ -17,8 +17,8 @@ const GPUMesh& MeshCache::getMesh(MeshId id) const
 void MeshCache::cleanup(const GfxDevice& gfxDevice)
 {
     for (const auto& mesh : meshes) {
-        gfxDevice.destroyBuffer(mesh.buffers.indexBuffer);
-        gfxDevice.destroyBuffer(mesh.buffers.vertexBuffer);
+        gfxDevice.destroyBuffer(mesh.indexBuffer);
+        gfxDevice.destroyBuffer(mesh.vertexBuffer);
         if (mesh.hasSkeleton) {
             gfxDevice.destroyBuffer(mesh.skinningDataBuffer);
         }

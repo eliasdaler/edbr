@@ -23,10 +23,6 @@ struct AllocatedBuffer {
     VkBuffer buffer{VK_NULL_HANDLE};
     VmaAllocation allocation;
     VmaAllocationInfo info;
-};
-
-struct GPUMeshBuffers {
-    AllocatedBuffer indexBuffer;
-    AllocatedBuffer vertexBuffer;
-    VkDeviceAddress vertexBufferAddress{};
+    VkDeviceAddress address{0}; // only for buffers created with
+                                // VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 };

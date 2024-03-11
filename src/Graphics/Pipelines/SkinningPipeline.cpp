@@ -34,8 +34,6 @@ void SkinningPipeline::init(GfxDevice& gfxDevice)
         jointMatricesBuffer.buffer = gfxDevice.createBuffer(
             MAX_JOINT_MATRICES * sizeof(glm::mat4),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-        framesData[i].jointMatricesBufferAddress =
-            gfxDevice.getBufferAddress(jointMatricesBuffer.buffer);
     }
 }
 
@@ -81,12 +79,12 @@ void SkinningPipeline::doSkinning(
     assert(dc.skinnedMesh);
 
     const auto cs = PushConstants{
-        .jointMatricesBuffer = getCurrentFrameData(frameIndex).jointMatricesBufferAddress,
+        .jointMatricesBuffer = getCurrentFrameData(frameIndex).jointMatricesBuffer.buffer.address,
         .jointMatricesStartIndex = dc.jointMatricesStartIndex,
         .numVertices = mesh.numVertices,
-        .inputBuffer = mesh.buffers.vertexBufferAddress,
-        .skinningData = mesh.skinningDataBufferAddress,
-        .outputBuffer = dc.skinnedMesh->skinnedVertexBufferAddress,
+        .inputBuffer = mesh.vertexBuffer.address,
+        .skinningData = mesh.skinningDataBuffer.address,
+        .outputBuffer = dc.skinnedMesh->skinnedVertexBuffer.address,
     };
     vkCmdPushConstants(
         cmd, skinningPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &cs);
