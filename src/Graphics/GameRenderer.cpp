@@ -231,6 +231,22 @@ void GameRenderer::draw(const Camera& camera, const SceneData& sceneData)
 void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData)
 {
     { // skinning
+        { // Sync reading from skinning buffers with new writes
+            const auto memoryBarrier = VkMemoryBarrier2{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+                .srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
+            };
+            const auto dependencyInfo = VkDependencyInfo{
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .memoryBarrierCount = 1,
+                .pMemoryBarriers = &memoryBarrier,
+            };
+            vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+        }
+
         vkutil::cmdBeginLabel(cmd, "Skinning");
         for (const auto& dc : drawCommands) {
             if (!dc.skinnedMesh) {
@@ -240,20 +256,21 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         }
         vkutil::cmdEndLabel(cmd);
 
-        // Sync skinning with CSM
-        const auto memoryBarrier = VkMemoryBarrier2{
-            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT,
-        };
-        const auto dependencyInfo = VkDependencyInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .memoryBarrierCount = 1,
-            .pMemoryBarriers = &memoryBarrier,
-        };
-        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+        { // Sync skinning with CSM
+            const auto memoryBarrier = VkMemoryBarrier2{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+                .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT,
+            };
+            const auto dependencyInfo = VkDependencyInfo{
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .memoryBarrierCount = 1,
+                .pMemoryBarriers = &memoryBarrier,
+            };
+            vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+        }
     }
 
     { // CSM
