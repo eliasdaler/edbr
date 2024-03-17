@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
+#include <limits>
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -16,13 +18,33 @@ struct AllocatedImage {
     std::uint32_t numLayers{1};
     bool isCubemap{false};
 
+    static const auto NULL_BINDLESS_ID = std::numeric_limits<std::uint32_t>::max();
+
     VkExtent2D getExtent2D() const { return VkExtent2D{extent.width, extent.height}; }
+
+    std::uint32_t getBindlessId() const
+    {
+        assert(id != NULL_BINDLESS_ID && "Image wasn't added to bindless set");
+        return id;
+    }
+
+    // should be called by ImageCache only
+    void setBindlessId(const std::uint32_t id)
+    {
+        assert(id != NULL_BINDLESS_ID);
+        this->id = id;
+    }
+
+private:
+    std::uint32_t id{NULL_BINDLESS_ID}; // bindless id - always equals to ImageId
 };
 
 struct AllocatedBuffer {
     VkBuffer buffer{VK_NULL_HANDLE};
     VmaAllocation allocation;
     VmaAllocationInfo info;
-    VkDeviceAddress address{0}; // only for buffers created with
-                                // VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+
+    // Only for buffers created with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+    // TODO: add check that this is not 0 if requesting address?
+    VkDeviceAddress address{0};
 };

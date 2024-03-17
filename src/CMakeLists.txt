@@ -1,20 +1,21 @@
 add_executable(game
   Graphics/Camera.cpp
   Graphics/Cubemap.cpp
-  Graphics/DrawableString.cpp
-  Graphics/FrustumCulling.cpp
   Graphics/Font.cpp
+  Graphics/FrustumCulling.cpp
   Graphics/GfxDevice.cpp
-  Graphics/MaterialCache.cpp
   Graphics/ImageCache.cpp
+  Graphics/MaterialCache.cpp
   Graphics/MeshCache.cpp
   Graphics/ShadowMapping.cpp
   Graphics/SkeletonAnimator.cpp
+  Graphics/Sprite.cpp
   Graphics/Swapchain.cpp
   Graphics/Texture.cpp
 
   Graphics/BaseRenderer.cpp
   Graphics/GameRenderer.cpp
+  Graphics/SpriteRenderer.cpp
 
   Graphics/Pipelines/CSMPipeline.cpp
   Graphics/Pipelines/DepthResolvePipeline.cpp
@@ -22,8 +23,9 @@ add_executable(game
   Graphics/Pipelines/PostFXPipeline.cpp
   Graphics/Pipelines/SkinningPipeline.cpp
   Graphics/Pipelines/SkyboxPipeline.cpp
-  Graphics/Pipelines/UIDrawingPipeline.cpp
+  Graphics/Pipelines/SpriteDrawingPipeline.cpp
 
+  Graphics/Vulkan/BindlessSetManager.cpp
   Graphics/Vulkan/DeletionQueue.cpp
   Graphics/Vulkan/Descriptors.cpp
   Graphics/Vulkan/Init.cpp
@@ -115,9 +117,8 @@ set(SHADERS
   mesh.frag
   postfx.frag
   depth_resolve.frag
-  ui_element.vert
-  ui_element.frag
-  ui_text.frag
+  sprite.vert
+  sprite.frag
 )
 list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 

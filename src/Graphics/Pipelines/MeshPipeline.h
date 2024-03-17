@@ -18,8 +18,9 @@ public:
         GfxDevice& gfxDevice,
         VkFormat drawImageFormat,
         VkFormat depthImageFormat,
+        VkDescriptorSetLayout bindlessDescSetLayout,
+        VkDescriptorSet bindlessDescSet,
         VkDescriptorSetLayout sceneDataDescriptorLayout,
-        VkDescriptorSetLayout materialDataDescSetLayout,
         VkSampleCountFlagBits samples);
     void cleanup(VkDevice device);
 
@@ -36,8 +37,11 @@ private:
     struct PushConstants {
         glm::mat4 transform;
         VkDeviceAddress vertexBuffer;
+        std::uint32_t materialId;
     };
 
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
+
+    VkDescriptorSet bindlessDescSet;
 };

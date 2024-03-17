@@ -3,15 +3,15 @@
 #include <filesystem>
 #include <span>
 
+#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
 #include <Graphics/BaseRenderer.h>
 #include <Graphics/DrawCommand.h>
-#include <Graphics/DrawableString.h>
-#include <Graphics/Font.h>
 #include <Graphics/GPUMesh.h>
 #include <Graphics/GfxDevice.h>
 #include <Graphics/Light.h>
+#include <Graphics/SpriteRenderer.h>
 
 #include <Graphics/Pipelines/CSMPipeline.h>
 #include <Graphics/Pipelines/DepthResolvePipeline.h>
@@ -19,7 +19,6 @@
 #include <Graphics/Pipelines/PostFXPipeline.h>
 #include <Graphics/Pipelines/SkinningPipeline.h>
 #include <Graphics/Pipelines/SkyboxPipeline.h>
-#include <Graphics/Pipelines/UIDrawingPipeline.h>
 
 #include <Graphics/Vulkan/NBuffer.h>
 
@@ -32,10 +31,10 @@ class GameRenderer {
 public:
     struct SceneData {
         const Camera& camera;
-        glm::vec4 ambientColorAndIntensity;
-        glm::vec4 sunlightDirection;
-        glm::vec4 sunlightColorAndIntensity;
-        glm::vec4 fogColorAndDensity;
+        glm::vec4 ambientColor;
+        float ambientIntensity;
+        glm::vec4 fogColor;
+        float fogDensity;
     };
 
 public:
@@ -53,16 +52,19 @@ public:
     void endDrawing();
 
     void addLight(const Light& light, const Transform& transform);
-    void addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow);
-    void addDrawSkinnedMeshCommand(
+    void drawMesh(MeshId id, const glm::mat4& transform, bool castShadow);
+    void drawSkinnedMesh(
         std::span<const MeshId> meshes,
         std::span<const SkinnedMesh> skinnedMeshes,
         const glm::mat4& transform,
         std::span<const glm::mat4> jointMatrices);
 
+    SkinnedMesh createSkinnedMesh(MeshId id) const;
+
     GfxDevice& getGfxDevice() { return gfxDevice; }
 
-    SkinnedMesh createSkinnedMesh(MeshId id) const;
+    BaseRenderer& getBaseRenderer() { return baseRenderer; }
+    SpriteRenderer& getSpriteRenderer() { return spriteRenderer; }
 
 private:
     void createDrawImage(VkExtent2D extent, bool firstCreate);
@@ -97,11 +99,12 @@ private:
 
     AllocatedImage postFXDrawImage;
 
-    AllocatedImage skyboxImage;
+    ImageId skyboxImageId;
 
     bool shadowsEnabled{true};
     VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
 
+    // keep in sync with scene_data.glsl
     struct GPUSceneData {
         // camera
         glm::mat4 view;
@@ -110,20 +113,23 @@ private:
         glm::vec4 cameraPos;
 
         // ambient
-        glm::vec4 ambientColorAndIntensity;
-
-        // sun
-        glm::vec4 sunlightDirection;
-        glm::vec4 sunlightColorAndIntensity;
+        glm::vec3 ambientColor;
+        float ambientIntensity;
 
         // fog
-        glm::vec4 fogColorAndDensity;
+        glm::vec3 fogColor;
+        float fogDensity;
 
         // CSM data
         glm::vec4 cascadeFarPlaneZs;
         std::array<glm::mat4, CSMPipeline::NUM_SHADOW_CASCADES> csmLightSpaceTMs;
+        std::uint32_t csmShadowMapId;
 
+        VkDeviceAddress lightsBuffer;
         std::uint32_t numLights;
+        std::int32_t sunlightIndex;
+
+        VkDeviceAddress materialsBuffer;
     };
     NBuffer sceneDataBuffer;
     VkDescriptorSetLayout sceneDataDescriptorLayout;
@@ -134,9 +140,7 @@ private:
     std::vector<GPULightData> lightDataCPU;
     const float pointLightMaxRange{25.f};
     const float spotLightMaxRange{64.f};
+    std::int32_t sunlightIndex{-1}; // index of sun light inside the light data buffer
 
-    Font defaultFont;
-    UIDrawingPipeline uiDrawingPipeline;
-    DrawableString drawableString;
-    DrawableString drawableString2;
+    SpriteRenderer spriteRenderer;
 };

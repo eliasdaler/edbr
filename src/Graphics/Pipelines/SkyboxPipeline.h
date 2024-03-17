@@ -5,8 +5,9 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
+#include <Graphics/IdTypes.h>
+
 class GfxDevice;
-struct AllocatedImage;
 class Camera;
 
 class SkyboxPipeline {
@@ -15,26 +16,26 @@ public:
         GfxDevice& gfxDevice,
         VkFormat drawImageFormat,
         VkFormat depthImageFormat,
-        VkSampleCountFlagBits samples);
+        VkSampleCountFlagBits samples,
+        VkDescriptorSetLayout bindlessDescSetLayout,
+        VkDescriptorSet bindlessDescSet);
     void cleanup(VkDevice device);
 
     void draw(VkCommandBuffer cmd, const Camera& camera);
 
-    // updating the image requires sync (vkDeviceWaitIdle)
-    void setSkyboxImage(
-        const GfxDevice& gfxDevice,
-        const AllocatedImage& skybox,
-        VkSampler sampler);
+    void setSkyboxImage(const ImageId skyboxId);
 
 private:
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
 
-    VkDescriptorSetLayout skyboxDescSetLayout;
-    VkDescriptorSet skyboxDescSet;
+    VkDescriptorSet bindlessDescSet;
+
+    ImageId skyboxTextureId;
 
     struct SkyboxPushConstants {
         glm::mat4 invViewProj;
         glm::vec4 cameraPos;
+        std::uint32_t skyboxTextureId;
     };
 };

@@ -6,9 +6,11 @@
 
 #include <glm/vec2.hpp>
 
+#include <Graphics/IdTypes.h>
 #include <Graphics/Vulkan/Types.h>
 
 class GfxDevice;
+class BaseRenderer;
 
 struct Glyph {
     glm::vec2 uv0; // top left
@@ -18,13 +20,17 @@ struct Glyph {
 };
 
 struct Font {
-    bool load(const GfxDevice& gfxDevice, const std::filesystem::path& path, int size);
     bool load(
         const GfxDevice& gfxDevice,
+        BaseRenderer& renderer,
+        const std::filesystem::path& path,
+        int size);
+    bool load(
+        const GfxDevice& gfxDevice,
+        BaseRenderer& renderer,
         const std::filesystem::path& path,
         int size,
         const std::unordered_set<std::uint32_t>& neededCodePoints);
-    void destroy(const GfxDevice& gfxDevice);
 
     glm::vec2 getGlyphAtlasSize() const;
     glm::vec2 getGlyphSize(std::uint32_t codePoint) const;
@@ -32,7 +38,8 @@ struct Font {
     std::unordered_map<std::uint32_t, Glyph> glyphs;
     std::unordered_set<std::uint32_t> loadedCodePoints;
 
-    AllocatedImage glyphAtlas;
+    ImageId glyphAtlasID{NULL_IMAGE_ID};
+    glm::vec2 atlasSize;
 
     int size{0};
     float lineSpacing{0}; // line spacing in pixels

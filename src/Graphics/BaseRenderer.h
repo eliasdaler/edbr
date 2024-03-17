@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <Graphics/Vulkan/Util.h>
 #include <Graphics/Vulkan/VulkanImmediateExecutor.h>
 
 #include <Graphics/ImageCache.h>
@@ -23,15 +24,13 @@ public:
     void cleanup();
 
 public:
-    VkSampler getDefaultNearestSampler() const { return defaultNearestSampler; }
-    VkSampler getDefaultLinearSampler() const { return defaultLinearSampler; }
-    VkSampler getDefaultShadowMapSampler() const { return defaultShadowMapSampler; }
-
-    VkDescriptorSetLayout getMaterialDataDescSetLayout() const { return meshMaterialLayout; }
+    VkSampler getNearestSampler() const { return nearestSampler; }
+    VkSampler getLinearSampler() const { return linearSampler; }
+    VkSampler getShadowMapSampler() const { return shadowMapSampler; }
 
     MeshId addMesh(const CPUMesh& cpuMesh, MaterialId material);
     void uploadMesh(const CPUMesh& cpuMesh, GPUMesh& mesh) const;
-    SkinnedMesh createSkinnedMeshBuffer(MeshId meshId) const;
+    [[nodiscard]] SkinnedMesh createSkinnedMeshBuffer(MeshId meshId) const;
     const GPUMesh& getMesh(MeshId id) const;
 
     MaterialId addMaterial(Material material);
@@ -39,36 +38,46 @@ public:
 
     GfxDevice& getGfxDevice() { return gfxDevice; }
 
-    ImageId loadImageFromFile(
+    [[nodiscard]] ImageId createImage(
+        const vkutil::CreateImageInfo& createInfo,
+        const char* debugName = nullptr,
+        void* pixelData = nullptr);
+    [[nodiscard]] ImageId loadImageFromFile(
         const std::filesystem::path& path,
-        VkFormat format,
-        VkImageUsageFlags usage,
-        bool mipMap);
-    const AllocatedImage& getImage(ImageId id) const;
+        VkFormat format = VK_FORMAT_R8G8B8A8_SRGB,
+        VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        bool mipMap = false);
+    [[nodiscard]] ImageId loadCubemap(const std::filesystem::path& dirPath);
+
+    [[nodiscard]] const AllocatedImage& getImage(ImageId id) const;
+    ImageId addImageToCache(AllocatedImage image);
+
+    static const auto MAX_MATERIALS = 1000;
+    AllocatedBuffer materialDataBuffer;
+
+    VkDescriptorSetLayout getBindlessDescSetLayout() const;
+    VkDescriptorSet getBindlessDescSet() const;
+
+    ImageId getWhiteTextureID() { return whiteTextureID; }
 
 private:
     void initSamplers();
     void initDefaultTextures();
     void allocateMaterialDataBuffer();
-    void initDescriptors();
 
 private: // data
     GfxDevice& gfxDevice;
     VulkanImmediateExecutor executor;
 
-    ImageCache imageCache;
     MeshCache meshCache;
-
-    static const auto MAX_MATERIALS = 1000;
-    AllocatedBuffer materialDataBuffer;
-
     MaterialCache materialCache;
-    VkDescriptorSetLayout meshMaterialLayout;
 
-    VkSampler defaultNearestSampler;
-    VkSampler defaultLinearSampler;
-    VkSampler defaultShadowMapSampler;
+    ImageCache imageCache;
 
-    AllocatedImage whiteTexture;
-    AllocatedImage placeholderNormalMapTexture;
+    VkSampler nearestSampler;
+    VkSampler linearSampler;
+    VkSampler shadowMapSampler;
+
+    ImageId whiteTextureID;
+    ImageId placeholderNormalMapTextureID;
 };

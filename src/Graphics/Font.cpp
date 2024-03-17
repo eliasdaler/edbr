@@ -1,7 +1,7 @@
 #include "Font.h"
 
+#include <Graphics/BaseRenderer.h>
 #include <Graphics/GfxDevice.h>
-#include <Graphics/Vulkan/Util.h>
 
 #include <iostream>
 #include <unordered_map>
@@ -13,18 +13,23 @@
 
 static constexpr int GLYPH_ATLAS_SIZE = 1024;
 
-bool Font::load(const GfxDevice& gfxDevice, const std::filesystem::path& path, int size)
+bool Font::load(
+    const GfxDevice& gfxDevice,
+    BaseRenderer& renderer,
+    const std::filesystem::path& path,
+    int size)
 {
     // only load ASCII by default
     std::unordered_set<std::uint32_t> neededCodePoints;
     for (std::uint32_t i = 0; i < 255; ++i) {
         neededCodePoints.insert(i);
     }
-    return load(gfxDevice, path, size, neededCodePoints);
+    return load(gfxDevice, renderer, path, size, neededCodePoints);
 }
 
 bool Font::load(
     const GfxDevice& gfxDevice,
+    BaseRenderer& renderer,
     const std::filesystem::path& path,
     int size,
     const std::unordered_set<std::uint32_t>& neededCodePoints)
@@ -100,15 +105,16 @@ bool Font::load(
     }
 
     { // upload data to GPU
-        glyphAtlas = gfxDevice.createImage({
-            .format = VK_FORMAT_R8_UNORM,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .extent = {(std::uint32_t)aw, (std::uint32_t)ah, 1},
-        });
-        gfxDevice.uploadImageData(glyphAtlas, atlasData.data());
-
         const auto label = "glyph_atlas: " + path.string();
-        vkutil::addDebugLabel(gfxDevice.getDevice(), glyphAtlas.image, label.c_str());
+        glyphAtlasID = renderer.createImage(
+            {
+                .format = VK_FORMAT_R8_UNORM,
+                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                .extent = {(std::uint32_t)aw, (std::uint32_t)ah, 1},
+            },
+            label.c_str(),
+            atlasData.data());
+        atlasSize = glm::vec2{aw, ah};
     }
 
     loadedCodePoints = neededCodePoints;
@@ -119,15 +125,9 @@ bool Font::load(
     return true;
 }
 
-void Font::destroy(const GfxDevice& gfxDevice)
-{
-    gfxDevice.destroyImage(glyphAtlas);
-}
-
 glm::vec2 Font::getGlyphAtlasSize() const
 {
-    const auto atlasSize = glyphAtlas.getExtent2D();
-    return glm::vec2{atlasSize.width, atlasSize.height};
+    return atlasSize;
 }
 
 glm::vec2 Font::getGlyphSize(std::uint32_t codePoint) const
@@ -137,6 +137,5 @@ glm::vec2 Font::getGlyphSize(std::uint32_t codePoint) const
         return {};
     }
     const auto& g = it->second;
-    const auto atlasSize = glyphAtlas.getExtent2D();
-    return (g.uv1 - g.uv0) * getGlyphAtlasSize();
+    return (g.uv1 - g.uv0) * atlasSize;
 }

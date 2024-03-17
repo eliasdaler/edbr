@@ -4,6 +4,7 @@
 #include <string>
 
 #include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
 enum class LightType {
@@ -54,12 +55,13 @@ struct Light {
 
 // Representation of light data on GPU (see lighting.glsl)
 struct GPULightData {
-    // [ vec3(position), type ]
-    glm::vec4 positionAndType;
-    // [ vec3(direction), range ]
-    glm::vec4 directionAndRange;
-    // [ color.r, color.g, color.b, intesity]
-    glm::vec4 colorAndIntensity;
-    // [ scaleOffset.x, scaleOffset.y, shadowMapIndex, <unused> ]
-    glm::vec4 scaleOffsetAndSMIndexAndUnused;
+    glm::vec3 position;
+    std::uint32_t type;
+    glm::vec3 direction;
+    float range;
+    glm::vec3 color;
+    float intensity;
+    glm::vec2 scaleOffset;
+    float shadowMapIndex;
+    float unused;
 };

@@ -3,51 +3,54 @@
 #include "GfxDevice.h"
 
 #include <Graphics/CPUMesh.h>
+#include <Graphics/Cubemap.h>
 #include <Graphics/Vulkan/Util.h>
 #include <Math/Util.h>
 
-BaseRenderer::BaseRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice)
+BaseRenderer::BaseRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice), imageCache(gfxDevice)
 {}
 
 void BaseRenderer::init()
 {
+    imageCache.bindlessSetManager.init(gfxDevice.getDevice());
     executor = gfxDevice.createImmediateExecutor();
     initSamplers();
     initDefaultTextures();
     allocateMaterialDataBuffer();
-    initDescriptors();
 }
 
 void BaseRenderer::cleanup()
 {
     meshCache.cleanup(gfxDevice);
-    imageCache.cleanup(gfxDevice);
+    imageCache.destroyImages();
+    gfxDevice.destroyBuffer(materialDataBuffer);
 
     auto device = gfxDevice.getDevice();
-
-    gfxDevice.destroyBuffer(materialDataBuffer);
-    vkDestroyDescriptorSetLayout(device, meshMaterialLayout, nullptr);
-
-    vkDestroySampler(device, defaultNearestSampler, nullptr);
-    vkDestroySampler(device, defaultLinearSampler, nullptr);
-    vkDestroySampler(device, defaultShadowMapSampler, nullptr);
-
-    gfxDevice.destroyImage(whiteTexture);
-    gfxDevice.destroyImage(placeholderNormalMapTexture);
+    vkDestroySampler(device, nearestSampler, nullptr);
+    vkDestroySampler(device, linearSampler, nullptr);
+    vkDestroySampler(device, shadowMapSampler, nullptr);
 
     executor.cleanup(device);
+    imageCache.bindlessSetManager.cleanup(device);
 }
 
 void BaseRenderer::initSamplers()
 {
+    // Keep in sync with bindless.glsl
+    static const std::uint32_t nearestSamplerId = 0;
+    static const std::uint32_t linearSamplerId = 1;
+    static const std::uint32_t shadowSamplerId = 2;
+
+    auto device = gfxDevice.getDevice();
     { // init nearest sampler
         const auto samplerCreateInfo = VkSamplerCreateInfo{
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
             .magFilter = VK_FILTER_NEAREST,
             .minFilter = VK_FILTER_NEAREST,
         };
-        VK_CHECK(vkCreateSampler(
-            gfxDevice.getDevice(), &samplerCreateInfo, nullptr, &defaultNearestSampler));
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &nearestSampler));
+        vkutil::addDebugLabel(device, nearestSampler, "nearest");
+        imageCache.bindlessSetManager.addSampler(device, nearestSamplerId, nearestSampler);
     }
 
     { // init linear sampler
@@ -60,8 +63,9 @@ void BaseRenderer::initSamplers()
             .anisotropyEnable = VK_TRUE,
             .maxAnisotropy = gfxDevice.getMaxAnisotropy(),
         };
-        VK_CHECK(vkCreateSampler(
-            gfxDevice.getDevice(), &samplerCreateInfo, nullptr, &defaultLinearSampler));
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &linearSampler));
+        vkutil::addDebugLabel(device, linearSampler, "linear");
+        imageCache.bindlessSetManager.addSampler(device, linearSamplerId, linearSampler);
     }
 
     { // init shadow map sampler
@@ -72,59 +76,44 @@ void BaseRenderer::initSamplers()
             .compareEnable = VK_TRUE,
             .compareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
         };
-        VK_CHECK(vkCreateSampler(
-            gfxDevice.getDevice(), &samplerCreateInfo, nullptr, &defaultShadowMapSampler));
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &shadowMapSampler));
+        vkutil::addDebugLabel(device, shadowMapSampler, "shadow");
+        imageCache.bindlessSetManager.addSampler(device, shadowSamplerId, shadowMapSampler);
     }
 }
 
 void BaseRenderer::initDefaultTextures()
 {
     { // create white texture
-        whiteTexture = gfxDevice.createImage({
-            .format = VK_FORMAT_R8G8B8A8_UNORM,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .extent = VkExtent3D{1, 1, 1},
-        });
-        vkutil::addDebugLabel(gfxDevice.getDevice(), whiteTexture.image, "white texture");
-
-        std::uint32_t white = 0xFFFFFFFF;
-        gfxDevice.uploadImageData(whiteTexture, (void*)&white);
+        std::uint32_t pixel = 0xFFFFFFFF;
+        whiteTextureID = createImage(
+            {
+                .format = VK_FORMAT_R8G8B8A8_UNORM,
+                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                .extent = VkExtent3D{1, 1, 1},
+            },
+            "white texture",
+            &pixel);
     }
 
     { // create default normal map texture
-        placeholderNormalMapTexture = gfxDevice.createImage({
-            .format = VK_FORMAT_R8G8B8A8_UNORM,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .extent = VkExtent3D{1, 1, 1},
-        });
-        vkutil::addDebugLabel(
-            gfxDevice.getDevice(),
-            placeholderNormalMapTexture.image,
-            "normal map placeholder texture");
-
         std::uint32_t normal = 0xFFFF8080; // (0.5, 0.5, 1.0, 1.0)
-        gfxDevice.uploadImageData(placeholderNormalMapTexture, (void*)&normal);
+        placeholderNormalMapTextureID = createImage(
+            {
+                .format = VK_FORMAT_R8G8B8A8_UNORM,
+                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                .extent = VkExtent3D{1, 1, 1},
+            },
+            "normal map placeholder texture",
+            &normal);
     }
-}
-
-void BaseRenderer::initDescriptors()
-{
-    const auto meshMaterialBindings = std::array<DescriptorLayoutBinding, 5>{{
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // diffuse
-        {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // normal map
-        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // metallic roughness
-        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER}, // emissive
-    }};
-    meshMaterialLayout = vkutil::buildDescriptorSetLayout(
-        gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, meshMaterialBindings);
 }
 
 void BaseRenderer::allocateMaterialDataBuffer()
 {
-    materialDataBuffer =
-        gfxDevice
-            .createBuffer(MAX_MATERIALS * sizeof(MaterialData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    materialDataBuffer = gfxDevice.createBuffer(
+        MAX_MATERIALS * sizeof(MaterialData),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     vkutil::addDebugLabel(gfxDevice.getDevice(), materialDataBuffer.buffer, "material data");
 }
 
@@ -246,40 +235,16 @@ MaterialId BaseRenderer::addMaterial(Material material)
         .baseColor = material.baseColor,
         .metalRoughnessEmissive = glm::
             vec4{material.metallicFactor, material.roughnessFactor, material.emissiveFactor, 0.f},
+        .diffuseTex =
+            material.diffuseTexture != NULL_IMAGE_ID ? material.diffuseTexture : whiteTextureID,
+        .normalTex = material.normalMapTexture != NULL_IMAGE_ID ? material.normalMapTexture :
+                                                                  placeholderNormalMapTextureID,
+        .metallicRoughnessTex = material.metallicRoughnessTexture != NULL_IMAGE_ID ?
+                                    material.metallicRoughnessTexture :
+                                    whiteTextureID,
+        .emissiveTex =
+            material.emissiveTexture != NULL_IMAGE_ID ? material.emissiveTexture : whiteTextureID,
     };
-
-    material.materialSet = gfxDevice.allocateDescriptorSet(meshMaterialLayout);
-
-    struct ImageBinding {
-        std::uint32_t binding;
-        ImageId image;
-        VkImageView placeholderImage;
-    };
-    const std::array<ImageBinding, 4> imageBindings{{
-        {1, material.diffuseTexture, whiteTexture.imageView},
-        {2, material.normalMapTexture, placeholderNormalMapTexture.imageView},
-        {3, material.metallicRoughnessTexture, whiteTexture.imageView},
-        {4, material.emissiveTexture, whiteTexture.imageView},
-    }};
-
-    DescriptorWriter writer;
-
-    writer.writeBuffer(
-        0,
-        materialDataBuffer.buffer,
-        sizeof(MaterialData),
-        materialId * sizeof(MaterialData),
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    for (const auto& binding : imageBindings) {
-        writer.writeImage(
-            binding.binding,
-            (binding.image == NULL_IMAGE_ID) ? binding.placeholderImage :
-                                               getImage(binding.image).imageView,
-            defaultLinearSampler,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    }
-    writer.updateSet(gfxDevice.getDevice(), material.materialSet);
 
     materialCache.addMaterial(materialId, std::move(material));
 
@@ -296,16 +261,50 @@ const GPUMesh& BaseRenderer::getMesh(MeshId id) const
     return meshCache.getMesh(id);
 }
 
+ImageId BaseRenderer::createImage(
+    const vkutil::CreateImageInfo& createInfo,
+    const char* debugName,
+    void* pixelData)
+{
+    auto image = gfxDevice.createImage(createInfo);
+    if (debugName) {
+        vkutil::addDebugLabel(gfxDevice.getDevice(), image.image, debugName);
+    }
+    if (pixelData) {
+        gfxDevice.uploadImageData(image, pixelData);
+    }
+    return addImageToCache(std::move(image));
+}
+
 ImageId BaseRenderer::loadImageFromFile(
     const std::filesystem::path& path,
     VkFormat format,
     VkImageUsageFlags usage,
     bool mipMap)
 {
-    return imageCache.loadImageFromFile(gfxDevice, path, format, usage, mipMap);
+    return imageCache.loadImageFromFile(path, format, usage, mipMap);
+}
+
+ImageId BaseRenderer::loadCubemap(const std::filesystem::path& dirPath)
+{
+    return addImageToCache(graphics::loadCubemap(gfxDevice, dirPath));
 }
 
 const AllocatedImage& BaseRenderer::getImage(ImageId id) const
 {
     return imageCache.getImage(id);
+}
+
+ImageId BaseRenderer::addImageToCache(AllocatedImage img)
+{
+    return imageCache.addImage(std::move(img));
+}
+
+VkDescriptorSetLayout BaseRenderer::getBindlessDescSetLayout() const
+{
+    return imageCache.bindlessSetManager.getDescSetLayout();
+}
+VkDescriptorSet BaseRenderer::getBindlessDescSet() const
+{
+    return imageCache.bindlessSetManager.getDescSet();
 }

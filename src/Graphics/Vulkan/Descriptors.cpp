@@ -13,6 +13,8 @@ VkDescriptorSetLayout buildDescriptorSetLayout(
     VkShaderStageFlags shaderStages,
     std::span<const DescriptorLayoutBinding> bindings)
 {
+    static const std::uint32_t kMaxBindlessResources = 16536;
+
     std::vector<VkDescriptorSetLayoutBinding> vkBindings;
     vkBindings.reserve(bindings.size());
     for (const auto& b : bindings) {
@@ -30,9 +32,9 @@ VkDescriptorSetLayout buildDescriptorSetLayout(
         .pBindings = vkBindings.data(),
     };
 
-    VkDescriptorSetLayout set;
-    VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
-    return set;
+    VkDescriptorSetLayout layout;
+    VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &layout));
+    return layout;
 }
 
 }
@@ -174,7 +176,8 @@ void DescriptorWriter::writeImage(
     VkImageView image,
     VkSampler sampler,
     VkImageLayout layout,
-    VkDescriptorType type)
+    VkDescriptorType type,
+    std::uint32_t dstArrayElement)
 {
     auto& info = imageInfos.emplace_back(
         VkDescriptorImageInfo{.sampler = sampler, .imageView = image, .imageLayout = layout});
@@ -183,8 +186,27 @@ void DescriptorWriter::writeImage(
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = VK_NULL_HANDLE, // will set in updateSet
         .dstBinding = binding,
+        .dstArrayElement = dstArrayElement,
         .descriptorCount = 1,
         .descriptorType = type,
+        .pImageInfo = &info,
+    });
+}
+
+void DescriptorWriter::writeSampler(
+    std::uint32_t binding,
+    VkSampler sampler,
+    std::uint32_t dstArrayElement)
+{
+    auto& info = imageInfos.emplace_back(VkDescriptorImageInfo{.sampler = sampler});
+
+    writes.push_back(VkWriteDescriptorSet{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = VK_NULL_HANDLE, // will set in updateSet
+        .dstBinding = binding,
+        .dstArrayElement = dstArrayElement,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
         .pImageInfo = &info,
     });
 }

@@ -14,8 +14,9 @@ void MeshPipeline::init(
     GfxDevice& gfxDevice,
     VkFormat drawImageFormat,
     VkFormat depthImageFormat,
+    VkDescriptorSetLayout bindlessDescSetLayout,
+    VkDescriptorSet bindlessDescSet,
     VkDescriptorSetLayout sceneDataDescriptorLayout,
-    VkDescriptorSetLayout materialDataDescSetLayout,
     VkSampleCountFlagBits samples)
 {
     const auto& device = gfxDevice.getDevice();
@@ -27,14 +28,15 @@ void MeshPipeline::init(
     vkutil::addDebugLabel(device, vertexShader, "mesh.frag");
 
     const auto bufferRange = VkPushConstantRange{
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = sizeof(PushConstants),
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    const auto layouts = std::array{sceneDataDescriptorLayout, materialDataDescSetLayout};
+    const auto layouts = std::array{bindlessDescSetLayout, sceneDataDescriptorLayout};
     pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
+    vkutil::addDebugLabel(device, pipelineLayout, "mesh pipeline layout");
 
     pipeline = PipelineBuilder{pipelineLayout}
                    .setShaders(vertexShader, fragShader)
@@ -51,6 +53,8 @@ void MeshPipeline::init(
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
+
+    this->bindlessDescSet = bindlessDescSet;
 }
 
 void MeshPipeline::draw(
@@ -65,10 +69,13 @@ void MeshPipeline::draw(
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &bindlessDescSet, 0, nullptr);
+
+    vkCmdBindDescriptorSets(
         cmd,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         pipelineLayout,
-        0,
+        1,
         1,
         &sceneDataDescriptorSet,
         0,
@@ -104,17 +111,6 @@ void MeshPipeline::draw(
         const auto& mesh = baseRenderer.getMesh(dc.meshId);
         if (mesh.materialId != prevMaterialIdx) {
             prevMaterialIdx = mesh.materialId;
-
-            const auto& material = baseRenderer.getMaterial(mesh.materialId);
-            vkCmdBindDescriptorSets(
-                cmd,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                pipelineLayout,
-                1,
-                1,
-                &material.materialSet,
-                0,
-                nullptr);
         }
 
         if (dc.meshId != prevMeshId) {
@@ -126,11 +122,12 @@ void MeshPipeline::draw(
             .transform = dc.transformMatrix,
             .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                              mesh.vertexBuffer.address,
+            .materialId = (std::uint32_t)mesh.materialId,
         };
         vkCmdPushConstants(
             cmd,
             pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
             sizeof(PushConstants),
             &pushConstants);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstring> // memcpy
 #include <span>
 
@@ -13,6 +14,14 @@ struct AppendableBuffer {
         auto arr = (T*)buffer.info.pMappedData;
         memcpy((void*)&arr[size], elements.data(), elements.size() * sizeof(T));
         size += elements.size();
+    }
+
+    void append(const T& element)
+    {
+        assert(size + 1 <= capacity);
+        auto arr = (T*)buffer.info.pMappedData;
+        memcpy((void*)&arr[size], &element, sizeof(T));
+        ++size;
     }
 
     void clear() { size = 0; }

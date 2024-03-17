@@ -10,7 +10,10 @@
 #include <Graphics/GfxDevice.h>
 #include <Graphics/ShadowMapping.h>
 
-void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_CASCADES>& percents)
+void CSMPipeline::init(
+    GfxDevice& gfxDevice,
+    BaseRenderer& renderer,
+    const std::array<float, NUM_SHADOW_CASCADES>& percents)
 {
     this->percents = percents;
     const auto& device = gfxDevice.getDevice();
@@ -42,20 +45,22 @@ void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
 
-    initCSMData(gfxDevice);
+    initCSMData(gfxDevice, renderer);
 }
 
-void CSMPipeline::initCSMData(GfxDevice& gfxDevice)
+void CSMPipeline::initCSMData(GfxDevice& gfxDevice, BaseRenderer& renderer)
 {
-    csmShadowMap = gfxDevice.createImage({
-        .format = VK_FORMAT_D32_SFLOAT,
-        .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        .extent =
-            VkExtent3D{(std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize, 1},
-        .numLayers = NUM_SHADOW_CASCADES,
-    });
-    vkutil::addDebugLabel(gfxDevice.getDevice(), csmShadowMap.image, "CSM shadow map");
-    vkutil::addDebugLabel(gfxDevice.getDevice(), csmShadowMap.imageView, "CSM shadow map view");
+    csmShadowMapID = renderer.createImage(
+        {
+            .format = VK_FORMAT_D32_SFLOAT,
+            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            .extent =
+                VkExtent3D{
+                    (std::uint32_t)shadowMapTextureSize, (std::uint32_t)shadowMapTextureSize, 1},
+            .numLayers = NUM_SHADOW_CASCADES,
+        },
+        "CSM shadow map");
+    const auto& csmShadowMap = renderer.getImage(csmShadowMapID);
 
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         const auto createInfo = VkImageViewCreateInfo{
@@ -82,7 +87,6 @@ void CSMPipeline::cleanup(GfxDevice& gfxDevice)
 {
     vkDestroyPipelineLayout(gfxDevice.getDevice(), pipelineLayout, nullptr);
     vkDestroyPipeline(gfxDevice.getDevice(), pipeline, nullptr);
-    gfxDevice.destroyImage(csmShadowMap);
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         vkDestroyImageView(gfxDevice.getDevice(), csmShadowMapViews[i], nullptr);
     }
@@ -90,22 +94,19 @@ void CSMPipeline::cleanup(GfxDevice& gfxDevice)
 
 void CSMPipeline::draw(
     VkCommandBuffer cmd,
-    const BaseRenderer& baseRenderer,
+    const BaseRenderer& renderer,
     const Camera& camera,
     const glm::vec3& sunlightDirection,
     const std::vector<DrawCommand>& drawCommands,
     bool shadowsEnabled)
 {
+    const auto& csmShadowMap = renderer.getImage(csmShadowMapID);
+
     vkutil::transitionImage(
         cmd,
         csmShadowMap.image,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
-    /* std::array<float, NUM_SHADOW_CASCADES> percents = {0.3f, 0.8f, 1.f};
-    if (camera.getZFar() > 500.f) {
-        percents = {0.005f, 0.01f, 0.15f};
-    } */
 
     for (std::size_t i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         float zNear = i == 0 ? camera.getZNear() : camera.getZNear() * percents[i - 1];
@@ -152,7 +153,6 @@ void CSMPipeline::draw(
         const auto frustum = edge::createFrustumFromCamera(csmCamera);
         auto prevMeshId = NULL_MESH_ID;
 
-        // FIXME: sort by mesh?
         for (const auto& dc : drawCommands) {
             if (!shadowsEnabled || !dc.castShadow) {
                 continue;
@@ -165,7 +165,7 @@ void CSMPipeline::draw(
                 }
             }
 
-            const auto& mesh = baseRenderer.getMesh(dc.meshId);
+            const auto& mesh = renderer.getMesh(dc.meshId);
 
             if (dc.meshId != prevMeshId) {
                 prevMeshId = dc.meshId;
@@ -190,4 +190,11 @@ void CSMPipeline::draw(
 
         vkCmdEndRendering(cmd);
     }
+
+    // this also gives us sync with future passes that will read from CSM shadow map
+    vkutil::transitionImage(
+        cmd,
+        csmShadowMap.image,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL);
 }

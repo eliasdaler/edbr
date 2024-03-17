@@ -14,6 +14,8 @@ public:
     void init(
         GfxDevice& renderer,
         VkFormat drawImageFormat,
+        VkDescriptorSetLayout bindlessDescSetLayout,
+        VkDescriptorSet bindlessDescSet,
         VkDescriptorSetLayout sceneDataDescriptorLayout);
     void cleanup(VkDevice device);
 
@@ -32,4 +34,6 @@ private:
 
     VkDescriptorSetLayout imagesDescSetLayout;
     VkDescriptorSet imagesDescSet;
+
+    VkDescriptorSet bindlessDescSet;
 };

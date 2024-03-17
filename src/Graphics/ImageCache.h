@@ -6,28 +6,34 @@
 
 #include <Graphics/IdTypes.h>
 
+#include <Graphics/Vulkan/BindlessSetManager.h>
 #include <Graphics/Vulkan/Types.h>
 
 class GfxDevice;
 
 class ImageCache {
 public:
+    ImageCache(GfxDevice& gfxDevice);
+
     ImageId loadImageFromFile(
-        GfxDevice& device,
         const std::filesystem::path& path,
         VkFormat format,
         VkImageUsageFlags usage,
         bool mipMap);
 
-    void addImage(ImageId id, AllocatedImage image);
+    ImageId addImage(AllocatedImage image);
+    ImageId addImage(ImageId id, AllocatedImage image);
     const AllocatedImage& getImage(ImageId id) const;
 
     ImageId getFreeImageId() const;
 
-    void cleanup(const GfxDevice& gfxDevice);
+    void destroyImages();
+
+    BindlessSetManager bindlessSetManager;
 
 private:
     std::vector<AllocatedImage> images;
+    GfxDevice& gfxDevice;
 
     struct LoadedImageInfo {
         std::filesystem::path path;

@@ -80,6 +80,12 @@ void GfxDevice::initVulkan(SDL_Window* window)
     };
 
     const auto features12 = VkPhysicalDeviceVulkan12Features{
+        .descriptorIndexing = true,
+        .descriptorBindingSampledImageUpdateAfterBind = true,
+        .descriptorBindingStorageImageUpdateAfterBind = true,
+        .descriptorBindingPartiallyBound = true,
+        .descriptorBindingVariableDescriptorCount = true,
+        .runtimeDescriptorArray = true,
         .bufferDeviceAddress = true,
     };
     const auto features13 = VkPhysicalDeviceVulkan13Features{

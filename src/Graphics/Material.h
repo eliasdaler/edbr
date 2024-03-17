@@ -4,15 +4,15 @@
 
 #include <glm/vec4.hpp>
 
-#include <vulkan/vulkan.h>
-
 #include <Graphics/IdTypes.h>
-#include <Graphics/Vulkan/Types.h>
 
 struct MaterialData {
     glm::vec4 baseColor;
     glm::vec4 metalRoughnessEmissive;
-    glm::vec4 _padding[14];
+    std::uint32_t diffuseTex;
+    std::uint32_t normalTex;
+    std::uint32_t metallicRoughnessTex;
+    std::uint32_t emissiveTex;
 };
 
 struct Material {
@@ -25,8 +25,6 @@ struct Material {
     ImageId normalMapTexture{NULL_IMAGE_ID};
     ImageId metallicRoughnessTexture{NULL_IMAGE_ID};
     ImageId emissiveTexture{NULL_IMAGE_ID};
-
-    VkDescriptorSet materialSet;
 
     std::string name;
 };

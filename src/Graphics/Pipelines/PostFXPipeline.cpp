@@ -10,6 +10,8 @@
 void PostFXPipeline::init(
     GfxDevice& gfxDevice,
     VkFormat drawImageFormat,
+    VkDescriptorSetLayout bindlessDescSetLayout,
+    VkDescriptorSet bindlessDescSet,
     VkDescriptorSetLayout sceneDataDescriptorLayout)
 {
     const auto& device = gfxDevice.getDevice();
@@ -22,7 +24,8 @@ void PostFXPipeline::init(
         buildDescriptorSetLayout(gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
     imagesDescSet = gfxDevice.allocateDescriptorSet(imagesDescSetLayout);
 
-    const auto layouts = std::array{sceneDataDescriptorLayout, imagesDescSetLayout};
+    const auto layouts =
+        std::array{bindlessDescSetLayout, sceneDataDescriptorLayout, imagesDescSetLayout};
     pipelineLayout = vkutil::createPipelineLayout(device, layouts);
 
     const auto vertexShader =
@@ -42,6 +45,8 @@ void PostFXPipeline::init(
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
+
+    this->bindlessDescSet = bindlessDescSet;
 }
 
 void PostFXPipeline::cleanup(VkDevice device)
@@ -77,16 +82,18 @@ void PostFXPipeline::draw(VkCommandBuffer cmd, VkDescriptorSet sceneDataDescript
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &bindlessDescSet, 0, nullptr);
+    vkCmdBindDescriptorSets(
         cmd,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         pipelineLayout,
-        0,
+        1,
         1,
         &sceneDataDescriptorSet,
         0,
         nullptr);
     vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &imagesDescSet, 0, nullptr);
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &imagesDescSet, 0, nullptr);
 
     vkCmdDraw(cmd, 3, 1, 0, 0);
 }

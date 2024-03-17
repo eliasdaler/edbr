@@ -12,20 +12,15 @@ void SkyboxPipeline::init(
     GfxDevice& gfxDevice,
     VkFormat drawImageFormat,
     VkFormat depthImageFormat,
-    VkSampleCountFlagBits samples)
+    VkSampleCountFlagBits samples,
+    VkDescriptorSetLayout bindlessDescSetLayout,
+    VkDescriptorSet bindlessDescSet)
 {
     const auto& device = gfxDevice.getDevice();
 
     const auto vertexShader =
         vkutil::loadShaderModule("shaders/fullscreen_triangle.vert.spv", device);
     const auto fragShader = vkutil::loadShaderModule("shaders/skybox.frag.spv", device);
-
-    const auto bindings = std::array<DescriptorLayoutBinding, 1>{{
-        {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
-    }};
-    skyboxDescSetLayout = vkutil::
-        buildDescriptorSetLayout(gfxDevice.getDevice(), VK_SHADER_STAGE_FRAGMENT_BIT, bindings);
-    skyboxDescSet = gfxDevice.allocateDescriptorSet(skyboxDescSetLayout);
 
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -34,7 +29,7 @@ void SkyboxPipeline::init(
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    const auto layouts = std::array{skyboxDescSetLayout};
+    const auto layouts = std::array{bindlessDescSetLayout};
     pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     pipeline = PipelineBuilder{pipelineLayout}
@@ -54,39 +49,31 @@ void SkyboxPipeline::init(
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragShader, nullptr);
+
+    this->bindlessDescSet = bindlessDescSet;
 }
 
 void SkyboxPipeline::cleanup(VkDevice device)
 {
-    vkDestroyDescriptorSetLayout(device, skyboxDescSetLayout, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
-void SkyboxPipeline::setSkyboxImage(
-    const GfxDevice& gfxDevice,
-    const AllocatedImage& skybox,
-    VkSampler sampler)
+void SkyboxPipeline::setSkyboxImage(const ImageId skyboxId)
 {
-    DescriptorWriter writer;
-    writer.writeImage(
-        0,
-        skybox.imageView,
-        sampler,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.updateSet(gfxDevice.getDevice(), skyboxDescSet);
+    skyboxTextureId = skyboxId;
 }
 
 void SkyboxPipeline::draw(VkCommandBuffer cmd, const Camera& camera)
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &skyboxDescSet, 0, nullptr);
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &bindlessDescSet, 0, nullptr);
 
     const auto pc = SkyboxPushConstants{
         .invViewProj = glm::inverse(camera.getViewProj()),
         .cameraPos = glm::vec4{camera.getPosition(), 1.f},
+        .skyboxTextureId = (std::uint32_t)skyboxTextureId,
     };
     vkCmdPushConstants(
         cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SkyboxPushConstants), &pc);

@@ -62,13 +62,15 @@ public:
         VkImageView image,
         VkSampler sampler,
         VkImageLayout layout,
-        VkDescriptorType type);
+        VkDescriptorType type,
+        std::uint32_t dstArrayElement = 0);
+    void writeSampler(std::uint32_t binding, VkSampler sampler, std::uint32_t dstArrayElement = 0);
 
     void clear();
     void updateSet(VkDevice device, VkDescriptorSet set);
 
 private:
-    std::deque<VkDescriptorImageInfo> imageInfos;
     std::deque<VkDescriptorBufferInfo> bufferInfos;
+    std::deque<VkDescriptorImageInfo> imageInfos;
     std::vector<VkWriteDescriptorSet> writes;
 };

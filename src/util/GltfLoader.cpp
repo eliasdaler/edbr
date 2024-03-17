@@ -335,10 +335,10 @@ Material loadMaterial(
 {
     Material material{
         .baseColor = getDiffuseColor(gltfMaterial),
+        .metallicFactor = (float)gltfMaterial.pbrMetallicRoughness.metallicFactor,
+        .roughnessFactor = (float)gltfMaterial.pbrMetallicRoughness.roughnessFactor,
         .name = gltfMaterial.name,
     };
-    material.metallicFactor = (float)gltfMaterial.pbrMetallicRoughness.metallicFactor;
-    material.roughnessFactor = (float)gltfMaterial.pbrMetallicRoughness.roughnessFactor;
 
     if (hasDiffuseTexture(gltfMaterial)) {
         const auto diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
@@ -360,10 +360,11 @@ Material loadMaterial(
     }
 
     if (hasEmissiveTexture(gltfMaterial)) {
+        material.emissiveFactor = getEmissiveStrength(gltfMaterial);
+
         const auto emissivePath = getEmissiveTexturePath(gltfModel, gltfMaterial, fileDir);
         material.emissiveTexture = ctx.renderer.loadImageFromFile(
             emissivePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
-        material.emissiveFactor = getEmissiveStrength(gltfMaterial);
     }
 
     return material;

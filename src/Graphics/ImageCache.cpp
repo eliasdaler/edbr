@@ -4,8 +4,10 @@
 
 #include <iostream>
 
+ImageCache::ImageCache(GfxDevice& gfxDevice) : gfxDevice(gfxDevice)
+{}
+
 ImageId ImageCache::loadImageFromFile(
-    GfxDevice& gfxDevice,
     const std::filesystem::path& path,
     VkFormat format,
     VkImageUsageFlags usage,
@@ -20,12 +22,12 @@ ImageId ImageCache::loadImageFromFile(
         }
     }
 
-    const auto imageId = getFreeImageId();
+    const auto id = getFreeImageId();
     auto image = gfxDevice.loadImageFromFile(path, format, usage, mipMap);
-    addImage(imageId, std::move(image));
+    addImage(id, std::move(image));
 
     loadedImagesInfo.emplace(
-        imageId,
+        id,
         LoadedImageInfo{
             .path = path,
             .format = format,
@@ -33,12 +35,21 @@ ImageId ImageCache::loadImageFromFile(
             .mipMap = mipMap,
         });
 
-    return imageId;
+    return id;
 }
 
-void ImageCache::addImage(ImageId id, AllocatedImage image)
+ImageId ImageCache::addImage(AllocatedImage image)
 {
+    return addImage(getFreeImageId(), std::move(image));
+}
+
+ImageId ImageCache::addImage(ImageId id, AllocatedImage image)
+{
+    image.setBindlessId(static_cast<std::uint32_t>(id));
     images.push_back(std::move(image));
+    bindlessSetManager.addImage(gfxDevice.getDevice(), id, image.imageView);
+
+    return id;
 }
 
 const AllocatedImage& ImageCache::getImage(ImageId id) const
@@ -51,7 +62,7 @@ ImageId ImageCache::getFreeImageId() const
     return images.size();
 }
 
-void ImageCache::cleanup(const GfxDevice& gfxDevice)
+void ImageCache::destroyImages()
 {
     for (const auto& image : images) {
         gfxDevice.destroyImage(image);

@@ -15,7 +15,7 @@ uint chooseCascade(vec3 fragPos, vec3 cameraPos, vec4 cascadeFarPlaneZs) {
 
 float calculateCSMOcclusion(
         vec3 fragPos, vec3 cameraPos, float NoL,
-        sampler2DArrayShadow csmShadowMap, vec4 cascadeFarPlaneZs,
+        uint csmShadowMapId, vec4 cascadeFarPlaneZs,
         mat4 csmLightSpaceTMs[NUM_SHADOW_CASCADES]) {
     uint cascadeIndex = chooseCascade(fragPos, cameraPos, cascadeFarPlaneZs);
     vec4 fragPosLightSpace = csmLightSpaceTMs[cascadeIndex] * vec4(fragPos, 1.0);
@@ -34,7 +34,8 @@ float calculateCSMOcclusion(
     int numSamples = 4;
     for (int i = 0; i < numSamples; ++i) {
         vec2 coord = getPoissonDiskCoord(projCoords.xy, i);
-        shadow += texture(csmShadowMap, vec4(coord, cascadeIndex, projCoords.z));
+        shadow += sampleTextureArrayShadow(csmShadowMapId,
+                vec4(coord, cascadeIndex, projCoords.z));
     }
     shadow /= float(numSamples);
     return shadow;

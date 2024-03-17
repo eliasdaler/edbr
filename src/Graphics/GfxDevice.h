@@ -51,6 +51,9 @@ public:
     [[nodiscard]] VkDeviceAddress getBufferAddress(const AllocatedBuffer& buffer) const;
     void destroyBuffer(const AllocatedBuffer& buffer) const;
 
+    // createImage is mostly intended for low level usage. In most cases,
+    // BaseRenderer::createImage should be preferred as it will automatically
+    // add the image to bindless set
     [[nodiscard]] AllocatedImage createImage(const vkutil::CreateImageInfo& createInfo) const;
     void uploadImageData(const AllocatedImage& image, void* pixelData, std::uint32_t layer = 0)
         const;

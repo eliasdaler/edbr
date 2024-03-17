@@ -48,7 +48,9 @@ const glm::mat4& Transform::asMatrix() const
     }
 
     transformMatrix = glm::translate(I, position);
-    transformMatrix *= glm::mat4_cast(heading);
+    if (heading != glm::identity<glm::quat>()) {
+        transformMatrix *= glm::mat4_cast(heading);
+    }
     transformMatrix = glm::scale(transformMatrix, scale);
     isDirty = false;
     return transformMatrix;

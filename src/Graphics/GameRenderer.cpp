@@ -1,6 +1,6 @@
 #include "GameRenderer.h"
 
-#include <Graphics/Cubemap.h>
+#include <Graphics/Font.h>
 #include <Graphics/FrustumCulling.h>
 #include <Graphics/Scene.h>
 #include <Graphics/Vulkan/Init.h>
@@ -12,7 +12,8 @@
 
 #include <numeric> // iota
 
-GameRenderer::GameRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice), baseRenderer(gfxDevice)
+GameRenderer::GameRenderer(GfxDevice& gfxDevice) :
+    gfxDevice(gfxDevice), baseRenderer(gfxDevice), spriteRenderer(baseRenderer)
 {}
 
 void GameRenderer::init()
@@ -25,53 +26,45 @@ void GameRenderer::init()
     createDrawImage(gfxDevice.getSwapchainExtent(), true);
 
     skinningPipeline.init(gfxDevice);
-    csmPipeline.init(gfxDevice, std::array{0.08f, 0.2f, 0.5f});
+    csmPipeline.init(gfxDevice, baseRenderer, std::array{0.08f, 0.2f, 0.5f});
     meshPipeline.init(
         gfxDevice,
         drawImage.format,
         depthImage.format,
+        baseRenderer.getBindlessDescSetLayout(),
+        baseRenderer.getBindlessDescSet(),
         sceneDataDescriptorLayout,
-        baseRenderer.getMaterialDataDescSetLayout(),
         samples);
 
     depthResolvePipeline.init(gfxDevice, depthImage);
-    depthResolvePipeline
-        .setDepthImage(gfxDevice, depthImage, baseRenderer.getDefaultNearestSampler());
+    depthResolvePipeline.setDepthImage(gfxDevice, depthImage, baseRenderer.getNearestSampler());
 
-    skyboxPipeline.init(gfxDevice, drawImage.format, depthImage.format, samples);
-    postFXPipeline.init(gfxDevice, drawImage.format, sceneDataDescriptorLayout);
+    skyboxPipeline.init(
+        gfxDevice,
+        drawImage.format,
+        depthImage.format,
+        samples,
+        baseRenderer.getBindlessDescSetLayout(),
+        baseRenderer.getBindlessDescSet());
+    postFXPipeline.init(
+        gfxDevice,
+        drawImage.format,
+        baseRenderer.getBindlessDescSetLayout(),
+        baseRenderer.getBindlessDescSet(),
+        sceneDataDescriptorLayout);
 
     if (isMultisamplingEnabled()) {
         postFXPipeline.setImages(
-            gfxDevice, resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
+            gfxDevice, resolveImage, resolveDepthImage, baseRenderer.getNearestSampler());
     } else {
         postFXPipeline
-            .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
+            .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getNearestSampler());
     }
 
-    skyboxImage = graphics::loadCubemap(gfxDevice, "assets/images/skybox/distant_sunset");
-    skyboxPipeline.setSkyboxImage(gfxDevice, skyboxImage, baseRenderer.getDefaultLinearSampler());
+    skyboxImageId = baseRenderer.loadCubemap("assets/images/skybox/distant_sunset");
+    skyboxPipeline.setSkyboxImage(skyboxImageId);
 
-    uiDrawingPipeline.init(gfxDevice, drawImage.format);
-
-    bool ok = defaultFont.load(gfxDevice, "assets/fonts/JF-Dot-Kappa20B.ttf", 32);
-    // bool ok = defaultFont.load(gfxDevice, "assets/fonts/jfdot_kappa.ttf", 32);
-    assert(ok && "font failed to load");
-    drawableString.color = glm::vec4{1.f, 1.f, 0.f, 1.f};
-    drawableString.init(
-        gfxDevice,
-        "Hello, world!",
-        defaultFont,
-        baseRenderer.getDefaultNearestSampler(),
-        uiDrawingPipeline.getUiElementDescSetLayout());
-
-    drawableString2.color = glm::vec4{1.f, 1.f, 1.f, 1.f};
-    drawableString2.init(
-        gfxDevice,
-        "Text rendering works!",
-        defaultFont,
-        baseRenderer.getDefaultNearestSampler(),
-        uiDrawingPipeline.getUiElementDescSetLayout());
+    spriteRenderer.init(gfxDevice, drawImage.format);
 
     // depends on csm pipeline being created
     updateSceneDataDescriptorSet();
@@ -159,10 +152,8 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
 
 void GameRenderer::initSceneData()
 {
-    const auto sceneDataBindings = std::array<DescriptorLayoutBinding, 3>{{
+    const auto sceneDataBindings = std::array<DescriptorLayoutBinding, 1>{{
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER},
-        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
-        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
     }};
     sceneDataDescriptorLayout = vkutil::buildDescriptorSetLayout(
         gfxDevice.getDevice(),
@@ -182,7 +173,7 @@ void GameRenderer::initSceneData()
     lightDataBuffer.init(
         gfxDevice.getDevice(),
         gfxDevice.getAllocator(),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         sizeof(GPULightData) * MAX_LIGHTS,
         graphics::FRAME_OVERLAP,
         "light data");
@@ -198,18 +189,6 @@ void GameRenderer::updateSceneDataDescriptorSet()
         sizeof(GPUSceneData),
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.writeImage(
-        1,
-        csmPipeline.getShadowMap().imageView,
-        baseRenderer.getDefaultShadowMapSampler(),
-        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.writeBuffer(
-        2,
-        lightDataBuffer.getBuffer().buffer,
-        sizeof(GPULightData) * MAX_LIGHTS,
-        0,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     writer.updateSet(gfxDevice.getDevice(), sceneDataDescriptorSet);
 }
 
@@ -273,45 +252,16 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         }
     }
 
-    { // CSM
+    if (sunlightIndex != -1) { // CSM
         ZoneScopedN("CSM");
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "CSM", tracy::Color::CornflowerBlue);
         vkutil::cmdBeginLabel(cmd, "CSM");
 
-        vkutil::transitionImage(
-            cmd,
-            csmPipeline.getShadowMap().image,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
-        csmPipeline.draw(
-            cmd,
-            baseRenderer,
-            camera,
-            glm::vec3{sceneData.sunlightDirection},
-            drawCommands,
-            shadowsEnabled);
+        auto& sunlight = lightDataCPU[sunlightIndex];
+        csmPipeline
+            .draw(cmd, baseRenderer, camera, sunlight.direction, drawCommands, shadowsEnabled);
 
         vkutil::cmdEndLabel(cmd);
-
-        // Sync CSM with geometry pass
-        const auto imageBarrier = VkImageMemoryBarrier2{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-            .srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
-            .image = csmPipeline.getShadowMap().image,
-            .subresourceRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_DEPTH_BIT),
-        };
-        const auto dependencyInfo = VkDependencyInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers = &imageBarrier,
-        };
-        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
     }
 
     { // upload scene data - can only be done after CSM has finished
@@ -320,10 +270,10 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .proj = sceneData.camera.getProjection(),
             .viewProj = sceneData.camera.getViewProj(),
             .cameraPos = glm::vec4{sceneData.camera.getPosition(), 1.f},
-            .ambientColorAndIntensity = sceneData.ambientColorAndIntensity,
-            .sunlightDirection = sceneData.sunlightDirection,
-            .sunlightColorAndIntensity = sceneData.sunlightColorAndIntensity,
-            .fogColorAndDensity = sceneData.fogColorAndDensity,
+            .ambientColor = glm::vec3{sceneData.ambientColor},
+            .ambientIntensity = sceneData.ambientIntensity,
+            .fogColor = glm::vec3{sceneData.fogColor},
+            .fogDensity = sceneData.fogDensity,
             .cascadeFarPlaneZs =
                 glm::vec4{
                     csmPipeline.cascadeFarPlaneZs[0],
@@ -332,7 +282,11 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
                     0.f,
                 },
             .csmLightSpaceTMs = csmPipeline.csmLightSpaceTMs,
+            .csmShadowMapId = (std::uint32_t)csmPipeline.getShadowMap(),
+            .lightsBuffer = lightDataBuffer.getBuffer().address,
             .numLights = (std::uint32_t)lightDataCPU.size(),
+            .sunlightIndex = sunlightIndex,
+            .materialsBuffer = baseRenderer.materialDataBuffer.address,
         };
         sceneDataBuffer.uploadNewData(
             cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
@@ -487,15 +441,8 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "UI", tracy::Color::Purple);
         vkutil::cmdBeginLabel(cmd, "UI");
 
-        Camera uiCamera;
-        uiCamera.initOrtho2D(
-            glm::vec2{postFXDrawImage.getExtent2D().width, postFXDrawImage.getExtent2D().height});
-        const auto vp = uiCamera.getViewProj();
-        const auto tm = glm::translate(glm::mat4{1.f}, glm::vec3{64.f, 64.f, 0.f});
-        const auto tm2 = glm::translate(glm::mat4{1.f}, glm::vec3{64.f, 90.f, 0.f});
+        spriteRenderer.draw(cmd, gfxDevice.getCurrentFrameIndex(), postFXDrawImage);
 
-        uiDrawingPipeline.drawString(cmd, postFXDrawImage, drawableString, vp * tm);
-        uiDrawingPipeline.drawString(cmd, postFXDrawImage, drawableString2, vp * tm2);
         vkutil::cmdEndLabel(cmd);
     }
 }
@@ -517,13 +464,7 @@ void GameRenderer::cleanup()
     csmPipeline.cleanup(gfxDevice);
     skinningPipeline.cleanup(gfxDevice);
 
-    drawableString2.cleanup(gfxDevice);
-    drawableString.cleanup(gfxDevice);
-    defaultFont.destroy(gfxDevice);
-
-    uiDrawingPipeline.cleanup(device);
-
-    gfxDevice.destroyImage(skyboxImage);
+    spriteRenderer.cleanup(gfxDevice);
 
     gfxDevice.destroyImage(postFXDrawImage);
     gfxDevice.destroyImage(resolveDepthImage);
@@ -586,22 +527,28 @@ void GameRenderer::onMultisamplingStateUpdate()
         gfxDevice,
         drawImage.format,
         depthImage.format,
+        baseRenderer.getBindlessDescSetLayout(),
+        baseRenderer.getBindlessDescSet(),
         sceneDataDescriptorLayout,
-        baseRenderer.getMaterialDataDescSetLayout(),
         samples);
-    skyboxPipeline.init(gfxDevice, drawImage.format, depthImage.format, samples);
-    skyboxPipeline.setSkyboxImage(gfxDevice, skyboxImage, baseRenderer.getDefaultLinearSampler());
+    skyboxPipeline.init(
+        gfxDevice,
+        drawImage.format,
+        depthImage.format,
+        samples,
+        baseRenderer.getBindlessDescSetLayout(),
+        baseRenderer.getBindlessDescSet());
+    skyboxPipeline.setSkyboxImage(skyboxImageId);
 
     createDrawImage(gfxDevice.getSwapchainExtent(), false);
 
     if (isMultisamplingEnabled()) {
-        depthResolvePipeline
-            .setDepthImage(gfxDevice, depthImage, baseRenderer.getDefaultNearestSampler());
+        depthResolvePipeline.setDepthImage(gfxDevice, depthImage, baseRenderer.getNearestSampler());
         postFXPipeline.setImages(
-            gfxDevice, resolveImage, resolveDepthImage, baseRenderer.getDefaultNearestSampler());
+            gfxDevice, resolveImage, resolveDepthImage, baseRenderer.getNearestSampler());
     } else {
         postFXPipeline
-            .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getDefaultNearestSampler());
+            .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getNearestSampler());
     }
 }
 
@@ -621,7 +568,9 @@ void GameRenderer::beginDrawing()
 {
     drawCommands.clear();
     lightDataCPU.clear();
+    sunlightIndex = -1;
     skinningPipeline.beginDrawing(gfxDevice.getCurrentFrameIndex());
+    spriteRenderer.beginDrawing();
 }
 
 void GameRenderer::endDrawing()
@@ -631,30 +580,38 @@ void GameRenderer::endDrawing()
 
 void GameRenderer::addLight(const Light& light, const Transform& transform)
 {
+    if (light.type == LightType::Directional) {
+        assert(sunlightIndex == -1 && "directional light was already added before in the frame");
+        sunlightIndex = (std::uint32_t)lightDataCPU.size();
+    }
+
     GPULightData ld{};
 
-    ld.positionAndType = {transform.getPosition(), light.getShaderType()};
-    ld.directionAndRange = {transform.getLocalFront(), light.range};
+    ld.position = transform.getPosition();
+    ld.type = light.getShaderType();
+    ld.direction = transform.getLocalFront();
+    ld.range = light.range;
     if (light.range == 0) {
         if (light.type == LightType::Point) {
-            ld.directionAndRange.w = pointLightMaxRange;
+            ld.range = pointLightMaxRange;
         } else if (light.type == LightType::Spot) {
-            ld.directionAndRange.w = spotLightMaxRange;
+            ld.range = spotLightMaxRange;
         }
     }
 
-    ld.colorAndIntensity = {glm::vec3{light.color}, light.intensity};
+    ld.color = glm::vec3{light.color};
+    ld.intensity = light.intensity;
     if (light.type == LightType::Directional) {
-        ld.colorAndIntensity.w = 1.0; // don't have intensity for directional light yet
+        ld.intensity = 1.0; // don't have intensity for directional light yet
     }
 
-    ld.scaleOffsetAndSMIndexAndUnused.x = light.scaleOffset.x;
-    ld.scaleOffsetAndSMIndexAndUnused.y = light.scaleOffset.y;
+    ld.scaleOffset.x = light.scaleOffset.x;
+    ld.scaleOffset.y = light.scaleOffset.y;
 
     lightDataCPU.push_back(ld);
 }
 
-void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform, bool castShadow)
+void GameRenderer::drawMesh(MeshId id, const glm::mat4& transform, bool castShadow)
 {
     const auto& mesh = baseRenderer.getMesh(id);
     const auto worldBoundingSphere =
@@ -668,7 +625,7 @@ void GameRenderer::addDrawCommand(MeshId id, const glm::mat4& transform, bool ca
     });
 }
 
-void GameRenderer::addDrawSkinnedMeshCommand(
+void GameRenderer::drawSkinnedMesh(
     std::span<const MeshId> meshes,
     std::span<const SkinnedMesh> skinnedMeshes,
     const glm::mat4& transform,
@@ -706,12 +663,7 @@ void GameRenderer::sortDrawList()
         [this](const auto& i1, const auto& i2) {
             const auto& dc1 = drawCommands[i1];
             const auto& dc2 = drawCommands[i2];
-            const auto& mesh1 = baseRenderer.getMesh(dc1.meshId);
-            const auto& mesh2 = baseRenderer.getMesh(dc2.meshId);
-            if (mesh1.materialId == mesh2.materialId) {
-                return dc1.meshId < dc2.meshId;
-            }
-            return mesh1.materialId < mesh2.materialId;
+            return dc1.meshId < dc2.meshId;
         });
 }
 

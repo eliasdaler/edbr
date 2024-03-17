@@ -6,8 +6,8 @@ layout (location = 0) in vec2 inUV;
 
 #include "scene_data.glsl"
 
-layout (set = 1, binding = 0) uniform sampler2D drawImage;
-layout (set = 1, binding = 1) uniform sampler2D depthImage;
+layout (set = 2, binding = 0) uniform sampler2D drawImage;
+layout (set = 2, binding = 1) uniform sampler2D depthImage;
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -42,11 +42,16 @@ void main() {
     vec3 fragColor = texture(drawImage, inUV).rgb;
     float depth = texture(depthImage, inUV).r;
 
+    vec3 sunlightColor = vec3(0, 0, 0);
+    if (sceneData.sunlightIndex != -1) {
+        sunlightColor = sceneData.lights.data[sceneData.sunlightIndex].color;
+    }
+
     vec3 viewPos = getViewPos(depth, inverse(sceneData.proj), inUV);
     vec3 color = exponentialFog(viewPos, fragColor,
-            sceneData.fogColorAndDensity.rgb, sceneData.fogColorAndDensity.w,
-            sceneData.ambientColor.rgb, sceneData.ambientColor.w,
-            sceneData.sunlightColor.rgb);
+            sceneData.fogColor, sceneData.fogDensity,
+            sceneData.ambientColor, sceneData.ambientIntensity,
+            sunlightColor);
     outFragColor = vec4(color, 1.0);
 
     // vec3 color = chromaticAberration(drawImage, inUV, 0.001f);

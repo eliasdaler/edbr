@@ -50,14 +50,14 @@ AllocatedImage createImage(
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    auto image = AllocatedImage{
-        .format = createInfo.format,
-        .usage = createInfo.usage,
-        .extent = createInfo.extent,
-        .mipLevels = mipLevels,
-        .numLayers = createInfo.numLayers,
-        .isCubemap = createInfo.isCubemap,
-    };
+    AllocatedImage image{};
+    image.format = createInfo.format;
+    image.usage = createInfo.usage;
+    image.extent = createInfo.extent;
+    image.mipLevels = mipLevels;
+    image.numLayers = createInfo.numLayers;
+    image.isCubemap = createInfo.isCubemap;
+
     VK_CHECK(
         vmaCreateImage(allocator, &imgInfo, &allocInfo, &image.image, &image.allocation, nullptr));
 
@@ -495,6 +495,17 @@ void addDebugLabel(VkDevice device, VkBuffer buffer, const char* label)
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = VK_OBJECT_TYPE_BUFFER,
         .objectHandle = (std::uint64_t)buffer,
+        .pObjectName = label,
+    };
+    vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+
+void addDebugLabel(VkDevice device, VkSampler sampler, const char* label)
+{
+    const auto nameInfo = VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_SAMPLER,
+        .objectHandle = (std::uint64_t)sampler,
         .pObjectName = label,
     };
     vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
