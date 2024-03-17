@@ -595,10 +595,11 @@ void Game::generateDrawList()
     }
 
     auto& uiRenderer = renderer.getSpriteRenderer();
-#if 0
+#if 1
     { // draw test UI
         uiRenderer.drawSprite(talkTipSprite, {128.f, 160.f});
 
+        /*
         uiRenderer.drawSprite(testSprite, {128.f, 250.f}, glm::pi<float>() / 4.f);
         uiRenderer.drawFilledRect(
             {128.f, 250.f, 64.f, 64.f},
@@ -607,18 +608,18 @@ void Game::generateDrawList()
             glm::vec2{1.f},
             glm::vec2{0.5f, 0.5f});
         uiRenderer.drawFilledRect(
-            math::FloatRect{0.f, 0.f, 128.f, 250.f}, glm::vec4{0.f, 0.f, 1.f, 0.5f});
+            math::FloatRect{0.f, 0.f, 128.f, 250.f}, glm::vec4{0.f, 0.f, 1.f, 0.5f}); */
 
-        uiRenderer.drawSprite(kaeruSprite, kaeruTransform.asMatrix());
+        // uiRenderer.drawSprite(kaeruSprite, kaeruTransform.asMatrix());
 
-        uiRenderer.drawText(defaultFont, strings[0], glm::vec2{160.f, 64.f});
+        uiRenderer.drawText(defaultFont, strings[0], glm::vec2{64.f, 64.f});
         uiRenderer.drawText(
-            defaultFont, strings[1], glm::vec2{160.f, 90.f}, glm::vec4{1.f, 1.f, 0.f, 1.f});
+            defaultFont, strings[1], glm::vec2{64.f, 90.f}, glm::vec4{1.f, 1.f, 0.f, 1.f});
 
         uiRenderer.drawText(
-            defaultFont, strings[2], glm::vec2{160.f, 120.f}, glm::vec4{1.f, 0.f, 1.f, 1.f});
+            defaultFont, strings[2], glm::vec2{64.f, 120.f}, glm::vec4{1.f, 0.f, 1.f, 1.f});
 
-        for (int i = 0; i < 8; ++i) {
+        /* for (int i = 0; i < 8; ++i) {
             const auto rotation = i * glm::pi<float>() / 4.f;
             uiRenderer.drawSprite(interactipTipSprite, glm::vec2{64.f, 100.f}, rotation);
         }
@@ -636,7 +637,7 @@ void Game::generateDrawList()
             rectRotation,
             rectScale,
             rectPivot,
-            insetBorder);
+            insetBorder); */
     }
 #endif
 
