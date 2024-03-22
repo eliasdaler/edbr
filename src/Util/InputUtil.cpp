@@ -2,6 +2,8 @@
 
 #include <SDL2/SDL_keyboard.h>
 
+#include <Graphics/Camera.h>
+
 namespace util
 {
 bool isKeyPressed(SDL_Scancode scancode)
@@ -26,6 +28,19 @@ glm::vec2 getStickState(const StickBindings& bindings)
         stick.x += 1.f;
     }
     return stick;
+}
+
+glm::vec3 calculateStickHeading(const Camera& camera, const glm::vec2& stickState)
+{
+    auto cameraFrontProj = camera.getTransform().getLocalFront();
+    cameraFrontProj.y = 0.f;
+    cameraFrontProj = glm::normalize(cameraFrontProj);
+
+    const auto cameraRightProj = glm::normalize(glm::cross(cameraFrontProj, math::GlobalUpAxis));
+
+    const auto rightMovement = cameraRightProj * stickState.x;
+    const auto upMovement = cameraFrontProj * (-stickState.y);
+    return glm::normalize(rightMovement + upMovement);
 }
 
 }

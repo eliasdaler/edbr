@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <span>
 
 #include <glm/vec3.hpp>
@@ -25,7 +24,6 @@
 struct SDL_Window;
 
 class Camera;
-struct Scene;
 
 class GameRenderer {
 public:
@@ -46,8 +44,7 @@ public:
 
     void updateDevTools(float dt);
 
-    Scene loadScene(const std::filesystem::path& path);
-
+    void setSkyboxImage(ImageId skyboxImageId);
     void beginDrawing();
     void endDrawing();
 
@@ -98,8 +95,6 @@ private:
     AllocatedImage resolveDepthImage;
 
     AllocatedImage postFXDrawImage;
-
-    ImageId skyboxImageId;
 
     bool shadowsEnabled{true};
     VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};

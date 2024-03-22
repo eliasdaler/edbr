@@ -3,7 +3,7 @@
 #include <Graphics/GfxDevice.h>
 #include <Graphics/Vulkan/Util.h>
 
-#include <util/ImageLoader.h>
+#include <Util/ImageLoader.h>
 
 namespace graphics
 {

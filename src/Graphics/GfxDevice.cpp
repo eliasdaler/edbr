@@ -86,6 +86,7 @@ void GfxDevice::initVulkan(SDL_Window* window)
         .descriptorBindingPartiallyBound = true,
         .descriptorBindingVariableDescriptorCount = true,
         .runtimeDescriptorArray = true,
+        .scalarBlockLayout = true,
         .bufferDeviceAddress = true,
     };
     const auto features13 = VkPhysicalDeviceVulkan13Features{

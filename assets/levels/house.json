@@ -1,0 +1,5 @@
+{
+  "model": "assets/models/levels/house/house.gltf",
+  "default_camera": "Default",
+  "default_spawn": "Test"
+}

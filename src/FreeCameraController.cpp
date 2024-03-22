@@ -1,7 +1,9 @@
 #include "FreeCameraController.h"
 
 #include <Graphics/Camera.h>
-#include <util/InputUtil.h>
+#include <Util/InputUtil.h>
+
+#include <fmt/printf.h>
 
 void FreeCameraController::handleInput(const Camera& camera)
 {
@@ -38,7 +40,7 @@ void FreeCameraController::handleInput(const Camera& camera)
     });
 
     rotationVelocity.x = -rotateStickState.x * rotateSpeed;
-    rotationVelocity.y = rotateStickState.y * rotateSpeed;
+    rotationVelocity.y = -rotateStickState.y * rotateSpeed;
 }
 
 void FreeCameraController::update(Camera& camera, float dt)
@@ -47,13 +49,9 @@ void FreeCameraController::update(Camera& camera, float dt)
     newPos += moveVelocity * dt;
     camera.setPosition(newPos);
 
-    freeCameraYaw += rotationVelocity.x * dt;
-    freeCameraPitch += rotationVelocity.y * dt;
-    camera.setYawPitch(freeCameraYaw, freeCameraPitch);
-}
-
-void FreeCameraController::setYawPitch(float yaw, float pitch)
-{
-    freeCameraYaw = yaw;
-    freeCameraPitch = pitch;
+    const auto deltaYaw = rotationVelocity.x * dt;
+    const auto deltaPitch = rotationVelocity.y * dt;
+    const auto dYaw = glm::angleAxis(deltaYaw, math::GlobalUpAxis);
+    const auto dPitch = glm::angleAxis(deltaPitch, math::GlobalRightAxis);
+    camera.setHeading(dYaw * camera.getHeading() * dPitch);
 }

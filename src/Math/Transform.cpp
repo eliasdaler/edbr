@@ -64,7 +64,8 @@ void Transform::setPosition(const glm::vec3& pos)
 
 void Transform::setHeading(const glm::quat& h)
 {
-    heading = h;
+    // non-normalized quaternions cause all sorts of issues
+    heading = glm::normalize(h);
     isDirty = true;
 }
 

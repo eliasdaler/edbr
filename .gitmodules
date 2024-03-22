@@ -31,3 +31,12 @@
 [submodule "third_party/utfcpp"]
 	path = third_party/utfcpp
 	url = https://github.com/nemtrif/utfcpp
+[submodule "third_party/entt"]
+	path = third_party/entt
+	url = https://github.com/skypjack/entt
+[submodule "third_party/json"]
+	path = third_party/json
+	url = https://github.com/nlohmann/json
+[submodule "third_party/fmt"]
+	path = third_party/fmt
+	url = https://github.com/fmtlib/fmt

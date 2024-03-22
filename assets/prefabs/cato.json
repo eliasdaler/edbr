@@ -1,0 +1,9 @@
+{
+  "mesh": {
+    "mesh": "assets/models/cato.gltf"
+  },
+  "movement": {
+    "maxSpeed": [4, 4, 4]
+  }
+}
+

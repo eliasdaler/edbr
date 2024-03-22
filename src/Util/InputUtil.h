@@ -1,8 +1,11 @@
 #pragma once
 
 #include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 
 #include <SDL2/SDL_scancode.h>
+
+class Camera;
 
 namespace util
 {
@@ -16,4 +19,8 @@ struct StickBindings {
 };
 
 glm::vec2 getStickState(const StickBindings& bindings);
+
+// The function returns stick heading in world coordinates,
+// stickState is in "screen" coordinates.
+glm::vec3 calculateStickHeading(const Camera& camera, const glm::vec2& stickState);
 }

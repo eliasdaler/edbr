@@ -17,6 +17,7 @@
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include <tiny_gltf.h>
 
+// tell tinygltf to not load images
 namespace
 {
 bool LoadImageData(
@@ -45,7 +46,13 @@ bool WriteImageData(
     return true;
 };
 
-} // end of namespace tinygltf
+void setEmptyImageLoaders(tinygltf::TinyGLTF& loader)
+{
+    loader.SetImageLoader(LoadImageData, nullptr);
+    loader.SetImageWriter(WriteImageData, nullptr);
+}
+
+}
 
 namespace
 {
@@ -62,6 +69,10 @@ static const std::string GLTF_SAMPLER_PATH_SCALE{"scale"};
 
 // extensions
 static const std::string GLTF_LIGHTS_PUNCTUAL_KEY{"KHR_lights_punctual"};
+static const std::string GLTF_LIGHTS_PUNCTUAL_POINT_NAME{"point"};
+static const std::string GLTF_LIGHTS_PUNCTUAL_DIRECTIONAL_NAME{"directional"};
+static const std::string GLTF_LIGHTS_PUNCTUAL_SPOT_NAME{"spot"};
+
 static const std::string GLTF_EMISSIVE_STRENGTH_KHR_KEY{"KHR_materials_emissive_strength"};
 static const std::string GLTF_EMISSIVE_STRENGTH_PARAM_NAME{"emissiveStrength"};
 
@@ -113,6 +124,24 @@ int findAttributeAccessor(const tinygltf::Primitive& primitive, const std::strin
         }
     }
     return -1;
+}
+
+bool hasAccessor(const tinygltf::Primitive& primitive, const std::string& attributeName)
+{
+    const auto accessorIndex = findAttributeAccessor(primitive, attributeName);
+    return accessorIndex != -1;
+}
+
+template<typename T>
+std::span<const T> getPackedBufferSpan(
+    const tinygltf::Model& model,
+    const tinygltf::Primitive& primitive,
+    const std::string& attributeName)
+{
+    const auto accessorIndex = findAttributeAccessor(primitive, attributeName);
+    assert(accessorIndex != -1 && "Accessor not found");
+    const auto& accessor = model.accessors[accessorIndex];
+    return getPackedBufferSpan<T>(model, accessor);
 }
 
 bool hasDiffuseTexture(const tinygltf::Material& material)
@@ -187,24 +216,6 @@ float getEmissiveStrength(const tinygltf::Material& material)
             .GetNumberAsDouble();
     }
     return 1.f;
-}
-
-template<typename T>
-std::span<const T> getPackedBufferSpan(
-    const tinygltf::Model& model,
-    const tinygltf::Primitive& primitive,
-    const std::string& attributeName)
-{
-    const auto accessorIndex = findAttributeAccessor(primitive, attributeName);
-    assert(accessorIndex != -1 && "Accessor not found");
-    const auto& accessor = model.accessors[accessorIndex];
-    return getPackedBufferSpan<T>(model, accessor);
-}
-
-bool hasAccessor(const tinygltf::Primitive& primitive, const std::string& attributeName)
-{
-    const auto accessorIndex = findAttributeAccessor(primitive, attributeName);
-    return accessorIndex != -1;
 }
 
 std::filesystem::path getDiffuseTexturePath(
@@ -305,30 +316,8 @@ CPUMesh loadPrimitive(
     return mesh;
 }
 
-void loadFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
-{
-    tinygltf::TinyGLTF loader;
-    loader.SetImageLoader(::LoadImageData, nullptr);
-    loader.SetImageWriter(::WriteImageData, nullptr);
-
-    std::string err;
-    std::string warn;
-
-    bool res = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, path.string());
-    if (!warn.empty()) {
-        std::cout << "WARNING: " << warn << std::endl;
-    }
-    if (!res) {
-        std::cout << "Failed to load glTF scene " << path << std::endl;
-        if (!err.empty()) {
-            std::cout << "ERROR: " << err << std::endl;
-        }
-        assert(false);
-    }
-}
-
 Material loadMaterial(
-    const util::LoadContext& ctx,
+    BaseRenderer& renderer,
     const tinygltf::Model& gltfModel,
     const std::filesystem::path& fileDir,
     const tinygltf::Material& gltfMaterial)
@@ -342,20 +331,20 @@ Material loadMaterial(
 
     if (hasDiffuseTexture(gltfMaterial)) {
         const auto diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.diffuseTexture = ctx.renderer.loadImageFromFile(
+        material.diffuseTexture = renderer.loadImageFromFile(
             diffusePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
     if (hasNormalMapTexture(gltfMaterial)) {
         const auto normalMapPath = getNormalMapTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.normalMapTexture = ctx.renderer.loadImageFromFile(
+        material.normalMapTexture = renderer.loadImageFromFile(
             normalMapPath, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
     if (hasMetallicRoughnessTexture(gltfMaterial)) {
         const auto metalRoughnessPath =
             getMetallicRoughnessTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.metallicRoughnessTexture = ctx.renderer.loadImageFromFile(
+        material.metallicRoughnessTexture = renderer.loadImageFromFile(
             metalRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
@@ -363,33 +352,11 @@ Material loadMaterial(
         material.emissiveFactor = getEmissiveStrength(gltfMaterial);
 
         const auto emissivePath = getEmissiveTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.emissiveTexture = ctx.renderer.loadImageFromFile(
+        material.emissiveTexture = renderer.loadImageFromFile(
             emissivePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
     return material;
-}
-
-bool shouldSkipNode(const tinygltf::Node& node)
-{
-    /* if (node.mesh == -1) {
-        return true;
-    } */
-
-    /* if (node.light != -1) {
-        return true;
-    } */
-
-    if (node.camera != -1) {
-        return true;
-    }
-
-    if (node.name.starts_with("Collision") || node.name.starts_with("Trigger") ||
-        node.name.starts_with("PlayerSpawn") || node.name.starts_with("Interact")) {
-        return true;
-    }
-
-    return false;
 }
 
 Transform loadTransform(const tinygltf::Node& gltfNode)
@@ -405,36 +372,6 @@ Transform loadTransform(const tinygltf::Node& gltfNode)
         transform.setHeading(tg2glmQuat(gltfNode.rotation));
     }
     return transform;
-}
-
-void loadNode(SceneNode& node, const tinygltf::Node& gltfNode, const tinygltf::Model& model)
-{
-    node.name = gltfNode.name;
-    node.transform = loadTransform(gltfNode);
-
-    if (gltfNode.mesh == -1) {
-        node.hasMesh = false;
-    } else {
-        node.hasMesh = true;
-        node.meshIndex = static_cast<std::size_t>(gltfNode.mesh);
-    }
-
-    node.skinId = gltfNode.skin;
-    node.lightId = gltfNode.light;
-
-    // load children
-    node.children.resize(gltfNode.children.size());
-    for (std::size_t childIdx = 0; childIdx < gltfNode.children.size(); ++childIdx) {
-        const auto& childNode = model.nodes[gltfNode.children[childIdx]];
-        if (shouldSkipNode(childNode)) {
-            continue;
-        }
-
-        auto& childPtr = node.children[childIdx];
-        childPtr = std::make_unique<SceneNode>();
-        auto& child = *childPtr;
-        loadNode(child, childNode, model);
-    }
 }
 
 Skeleton loadSkeleton(
@@ -579,11 +516,11 @@ std::unordered_map<std::string, SkeletalAnimation> loadAnimations(
 
 LightType fromGLTFLightType(const std::string& lt)
 {
-    if (lt == "point") {
+    if (lt == GLTF_LIGHTS_PUNCTUAL_POINT_NAME) {
         return LightType::Point;
-    } else if (lt == "directional") {
+    } else if (lt == GLTF_LIGHTS_PUNCTUAL_DIRECTIONAL_NAME) {
         return LightType::Directional;
-    } else if (lt == "spot") {
+    } else if (lt == GLTF_LIGHTS_PUNCTUAL_SPOT_NAME) {
         return LightType::Spot;
     }
     assert(false && "unexpected light type");
@@ -610,27 +547,74 @@ Light loadLight(const tinygltf::Light& tLight)
     return light;
 }
 
+void loadNode(SceneNode& node, const tinygltf::Node& gltfNode, const tinygltf::Model& model)
+{
+    node.name = gltfNode.name;
+    node.transform = loadTransform(gltfNode);
+
+    node.meshIndex = gltfNode.mesh;
+    node.skinId = gltfNode.skin;
+    node.lightId = gltfNode.light;
+    node.cameraId = gltfNode.camera;
+
+    // load children
+    node.children.resize(gltfNode.children.size());
+    for (std::size_t childIdx = 0; childIdx < gltfNode.children.size(); ++childIdx) {
+        const auto& childNode = model.nodes[gltfNode.children[childIdx]];
+        auto& childPtr = node.children[childIdx];
+        childPtr = std::make_unique<SceneNode>();
+        auto& child = *childPtr;
+        loadNode(child, childNode, model);
+    }
 }
+
+void loadGltfFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
+{
+    tinygltf::TinyGLTF loader;
+    setEmptyImageLoaders(loader);
+
+    std::string err;
+    std::string warn;
+
+    bool res = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, path.string());
+    if (!warn.empty()) {
+        std::cout << "WARNING: " << warn << std::endl;
+    }
+    if (!res) {
+        std::cout << "Failed to load glTF scene " << path << std::endl;
+        if (!err.empty()) {
+            std::cout << "ERROR: " << err << std::endl;
+        }
+        assert(false);
+    }
+}
+
+} // end of anonymous namespace
 
 namespace util
 {
-void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::filesystem::path& path)
+Scene loadGltfFile(BaseRenderer& renderer, const std::filesystem::path& path)
 {
     const auto fileDir = path.parent_path();
 
     tinygltf::Model gltfModel;
-    loadFile(gltfModel, path);
+    ::loadGltfFile(gltfModel, path);
 
     const auto& gltfScene = gltfModel.scenes[gltfModel.defaultScene];
 
+    // gltf material id -> material cache id
+    std::unordered_map<std::size_t, MaterialId> materialMapping;
     // load materials
-    for (std::size_t materialIdx = 0; materialIdx < gltfModel.materials.size(); ++materialIdx) {
-        const auto& gltfMaterial = gltfModel.materials[materialIdx];
-        const auto materialId =
-            ctx.renderer.addMaterial(loadMaterial(ctx, gltfModel, fileDir, gltfMaterial));
-        materialMapping.emplace(materialIdx, materialId);
+    {
+        for (std::size_t materialIdx = 0; materialIdx < gltfModel.materials.size(); ++materialIdx) {
+            const auto& gltfMaterial = gltfModel.materials[materialIdx];
+            const auto materialId =
+                renderer.addMaterial(loadMaterial(renderer, gltfModel, fileDir, gltfMaterial));
+            materialMapping.emplace(materialIdx, materialId);
+        }
     }
 
+    Scene scene{};
     // load meshes
     scene.meshes.reserve(gltfModel.meshes.size());
     std::string meshName;
@@ -655,12 +639,15 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
             if (gltfPrimitive.material != -1) {
                 materialId = materialMapping.at(gltfPrimitive.material);
             }
-            const auto meshId = ctx.renderer.addMesh(cpuMesh, materialId);
+            const auto meshId = renderer.addMesh(cpuMesh, materialId);
             mesh.primitives[primitiveIdx] = meshId;
         }
         scene.meshes.push_back(std::move(mesh));
     }
 
+    // gltf node id -> JointId
+    // for now only one skeleton per scene is supported
+    std::unordered_map<int, JointId> gltfNodeIdxToJointId;
     scene.skeletons.reserve(gltfModel.skins.size());
     for (const auto& skin : gltfModel.skins) {
         scene.skeletons.push_back(loadSkeleton(gltfNodeIdxToJointId, gltfModel, skin));
@@ -695,12 +682,13 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
                 auto& node = *nodePtr;
                 loadNode(node, meshNode, gltfModel);
 
+                // sometimes the armature node can have scaling
+                // this is BAD, but we can't avoid it for models
+                const auto parentTransform = loadTransform(gltfNode);
+                node.transform = parentTransform * node.transform;
+
                 continue;
             }
-        }
-
-        if (shouldSkipNode(gltfNode)) {
-            continue;
         }
 
         auto& nodePtr = scene.nodes[nodeIdx];
@@ -708,6 +696,8 @@ void SceneLoader::loadScene(const LoadContext& ctx, Scene& scene, const std::fil
         auto& node = *nodePtr;
         loadNode(node, gltfNode, gltfModel);
     }
+
+    return scene;
 }
 
-}
+} // end of namespace util

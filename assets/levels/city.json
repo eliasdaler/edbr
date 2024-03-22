@@ -1,0 +1,13 @@
+{
+  "model": "assets/models/levels/city/city.gltf",
+  "skybox": "distant_sunset",
+  "default_spawn": "Store",
+  "ambient": {
+    "color": { "rgb": [19, 25, 25] },
+    "intensity": 0.05
+  },
+  "fog": {
+    "color": { "rgb": [128, 128, 128] },
+    "density": 0.02
+  }
+}

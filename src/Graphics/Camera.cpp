@@ -97,9 +97,9 @@ glm::mat4 Camera::getViewProj() const
 
 void Camera::setYawPitch(float yaw, float pitch)
 {
-    const auto hd = glm::angleAxis(yaw, math::GlobalUpAxis);
-    const auto hd2 = glm::angleAxis(pitch, math::GlobalLeftAxis);
-    setHeading(hd * hd2);
+    const auto yawRotation = glm::angleAxis(yaw, math::GlobalUpAxis);
+    const auto pitchRotation = glm::angleAxis(pitch, math::GlobalRightAxis);
+    setHeading(yawRotation * pitchRotation);
 }
 
 void Camera::setUseInverseDepth(bool b)

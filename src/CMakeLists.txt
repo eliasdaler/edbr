@@ -1,4 +1,14 @@
 add_executable(game
+  Core/JsonDataLoader.cpp
+  Core/JsonFile.cpp
+  Core/JsonMath.cpp
+
+  ECS/ComponentFactory.cpp
+  ECS/EntityFactory.cpp
+
+  Math/Transform.cpp
+  Math/Util.cpp
+
   Graphics/Camera.cpp
   Graphics/Cubemap.cpp
   Graphics/Font.cpp
@@ -36,16 +46,25 @@ add_executable(game
   Graphics/Vulkan/VulkanImGui.cpp
   Graphics/Vulkan/VulkanImmediateExecutor.cpp
 
-  util/GltfLoader.cpp
-  util/InputUtil.cpp
-  util/ImageLoader.cpp
-  util/OSUtil.cpp
+  Util/GltfLoader.cpp
+  Util/ImageLoader.cpp
+  Util/InputUtil.cpp
+  Util/ImGuiUtil.cpp
+  Util/OSUtil.cpp
+  Util/StringUtil.cpp
 
-  Math/Transform.cpp
-  Math/Util.cpp
+  DevTools/EntityTreeView.cpp
+  DevTools/EntityInfoDisplayer.cpp
+  DevTools/ImGuiPropertyTable.cpp
 
   FreeCameraController.cpp
+  SceneCache.cpp
 
+  EntityUtil.cpp
+  Level.cpp
+  GameSceneLoader.cpp
+  GameUI.cpp
+  GameComponentDisplayers.cpp
   Game.cpp
 
   main.cpp
@@ -60,10 +79,7 @@ target_add_extra_warnings(game)
 
 target_include_directories(game PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 
-# find_package(Vulkan REQUIRED)
-
 target_link_libraries(game PRIVATE
-  # Vulkan::Vulkan
   volk::volk
   vk-bootstrap::vk-bootstrap
   GPUOpen::VulkanMemoryAllocator
@@ -75,6 +91,10 @@ target_link_libraries(game PRIVATE
   stb::image
   freetype::freetype
   utf8cpp::utf8cpp
+
+  EnTT::EnTT
+  fmt::fmt
+  nlohmann_json::nlohmann_json
 )
 
 target_compile_definitions(game
@@ -124,9 +144,9 @@ list(TRANSFORM SHADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 
 target_shaders(game ${SHADERS})
 
-add_custom_command(TARGET game POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E echo "Copying game assets to $<TARGET_FILE_DIR:game>/assets"
-  COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:game>/assets"
+add_custom_target(copy_assets ALL
+  COMMENT "Copying game assets to $<TARGET_FILE_DIR:game>/assets"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:game>/assets"
 )
 
 target_link_libraries(game PUBLIC Tracy::TracyClient)

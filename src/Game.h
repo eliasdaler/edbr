@@ -1,60 +1,32 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
+
+#include <entt/entt.hpp>
+
+#include <ECS/EntityFactory.h>
 
 #include <Graphics/Camera.h>
-
-#include "FreeCameraController.h"
-
 #include <Graphics/Font.h>
 #include <Graphics/GameRenderer.h>
-#include <Graphics/SkeletalAnimation.h>
-#include <Graphics/SkeletonAnimator.h>
+#include <Graphics/Scene.h>
 #include <Graphics/Sprite.h>
 
-struct SDL_Window;
+#include "FreeCameraController.h"
+#include "SceneCache.h"
 
-struct Scene;
-struct SceneNode;
+#include "DevTools/EntityInfoDisplayer.h"
+#include "DevTools/EntityTreeView.h"
+
+#include "GameUI.h"
+#include "Level.h"
+
+struct SDL_Window;
+class ComponentFactory;
 
 class Game {
 public:
-    static const std::size_t NULL_ENTITY_ID = std::numeric_limits<std::size_t>::max();
-
-    using EntityId = std::size_t;
-
-    struct Entity {
-        EntityId id{NULL_ENTITY_ID};
-        std::string tag;
-
-        // transform
-        Transform transform; // local (relative to parent)
-        glm::mat4 worldTransform{1.f};
-
-        // hierarchy
-        EntityId parentId{NULL_ENTITY_ID};
-        std::vector<EntityId> children;
-
-        std::vector<MeshId> meshes;
-        std::vector<Transform> meshTransforms;
-
-        // skeleton
-        Skeleton skeleton;
-        bool hasSkeleton{false};
-        std::vector<SkinnedMesh> skinnedMeshes;
-
-        // animation
-        SkeletonAnimator skeletonAnimator;
-        std::unordered_map<std::string, SkeletalAnimation> animations;
-
-        // light
-        Light light;
-        bool isLight{false};
-    };
-
 public:
     Game();
     void init();
@@ -62,27 +34,39 @@ public:
     void cleanup();
 
 private:
+    void initUI();
+    void loadLevel(const std::filesystem::path& path);
+    void loadScene(const std::filesystem::path& path, bool createEntities = false);
+
     void handleInput(float dt);
+    void handlePlayerInput(float dt);
+
     void update(float dt);
     void updateDevTools(float dt);
 
-    void createEntitiesFromScene(const Scene& scene);
-    EntityId createEntitiesFromNode(
-        const Scene& scene,
-        const SceneNode& node,
-        EntityId parentId = NULL_ENTITY_ID);
+    void setEntityTag(entt::handle entity, const std::string& tag);
+    entt::handle findEntityByTag(const std::string& tag);
+    entt::const_handle findEntityByTag(const std::string& tag) const;
 
-    std::vector<std::unique_ptr<Entity>> entities;
-    Entity& makeNewEntity();
-    void destroyEntity(const Entity& e);
-    Entity& findEntityByName(std::string_view name) const;
+    entt::const_handle findDefaultCamera();
+    void setCurrentCamera(entt::const_handle camera);
 
     void updateEntityTransforms();
-    void updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransform);
+    void updateEntityTransforms(entt::entity e, const glm::mat4& parentWorldTransform);
 
     void generateDrawList();
-    void sortDrawList();
 
+private:
+    void initEntityFactory();
+    void loadPrefabs(const std::filesystem::path& prefabsDir);
+    void registerComponents(ComponentFactory& componentFactory);
+    void registerComponentDisplayers();
+    void postInitEntity(entt::handle e);
+
+    void onTagComponentDestroy(entt::registry& registry, entt::entity entity);
+    void onSkeletonComponentDestroy(entt::registry& registry, entt::entity entity);
+
+private:
     GfxDevice gfxDevice;
     GameRenderer renderer;
 
@@ -101,28 +85,19 @@ private:
     Camera camera;
     FreeCameraController cameraController;
 
-    glm::vec4 ambientColor;
-    float ambientIntensity;
-    glm::vec4 fogColor;
-    float fogDensity;
+    GameUI ui;
+    Level level;
+    std::filesystem::path skyboxDir;
 
-    Font defaultFont;
-    SpriteDrawingPipeline uiDrawingPipeline;
+    entt::registry registry;
+    std::unordered_map<std::string, entt::entity> taggedEntities;
+    EntityFactory entityFactory;
 
-    std::vector<std::string> strings;
+    SceneCache sceneCache;
 
-    Sprite interactipTipSprite;
-    Sprite talkTipSprite;
-    Sprite kaeruSprite;
-    Sprite testSprite;
+    EntityTreeView entityTreeView;
+    EntityInfoDisplayer entityInfoDisplayer;
 
-    Transform kaeruTransform;
-
-    glm::vec2 rectPos{64.f, 64.f};
-    glm::vec2 rectSize{32.f, 32.f};
-    glm::vec2 rectPivot{0.5f, 0.5f};
-    glm::vec2 rectScale{2.f};
-    float rectRotation{0.f};
-    float borderWidth{4.f};
-    bool insetBorder{true};
+    bool orbitCameraAroundSelectedEntity{false};
+    float orbitDistance{8.5f};
 };

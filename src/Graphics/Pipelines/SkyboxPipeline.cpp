@@ -66,6 +66,10 @@ void SkyboxPipeline::setSkyboxImage(const ImageId skyboxId)
 
 void SkyboxPipeline::draw(VkCommandBuffer cmd, const Camera& camera)
 {
+    if (skyboxTextureId == NULL_IMAGE_ID) {
+        return;
+    }
+
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &bindlessDescSet, 0, nullptr);

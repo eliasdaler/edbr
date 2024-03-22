@@ -6,7 +6,7 @@
 #include "Types.h"
 #include "VulkanImmediateExecutor.h"
 
-#include <util/ImageLoader.h>
+#include <Util/ImageLoader.h>
 
 #include <cmath>
 #include <cstdint>
@@ -112,7 +112,13 @@ void uploadImageData(
     VulkanImmediateExecutor executor;
     executor.init(device, graphicsQueueFamily, graphicsQueue);
 
-    const auto dataSize = image.extent.depth * image.extent.width * image.extent.height * 4;
+    int numChannels = 4;
+    if (image.format == VK_FORMAT_R8_UNORM) {
+        // FIXME: support more types
+        numChannels = 1;
+    }
+    const auto dataSize =
+        image.extent.depth * image.extent.width * image.extent.height * numChannels;
 
     const auto uploadBuffer =
         createBuffer(device, allocator, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);

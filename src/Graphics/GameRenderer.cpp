@@ -5,12 +5,12 @@
 #include <Graphics/Scene.h>
 #include <Graphics/Vulkan/Init.h>
 #include <Graphics/Vulkan/Pipelines.h>
-#include <Graphics/Vulkan/Util.h>
-#include <util/GltfLoader.h>
 
 #include <imgui.h>
 
 #include <numeric> // iota
+
+#include <tracy/Tracy.hpp>
 
 GameRenderer::GameRenderer(GfxDevice& gfxDevice) :
     gfxDevice(gfxDevice), baseRenderer(gfxDevice), spriteRenderer(baseRenderer)
@@ -26,7 +26,11 @@ void GameRenderer::init()
     createDrawImage(gfxDevice.getSwapchainExtent(), true);
 
     skinningPipeline.init(gfxDevice);
-    csmPipeline.init(gfxDevice, baseRenderer, std::array{0.08f, 0.2f, 0.5f});
+
+    const auto cascadePercents = std::array{0.06f, 0.2f, 0.5f};
+    // const auto cascadePercents =  std::array{0.22f, 0.51f, 1.f};
+    csmPipeline.init(gfxDevice, baseRenderer, cascadePercents);
+
     meshPipeline.init(
         gfxDevice,
         drawImage.format,
@@ -60,9 +64,6 @@ void GameRenderer::init()
         postFXPipeline
             .setImages(gfxDevice, drawImage, depthImage, baseRenderer.getNearestSampler());
     }
-
-    skyboxImageId = baseRenderer.loadCubemap("assets/images/skybox/distant_sunset");
-    skyboxPipeline.setSkyboxImage(skyboxImageId);
 
     spriteRenderer.init(gfxDevice, drawImage.format);
 
@@ -325,7 +326,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         const auto renderInfo = vkutil::createRenderingInfo({
             .renderExtent = drawImage.getExtent2D(),
             .colorImageView = drawImage.imageView,
-            .colorImageClearValue = glm::vec4{0.f, 0.f, 0.f, 0.f},
+            .colorImageClearValue = glm::vec4{0.f, 0.f, 0.f, 1.f},
             .depthImageView = depthImage.imageView,
             .depthImageClearValue = 0.f,
             .resolveImageView = isMultisamplingEnabled() ? resolveImage.imageView : VK_NULL_HANDLE,
@@ -538,7 +539,6 @@ void GameRenderer::onMultisamplingStateUpdate()
         samples,
         baseRenderer.getBindlessDescSetLayout(),
         baseRenderer.getBindlessDescSet());
-    skyboxPipeline.setSkyboxImage(skyboxImageId);
 
     createDrawImage(gfxDevice.getSwapchainExtent(), false);
 
@@ -552,16 +552,9 @@ void GameRenderer::onMultisamplingStateUpdate()
     }
 }
 
-Scene GameRenderer::loadScene(const std::filesystem::path& path)
+void GameRenderer::setSkyboxImage(ImageId skyboxImageId)
 {
-    util::LoadContext loadContext{
-        .renderer = baseRenderer,
-    };
-    util::SceneLoader loader;
-
-    Scene scene;
-    loader.loadScene(loadContext, scene, path);
-    return scene;
+    skyboxPipeline.setSkyboxImage(skyboxImageId);
 }
 
 void GameRenderer::beginDrawing()

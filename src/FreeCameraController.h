@@ -10,11 +10,6 @@ public:
     void handleInput(const Camera& camera);
     void update(Camera& camera, float dt);
 
-    void setYawPitch(float yaw, float pitch);
-
-    float getYaw() const { return freeCameraYaw; }
-    float getPitch() const { return freeCameraPitch; }
-
 private:
     float freeCameraYaw{0.f};
     float freeCameraPitch{0.f};

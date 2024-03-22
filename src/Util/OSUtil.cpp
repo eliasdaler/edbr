@@ -1,4 +1,4 @@
-#include "util/OSUtil.h"
+#include "OSUtil.h"
 
 #ifdef _WIN32
 #include <Windows.h>

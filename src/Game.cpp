@@ -1,20 +1,27 @@
 #include "Game.h"
 
-#include <SDL2/SDL.h>
+#include "Components.h"
+#include "EntityUtil.h"
+#include "GameSceneLoader.h"
+
+#include <DevTools/ImGuiPropertyTable.h>
+#include <ECS/Components/MetaInfoComponent.h>
+#include <Graphics/Scene.h>
+#include <Util/InputUtil.h>
 
 #include <chrono>
 #include <iostream>
-#include <random>
+
+#include <SDL2/SDL.h>
 
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 
-#include <Graphics/Scene.h>
+#include <Util/FS.h>
+#include <Util/ImGuiUtil.h>
 
 #include <tracy/Tracy.hpp>
-
-#include <utf8.h>
 
 #ifdef TRACY_ENABLE
 void* operator new(std ::size_t count)
@@ -39,30 +46,11 @@ namespace
 {
 static constexpr std::uint32_t SCREEN_WIDTH = 1280;
 static constexpr std::uint32_t SCREEN_HEIGHT = 960;
-static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
-
-std::unordered_set<std::uint32_t> getUsedCodePoints(
-    const std::vector<std::string>& strings,
-    bool includeAllASCII)
-{
-    std::unordered_set<std::uint32_t> cps;
-    if (includeAllASCII) {
-        for (std::uint32_t i = 0; i < 255; ++i) {
-            cps.insert(i);
-        }
-    }
-    for (const auto& s : strings) {
-        auto it = s.begin();
-        const auto e = s.end();
-        while (it != e) {
-            cps.insert(utf8::next(it, e));
-        }
-    }
-    return cps;
-}
 }
 
-Game::Game() : renderer(gfxDevice)
+namespace eu = entityutil;
+
+Game::Game() : renderer(gfxDevice), skyboxDir("assets/images/skybox")
 {}
 
 void Game::init()
@@ -91,64 +79,13 @@ void Game::init()
     gfxDevice.init(window, vSync);
     renderer.init();
 
-    {
-        // const auto scene = renderer.loadScene("assets/levels/house/house.gltf");
-        const auto scene = renderer.loadScene("assets/levels/city/city.gltf");
-        // const auto scene =
-        // renderer.loadScene("assets/levels/normal_map_test/normal_map_test.gltf");
-        // const auto scene =
-        // renderer.loadScene("assets/levels/damaged_helmet/damaged_helmet.gltf");
-        createEntitiesFromScene(scene);
-    }
+    initEntityFactory();
+    registerComponents(entityFactory.getComponentFactory());
+    registerComponentDisplayers();
 
-    {
-        const auto scene = renderer.loadScene("assets/models/cato.gltf");
+    ui.init(renderer.getBaseRenderer());
 
-        { // create player
-            createEntitiesFromScene(scene);
-
-            const glm::vec3 catoPos{1.4f, 0.f, 0.f};
-            auto& cato = findEntityByName("Cato");
-            cato.tag = "Player";
-            cato.transform.setPosition(catoPos);
-            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Run"));
-        }
-
-        { // create second cato
-            createEntitiesFromScene(scene);
-
-            const glm::vec3 catoPos{2.4f, 0.f, 0.f};
-            auto& cato = findEntityByName("Cato");
-            cato.tag = "Cato2";
-            cato.transform.setPosition(catoPos);
-
-            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Walk"));
-        }
-
-        { // create third cato
-            createEntitiesFromScene(scene);
-
-            const glm::vec3 catoPos{0.4f, 0.f, 0.f};
-            auto& cato = findEntityByName("Cato");
-            cato.tag = "Cato3";
-            cato.transform.setPosition(catoPos);
-
-            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
-        }
-
-        { // create fourth cato
-            createEntitiesFromScene(scene);
-
-            const glm::vec3 catoPos{-54.97f, 0.05f, -0.56f};
-            auto& cato = findEntityByName("Cato");
-            cato.tag = "Cato4";
-            cato.transform.setPosition(catoPos);
-
-            cato.skeletonAnimator.setAnimation(cato.skeleton, cato.animations.at("Think"));
-        }
-    }
-
-    {
+    { // create camera
         static const float zNear = 1.f;
         static const float zFar = 64.f;
         static const float fovX = glm::radians(45.f);
@@ -156,66 +93,71 @@ void Game::init()
 
         camera.setUseInverseDepth(true);
         camera.init(fovX, zNear, zFar, aspectRatio);
-
-        const auto startPos = glm::vec3{8.9f, 4.09f, 8.29f};
-        camera.setPosition(startPos);
     }
-    cameraController.setYawPitch(-2.5f, 0.2f);
 
-#if 1
-    const auto startPos = glm::vec3{-48.8440704f, 5.05302525f, 5.56558323f};
+    // set default camera pos (TODO: get camera from scene or just use follow camera
+    // if player exists)
+    const auto startPos = glm::vec3{-45.f, 8.29f, 13.17f};
     camera.setPosition(startPos);
-    cameraController.setYawPitch(3.92699075f, 0.523598909f);
-#endif
+    camera.setHeading(glm::quat{0.39f, 0.08f, -0.98f, 0.19f});
 
-#if 0
-    const auto startPos = glm::vec3{6.77f, 3.66f, 7.25f};
-    camera.setPosition(startPos);
-    cameraController.setYawPitch(3.7f, 0.17f);
-#endif
+    { // create player
+        auto e = entityFactory.createEntity(registry, "cato");
+        e.emplace<PlayerComponent>();
+        // eu::setAnimation(e, "Think");
+    }
 
-    ambientColor = glm::vec4{53.f / 255.f, 151.f / 255.f, 143.f / 255.f, 1.f};
-    ambientIntensity = 0.05f;
-    fogColor = glm::vec4{0.5f, 0.5f, 0.5f, 1.f};
-    fogDensity = 0.03f;
+    // loadLevel("assets/levels/house.json");
+    loadLevel("assets/levels/city.json");
 
-    { // load UI stuff
-        strings = {
-            "テキストのレンダリング、すごい",
-            "Text rendering works!",
-            "Multiline text\nworks too",
-        };
+    // spawn player
+    const auto& spawnName = level.getDefaultPlayerSpawnerName();
+    if (!spawnName.empty()) {
+        eu::spawnPlayer(registry, level.getDefaultPlayerSpawnerName());
+    }
 
-        auto neededCodePoints = getUsedCodePoints(strings, true);
+    // set camera
+    const auto& cameraName = level.getDefaultCameraName();
+    if (!cameraName.empty()) {
+        setCurrentCamera(eu::findCameraByName(registry, cameraName));
+    } else {
+        auto player = eu::getPlayerEntity(registry);
+        if (player.entity() != entt::null) {
+            fmt::println("No default camera found: using follow camera");
 
-        auto& baseRenderer = renderer.getBaseRenderer();
-        bool ok = defaultFont.load(
-            gfxDevice, baseRenderer, "assets/fonts/JF-Dot-Kappa20B.ttf", 32, neededCodePoints);
+            orbitCameraAroundSelectedEntity = true;
 
-        assert(ok && "font failed to load");
+            // follow cam
+            camera.setYawPitch(glm::radians(-135.f), glm::radians(-20.f));
+            entityTreeView.setSelectedEntity(player);
+        } else {
+            // try to find camera named "Default"
+            auto cameraEnt = findDefaultCamera();
+            if (cameraEnt.entity() != entt::null) {
+                setCurrentCamera(cameraEnt);
+            } else {
+                fmt::println("No default camera found");
+            }
+        }
+    }
 
-        const auto interactTipImageId =
-            baseRenderer.loadImageFromFile("assets/images/ui/interact_tip.png");
-        const auto& interactTipImage = baseRenderer.getImage(interactTipImageId);
-        interactipTipSprite.setTexture(interactTipImage);
-        interactipTipSprite.pivot = glm::vec2{0.5f, 1.2f};
+    { // create entities from prefabs
+        { // test
+            const glm::vec3 treePos{-58.5f, 0.07f, 7.89f};
+            auto tree = entityFactory.createEntity(registry, "pine_tree");
+            eu::setPosition(tree, treePos);
+            setEntityTag(tree, "WiseTree");
 
-        const auto talkTipImageId = baseRenderer.loadImageFromFile("assets/images/ui/talk_tip.png");
-        const auto& talkTipImage = baseRenderer.getImage(talkTipImageId);
-        talkTipSprite.setTexture(talkTipImage);
+            auto interactor = entityFactory.createEntity(registry, "interaction_trigger");
+            eu::addChild(tree, interactor);
+        }
 
-        const auto& kaeruImageId = baseRenderer.loadImageFromFile("assets/images/kaeru.png");
-        const auto& kaeruImage = baseRenderer.getImage(kaeruImageId);
-        kaeruSprite.setTexture(kaeruImage);
-        kaeruSprite.setTextureRect({48, 64, 16, 16});
-
-        const auto& testImageId = baseRenderer.loadImageFromFile("assets/images/test_sprite.png");
-        const auto& testImage = baseRenderer.getImage(testImageId);
-        testSprite.setTexture(testImage);
-        testSprite.pivot = glm::vec2{0.5f, 0.5f};
-
-        kaeruTransform.setPosition({240.f, 160.f, 0.f});
-        kaeruTransform.setScale(glm::vec3{4.f, 4.f, 1.f});
+        { // for city level
+            auto npc = eu::findEntityBySceneNodeName(registry, "generic_npc.2");
+            if ((bool)npc) {
+                setEntityTag(npc, "CoolDude");
+            }
+        }
     }
 }
 
@@ -267,7 +209,10 @@ void Game::run()
             ImGui::NewFrame();
 
             // update
-            handleInput(dt);
+            auto& io = ImGui::GetIO();
+            if (!io.WantCaptureKeyboard) {
+                handleInput(dt);
+            }
             update(dt);
 
             accumulator -= dt;
@@ -275,16 +220,19 @@ void Game::run()
             ImGui::Render();
         }
 
-        generateDrawList();
+        {
+            ZoneScopedN("Generate draw list");
+            generateDrawList();
+        }
 
         {
             ZoneScopedN("Render");
             const auto sceneData = GameRenderer::SceneData{
                 .camera = camera,
-                .ambientColor = ambientColor,
-                .ambientIntensity = ambientIntensity,
-                .fogColor = fogColor,
-                .fogDensity = fogDensity,
+                .ambientColor = level.getAmbientLightColor(),
+                .ambientIntensity = level.getAmbientLightIntensity(),
+                .fogColor = level.getFogColor(),
+                .fogDensity = level.getFogDensity(),
             };
             renderer.draw(camera, sceneData);
             FrameMark;
@@ -304,6 +252,41 @@ void Game::run()
 void Game::handleInput(float dt)
 {
     cameraController.handleInput(camera);
+
+    if (orbitCameraAroundSelectedEntity) {
+        handlePlayerInput(dt);
+    }
+}
+
+void Game::handlePlayerInput(float dt)
+{
+    const auto moveStickState = util::getStickState({
+        .up = SDL_SCANCODE_W,
+        .down = SDL_SCANCODE_S,
+        .left = SDL_SCANCODE_A,
+        .right = SDL_SCANCODE_D,
+    });
+
+    auto player = eu::getPlayerEntity(registry);
+    if (moveStickState != glm::vec2{}) {
+        auto& mc = player.get<MovementComponent>();
+        auto speed = mc.maxSpeed;
+        if (!util::isKeyPressed(SDL_SCANCODE_LSHIFT)) {
+            speed /= 3.5f; // TODO: make walk speed configurable
+        }
+
+        const auto heading = util::calculateStickHeading(camera, moveStickState);
+        mc.velocity = heading * speed;
+
+        // rotate in the direction of movement
+        const auto angle = std::atan2(heading.x, heading.z);
+        const auto targetHeading = glm::angleAxis(angle, math::GlobalUpAxis);
+        auto& tc = player.get<TransformComponent>();
+        tc.transform.setHeading(targetHeading);
+    } else {
+        auto& mc = player.get<MovementComponent>();
+        mc.velocity = glm::vec3{};
+    }
 }
 
 void Game::update(float dt)
@@ -311,25 +294,83 @@ void Game::update(float dt)
     ZoneScopedN("Update");
 
     cameraController.update(camera, dt);
-#if 0 // camera orbit
-    const glm::vec3 catoPos{-54.97f, 0.05f, -0.56f};
-    const auto orbitTarget = catoPos + glm::vec3{0.f, 2.f, 0.f};
-    const auto orbitOffset = 10.f;
-    const auto newPos = orbitTarget - camera.getTransform().getLocalFront() * orbitOffset;
-    camera.setPosition(newPos);
-#endif
+
+    // camera orbit
+    if (orbitCameraAroundSelectedEntity && entityTreeView.hasSelectedEntity()) {
+        const auto e = entityTreeView.getSelectedEntity();
+        const auto& tc = e.get<TransformComponent>();
+        const auto orbitTarget = tc.transform.getPosition() + glm::vec3{0.f, 1.5f, 0.f};
+        const auto newPos = orbitTarget - camera.getTransform().getLocalFront() * orbitDistance;
+        camera.setPosition(newPos);
+    }
+
+    // movement
+    for (auto&& [e, tc, mc] : registry.view<TransformComponent, MovementComponent>().each()) {
+        const auto newPos = tc.transform.getPosition() + mc.velocity * dt;
+        tc.transform.setPosition(newPos);
+    }
 
     updateEntityTransforms();
 
-    // animate entities with skeletons
-    for (const auto& ePtr : entities) {
-        auto& e = *ePtr;
-        if (e.hasSkeleton) {
-            e.skeletonAnimator.update(e.skeleton, dt);
+    // setting animation based on velocity
+    // TODO: do this in state machine instead
+    for (auto&& [e, mc, sc] : registry.view<MovementComponent, SkeletonComponent>().each()) {
+        const auto velMag = glm::length(mc.velocity);
+        if (std::abs(velMag) <= 0.001f) {
+            const auto& animator = sc.skeletonAnimator;
+            if (animator.getCurrentAnimationName() == "Run" ||
+                animator.getCurrentAnimationName() == "Walk") {
+                eu::setAnimation({registry, e}, "Idle");
+            }
+            continue;
+        }
+
+        if (mc.velocity.x != 0.f && mc.velocity.z != 0.f) {
+            if (velMag > 2.f) {
+                eu::setAnimation({registry, e}, "Run");
+            } else if (velMag > 0.1f) {
+                // HACK: sometimes the player can fall slightly when being spawned
+                eu::setAnimation({registry, e}, "Walk");
+            }
         }
     }
 
+    // animate entities with skeletons
+    for (const auto&& [e, sc] : registry.view<SkeletonComponent>().each()) {
+        sc.skeletonAnimator.update(sc.skeleton, dt);
+    }
+
     updateDevTools(dt);
+}
+
+void Game::updateEntityTransforms()
+{
+    ZoneScopedN("Update entity transforms");
+
+    const auto I = glm::mat4{1.f};
+    for (auto&& [e, hc] : registry.view<HierarchyComponent>().each()) {
+        if (!hc.hasParent()) { // start from root nodes
+            updateEntityTransforms(e, I);
+        }
+    }
+}
+
+void Game::updateEntityTransforms(entt::entity e, const glm::mat4& parentWorldTransform)
+{
+    auto [tc, hc] = registry.get<TransformComponent, const HierarchyComponent>(e);
+    if (hc.hasParent()) {
+        tc.worldTransform = tc.transform.asMatrix();
+    } else {
+        const auto prevTransform = tc.worldTransform;
+        tc.worldTransform = parentWorldTransform * tc.transform.asMatrix();
+        if (tc.worldTransform == prevTransform) {
+            return;
+        }
+    }
+
+    for (const auto& child : hc.children) {
+        updateEntityTransforms(child, tc.worldTransform);
+    }
 }
 
 void Game::updateDevTools(float dt)
@@ -341,63 +382,68 @@ void Game::updateDevTools(float dt)
         displayedFPS = avgFPS;
     }
 
-    ImGui::Begin("Debug");
-    ImGui::Text("FPS: %d", (int)displayedFPS);
-    if (ImGui::Checkbox("VSync", &vSync)) {
-        // TODO
-    }
-    ImGui::Checkbox("Frame limit", &frameLimit);
+    if (ImGui::Begin("Debug")) {
+        ImGui::Text("FPS: %d", (int)displayedFPS);
 
-    const auto cameraPos = camera.getPosition();
-    ImGui::Text("Camera pos: %.2f, %.2f, %.2f", cameraPos.x, cameraPos.y, cameraPos.z);
-    const auto yaw = cameraController.getYaw();
-    const auto pitch = cameraController.getPitch();
-    ImGui::Text("Camera rotation: (yaw) %.2f, (pitch) %.2f", yaw, pitch);
-
-    auto glmToArr = [](const glm::vec4& v) { return std::array<float, 4>{v.x, v.y, v.z, v.w}; };
-    auto arrToGLM = [](const std::array<float, 4>& v) { return glm::vec4{v[0], v[1], v[2], v[3]}; };
-
-    auto ambient = glmToArr(ambientColor);
-    if (ImGui::ColorEdit3("Ambient", ambient.data())) {
-        ambientColor = arrToGLM(ambient);
-    }
-    ImGui::DragFloat("Ambient intensity", &ambientIntensity, 1.f, 0.f, 1.f);
-
-    auto fog = glmToArr(fogColor);
-    if (ImGui::ColorEdit3("Fog", fog.data())) {
-        fogColor = arrToGLM(fog);
-    }
-    ImGui::DragFloat("Fog density", &fogDensity, 1.f, 0.f, 1.f);
-
-    /*
-    auto dragVec2 = [](const char* label, glm::vec2& v) {
-        std::array<float, 2> arr{v.x, v.y};
-        if (ImGui::DragFloat2(label, arr.data())) {
-            v.x = arr[0];
-            v.y = arr[1];
+        /* TODO
+        if (ImGui::Checkbox("VSync", &vSync)) {
         }
-    };
-    dragVec2("rectPos", rectPos);
-    dragVec2("rectSize", rectSize);
-    dragVec2("rectPivot", rectPivot);
-    dragVec2("rectScale", rectScale);
-    ImGui::DragFloat("rectRotation", &rectRotation, 0.01f, -2.f, 2.f);
-    ImGui::DragFloat("borderWidth", &borderWidth, 0.1f, 1.f, 16.f);
-    ImGui::Checkbox("insetBorder", &insetBorder);
-    */
+        ImGui::Checkbox("Frame limit", &frameLimit);
+        */
 
-    renderer.updateDevTools(dt);
+        using namespace devtools;
+        BeginPropertyTable();
+        {
+            DisplayProperty("Level", level.getPath().string());
 
+            const auto cameraPos = camera.getPosition();
+            DisplayProperty("Cam pos", cameraPos);
+            DisplayProperty("Cam heading", camera.getHeading());
+        }
+        EndPropertyTable();
+
+        ImGui::Checkbox("Orbit around selected entity", &orbitCameraAroundSelectedEntity);
+        ImGui::DragFloat("Orbit distance", &orbitDistance, 0.01f, 0.f, 100.f);
+
+        auto ambientColor = level.getAmbientLightColor();
+        if (util::ImGuiColorEdit3("Ambient", ambientColor)) {
+            level.setAmbientLightColor(ambientColor);
+        }
+        auto ambientIntensity = level.getAmbientLightIntensity();
+        if (ImGui::DragFloat("Ambient intensity", &ambientIntensity, 1.f, 0.f, 1.f)) {
+            level.setAmbientLightIntensity(ambientIntensity);
+        }
+
+        auto fogColor = level.getFogColor();
+        if (util::ImGuiColorEdit3("Fog", fogColor)) {
+            level.setFogColor(fogColor);
+        }
+        auto fogDensity = level.getFogDensity();
+        if (ImGui::DragFloat("Fog density", &fogDensity, 1.f, 0.f, 1.f)) {
+            level.setFogDensity(fogDensity);
+        }
+
+        renderer.updateDevTools(dt);
+        ui.updateDevTools(dt);
+    }
     ImGui::End();
+
+    if (ImGui::Begin("Entities")) {
+        entityTreeView.update(registry, dt);
+    }
+    ImGui::End();
+
+    if (entityTreeView.hasSelectedEntity()) {
+        if (ImGui::Begin("Selected entity")) {
+            entityInfoDisplayer.displayEntityInfo(entityTreeView.getSelectedEntity(), dt);
+        }
+        ImGui::End();
+    }
 }
 
 void Game::cleanup()
 {
-    for (const auto& ePtr : entities) {
-        auto& e = *ePtr;
-        destroyEntity(e);
-    }
-    entities.clear();
+    registry.clear();
 
     renderer.cleanup();
     gfxDevice.cleanup();
@@ -406,260 +452,297 @@ void Game::cleanup()
     SDL_Quit();
 }
 
-void Game::createEntitiesFromScene(const Scene& scene)
+void Game::setEntityTag(entt::handle e, const std::string& tag)
 {
-    for (const auto& nodePtr : scene.nodes) {
-        if (nodePtr) {
-            createEntitiesFromNode(scene, *nodePtr);
-        }
+    auto& tc = e.get<TagComponent>();
+    if (!tc.tag.empty()) {
+        taggedEntities.erase(tc.tag);
     }
+
+    tc.tag = tag;
+    auto [it, inserted] = taggedEntities.emplace(tc.tag, e.entity());
+    assert(inserted);
 }
 
-Game::EntityId Game::createEntitiesFromNode(
-    const Scene& scene,
-    const SceneNode& node,
-    EntityId parentId)
+entt::handle Game::findEntityByTag(const std::string& tag)
 {
-    auto& e = makeNewEntity();
-    e.tag = node.name;
-
-    // transform
-    {
-        e.transform = node.transform;
-        if (parentId == NULL_ENTITY_ID) {
-            e.worldTransform = e.transform.asMatrix();
-        } else {
-            const auto& parent = entities[parentId];
-            e.worldTransform = parent->worldTransform * node.transform.asMatrix();
-        }
+    auto it = taggedEntities.find(tag);
+    if (it != taggedEntities.end()) {
+        return entt::handle{registry, it->second};
     }
-
-    if (node.hasMesh) { // mesh
-        const auto& primitives = scene.meshes[node.meshIndex].primitives;
-        e.meshes = primitives;
-        e.meshTransforms.resize(primitives.size());
-
-        // skeleton
-        if (node.skinId != -1) {
-            e.hasSkeleton = true;
-            e.skeleton = scene.skeletons[node.skinId];
-            // FIXME: this is bad - we need to have some sort of cache
-            // and not copy animations everywhere
-            e.animations = scene.animations;
-
-            e.skinnedMeshes.reserve(e.meshes.size());
-            for (const auto meshId : e.meshes) {
-                e.skinnedMeshes.push_back(renderer.createSkinnedMesh(meshId));
-            }
-        }
-    }
-
-    if (node.lightId != -1) {
-        e.isLight = true;
-        e.light = scene.lights[node.lightId];
-    }
-
-    { // hierarchy
-        e.parentId = parentId;
-        for (const auto& childPtr : node.children) {
-            if (!childPtr) {
-                continue;
-            }
-
-            const auto& child = *childPtr;
-            if (!child.children.empty()) {
-                const auto childId = createEntitiesFromNode(scene, child, e.id);
-                e.children.push_back(childId);
-            }
-
-            // if children doesn't have children, we can merge its meshes
-            // into the parent entity so that not too many entities are created
-            if (child.hasMesh) {
-                assert(e.skinnedMeshes.empty()); // TODO: what to do about them?
-                for (const auto& meshId : scene.meshes[child.meshIndex].primitives) {
-                    e.meshes.push_back(meshId);
-                    e.meshTransforms.push_back(child.transform);
-                }
-            }
-        }
-    }
-
-    return e.id;
+    return {};
 }
 
-Game::Entity& Game::makeNewEntity()
+entt::const_handle Game::findEntityByTag(const std::string& tag) const
 {
-    entities.push_back(std::make_unique<Entity>());
-    auto& e = *entities.back();
-    e.id = entities.size() - 1;
-    return e;
-}
-
-void Game::destroyEntity(const Entity& e)
-{
-    if (e.hasSkeleton) {
-        for (const auto& skinnedMesh : e.skinnedMeshes) {
-            renderer.getGfxDevice().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
-        }
+    auto it = taggedEntities.find(tag);
+    if (it != taggedEntities.end()) {
+        return entt::const_handle{registry, it->second};
     }
+    return {};
 }
 
-Game::Entity& Game::findEntityByName(std::string_view name) const
+void Game::setCurrentCamera(entt::const_handle cameraEnt)
 {
-    for (const auto& ePtr : entities) {
-        if (ePtr->tag == name) {
-            return *ePtr;
-        }
+    if (cameraEnt.entity() == entt::null) {
+        fmt::println("Passed null into setCurrentCamera");
+        return;
     }
-
-    throw std::runtime_error(std::string{"failed to find entity with name "} + std::string{name});
-}
-
-void Game::updateEntityTransforms()
-{
-    ZoneScopedN("Update entity transforms");
-
-    const auto I = glm::mat4{1.f};
-    for (auto& ePtr : entities) {
-        auto& e = *ePtr;
-        if (e.parentId == NULL_ENTITY_ID) {
-            updateEntityTransforms(e, I);
-        }
-    }
-}
-
-void Game::updateEntityTransforms(Entity& e, const glm::mat4& parentWorldTransform)
-{
-    if (e.parentId == NULL_ENTITY_ID) {
-        e.worldTransform = e.transform.asMatrix();
+    if (auto ncPtr = cameraEnt.try_get<NameComponent>(); ncPtr) {
+        fmt::println("Current camera: {}", ncPtr->name);
     } else {
-        const auto prevTransform = e.worldTransform;
-        e.worldTransform = parentWorldTransform * e.transform.asMatrix();
-        if (e.worldTransform == prevTransform) {
-            return;
-        }
+        fmt::println("Current camera: {}", cameraEnt.get<MetaInfoComponent>().sceneNodeName);
     }
+    auto& tc = cameraEnt.get<TransformComponent>();
+    camera.setPosition(tc.transform.getPosition());
+    camera.setHeading(tc.transform.getHeading());
+}
 
-    for (const auto& childId : e.children) {
-        auto& child = *entities[childId];
-        updateEntityTransforms(child, e.worldTransform);
+entt::const_handle Game::findDefaultCamera()
+{
+    auto cameraEnt = eu::findCameraByName(registry, "Default");
+    if (cameraEnt.entity() != entt::null) {
+        return cameraEnt;
     }
+    return eu::findEntityBySceneNodeName(registry, "Camera");
 }
 
 namespace
 {
-bool shouldCastShadow(const Game::Entity& e)
+bool shouldCastShadow(const entt::registry& registry, entt::entity e)
 {
-    return !e.tag.starts_with("GroundTile");
+    const auto& tag = registry.get<TagComponent>(e).getTag();
+    return !tag.starts_with("GroundTile");
 }
 }
 
 void Game::generateDrawList()
 {
-    ZoneScopedN("Generate draw list");
-
     renderer.beginDrawing();
 
     // add lights
-    for (const auto& ePtr : entities) {
-        const auto& e = *ePtr;
-        if (e.isLight) {
-            renderer.addLight(e.light, e.transform);
+    const auto lights = registry.view<TransformComponent, LightComponent>();
+    for (const auto&& [e, tc, lc] : lights.each()) {
+        renderer.addLight(lc.light, tc.transform);
+    }
+
+    // render static meshes
+    const auto staticMeshes = registry.view<TransformComponent, MeshComponent>(
+        entt::exclude<SkeletonComponent, TriggerComponent>);
+    for (const auto&& [e, tc, mc] : staticMeshes.each()) {
+        bool castShadow = shouldCastShadow(registry, e);
+        for (std::size_t i = 0; i < mc.meshes.size(); ++i) {
+            const auto meshTransform = mc.meshTransforms[i].isIdentity() ?
+                                           tc.worldTransform :
+                                           tc.worldTransform * mc.meshTransforms[i].asMatrix();
+            renderer.drawMesh(mc.meshes[i], meshTransform, castShadow);
         }
     }
 
-    for (const auto& ePtr : entities) {
-        const auto& e = *ePtr;
-        if (e.hasSkeleton) {
-            // This interface is not perfect:
-            // 1. Not all meshes for the entity might be skinned
-            // 2. Different meshes can have different joint matrices sets
-            // But right now it's better to group meshes to not waste memory
-            // It's also assumed that all skinned meshes have meshTransform[i] == I
+    // render meshes with skeletal animation
+    const auto skinnedMeshes =
+        registry.view<TransformComponent, MeshComponent, SkeletonComponent>();
+    for (const auto&& [e, tc, mc, sc] : skinnedMeshes.each()) {
+        // 1. Not all meshes for the entity might be skinned
+        // 2. Different meshes can have different joint matrices sets
+        // But right now it's better to group meshes to not waste memory
+        // It's also assumed that all skinned meshes have meshTransform[i] == I
 #ifndef NDEBUG
-            for (const auto& t : e.meshTransforms) {
-                assert(t.isIdentity());
-            }
-#endif
-            renderer.drawSkinnedMesh(
-                e.meshes, e.skinnedMeshes, e.worldTransform, e.skeletonAnimator.getJointMatrices());
-        } else {
-            bool castShadow = shouldCastShadow(e);
-            for (std::size_t i = 0; i < e.meshes.size(); ++i) {
-                const auto meshTransform = e.meshTransforms[i].isIdentity() ?
-                                               e.worldTransform :
-                                               e.worldTransform * e.meshTransforms[i].asMatrix();
-                renderer.drawMesh(e.meshes[i], meshTransform, castShadow);
-            }
+        for (const auto& t : mc.meshTransforms) {
+            assert(t.isIdentity());
         }
+#endif
+
+        renderer.drawSkinnedMesh(
+            mc.meshes, sc.skinnedMeshes, tc.worldTransform, sc.skeletonAnimator.getJointMatrices());
     }
 
     auto& uiRenderer = renderer.getSpriteRenderer();
-#if 1
-    { // draw test UI
-        uiRenderer.drawSprite(talkTipSprite, {128.f, 160.f});
+    ui.draw(uiRenderer);
 
-        /*
-        uiRenderer.drawSprite(testSprite, {128.f, 250.f}, glm::pi<float>() / 4.f);
-        uiRenderer.drawFilledRect(
-            {128.f, 250.f, 64.f, 64.f},
-            glm::vec4{1.f, 1.f, 0.f, 0.5f},
-            glm::pi<float>() / 4.f,
-            glm::vec2{1.f},
-            glm::vec2{0.5f, 0.5f});
-        uiRenderer.drawFilledRect(
-            math::FloatRect{0.f, 0.f, 128.f, 250.f}, glm::vec4{0.f, 0.f, 1.f, 0.5f}); */
+    renderer.endDrawing();
+}
 
-        // uiRenderer.drawSprite(kaeruSprite, kaeruTransform.asMatrix());
+void Game::loadLevel(const std::filesystem::path& path)
+{
+    level.load(path);
 
-        uiRenderer.drawText(defaultFont, strings[0], glm::vec2{64.f, 64.f});
-        uiRenderer.drawText(
-            defaultFont, strings[1], glm::vec2{64.f, 90.f}, glm::vec4{1.f, 1.f, 0.f, 1.f});
+    // load skybox
+    if (level.hasSkybox()) {
+        const auto skyboxImageId =
+            renderer.getBaseRenderer().loadCubemap(skyboxDir / level.getSkyboxName());
+        renderer.setSkyboxImage(skyboxImageId);
+    } else {
+        // no skybox
+        renderer.setSkyboxImage(NULL_IMAGE_ID);
+    }
 
-        uiRenderer.drawText(
-            defaultFont, strings[2], glm::vec2{64.f, 120.f}, glm::vec4{1.f, 0.f, 1.f, 1.f});
+    loadScene(level.getSceneModelPath(), true);
+}
 
-        /* for (int i = 0; i < 8; ++i) {
-            const auto rotation = i * glm::pi<float>() / 4.f;
-            uiRenderer.drawSprite(interactipTipSprite, glm::vec2{64.f, 100.f}, rotation);
+void Game::loadScene(const std::filesystem::path& path, bool createEntities)
+{
+    const auto& scene = sceneCache.loadScene(renderer.getBaseRenderer(), path);
+    if (createEntities) {
+        const auto loadCtx = util::SceneLoadContext{
+            .renderer = renderer,
+            .entityFactory = entityFactory,
+            .registry = registry,
+            .sceneCache = sceneCache,
+            .defaultPrefabName = "static_geometry",
+        };
+        util::createEntitiesFromScene(loadCtx, scene);
+    }
+}
+
+void Game::onTagComponentDestroy(entt::registry& registry, entt::entity entity)
+{
+    auto& tc = registry.get<TagComponent>(entity);
+    taggedEntities.erase(tc.tag);
+}
+
+void Game::onSkeletonComponentDestroy(entt::registry& registry, entt::entity entity)
+{
+    auto& sc = registry.get<SkeletonComponent>(entity);
+    for (const auto& skinnedMesh : sc.skinnedMeshes) {
+        renderer.getGfxDevice().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+    }
+}
+
+void Game::initEntityFactory()
+{
+    entityFactory.setCreateDefaultEntityFunc([](entt::registry& registry) {
+        auto e = registry.create();
+        registry.emplace<TransformComponent>(e);
+        registry.emplace<HierarchyComponent>(e);
+        registry.emplace<TagComponent>(e);
+        return entt::handle(registry, e);
+    });
+
+    entityFactory.setPostInitEntityFunc([this](entt::handle e) { postInitEntity(e); });
+
+    const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
+    loadPrefabs(prefabsDir);
+
+    entityFactory.addMappedPrefabName("collision", "trigger"); // temp
+    entityFactory.addMappedPrefabName("interact", "trigger");
+}
+
+void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
+{
+    // Automatically load all prefabs from the directory
+    // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
+    util::foreachFileInDir(prefabsDir, [this, &prefabsDir](const std::filesystem::path& p) {
+        auto relPath = p.lexically_relative(prefabsDir);
+        const auto prefabName = relPath.replace_extension("").string();
+        entityFactory.registerPrefab(prefabName, p);
+    });
+}
+
+void Game::registerComponents(ComponentFactory& componentFactory)
+{
+    registry.on_destroy<TagComponent>().connect<&Game::onTagComponentDestroy>(this);
+    registry.on_destroy<SkeletonComponent>().connect<&Game::onSkeletonComponentDestroy>(this);
+
+    componentFactory.registerComponent<TriggerComponent>("trigger");
+    componentFactory.registerComponent<CameraComponent>("camera");
+    componentFactory.registerComponent<PlayerSpawnComponent>("player_spawn");
+
+    componentFactory.registerComponentLoader(
+        "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {
+            loader.get("mesh", mc.meshPath);
+        });
+
+    componentFactory.registerComponentLoader(
+        "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
+            loader.get("maxSpeed", mc.maxSpeed);
+        });
+}
+
+namespace
+{
+std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
+{
+    if (sceneNodeName.empty()) {
+        return {};
+    }
+    const auto dotPos = sceneNodeName.find_first_of(".");
+    if (dotPos == std::string::npos || dotPos == sceneNodeName.length() - 1) {
+        fmt::println(
+            "ERROR: cannot extract name {}: should have format <prefab>.<name>", sceneNodeName);
+    }
+    return sceneNodeName.substr(dotPos + 1, sceneNodeName.size());
+}
+}
+
+void Game::postInitEntity(entt::handle e)
+{
+    if (auto mcPtr = e.try_get<MeshComponent>(); mcPtr) {
+        auto& mc = *mcPtr;
+
+        const auto& scene = sceneCache.loadScene(renderer.getBaseRenderer(), mc.meshPath);
+        assert(!scene.nodes.empty());
+        const auto& node = *scene.nodes[0];
+
+        mc.meshes.push_back(node.meshIndex);
+        mc.meshTransforms.push_back(glm::mat4{1.f});
+
+        const auto& primitives = scene.meshes[node.meshIndex].primitives;
+        mc.meshes = primitives;
+        mc.meshTransforms.resize(primitives.size());
+
+        // handle non-identity transform of the model
+        auto& tc = e.get<TransformComponent>();
+        tc.transform = node.transform;
+
+        // merge child meshes into the parent
+        // FIXME: this is the same logic as in createEntityFromNode
+        // and probably needs to work recursively for all children
+        for (const auto& childPtr : node.children) {
+            if (!childPtr) {
+                continue;
+            }
+            const auto& childNode = *childPtr;
+            auto& mc = e.get_or_emplace<MeshComponent>();
+            for (const auto& meshId : scene.meshes[childNode.meshIndex].primitives) {
+                mc.meshes.push_back(meshId);
+                mc.meshTransforms.push_back(childNode.transform);
+            }
         }
 
-        uiRenderer.drawFilledRect(
-            {rectPos, rectSize},
-            glm::vec4{1.f, 1.f, 0.f, 0.5f},
-            rectRotation,
-            rectScale,
-            rectPivot);
-        uiRenderer.drawRect(
-            {rectPos, rectSize},
-            glm::vec4{1.f, 0.f, 1.f, 0.5f},
-            borderWidth,
-            rectRotation,
-            rectScale,
-            rectPivot,
-            insetBorder); */
-    }
-#endif
+        if (node.skinId != -1) { // add skeleton component if skin exists
+            auto& sc = e.get_or_emplace<SkeletonComponent>();
+            sc.skeleton = scene.skeletons[node.skinId];
+            // FIXME: this is bad - we need to have some sort of cache
+            // and not copy animations everywhere
+            sc.animations = scene.animations;
 
-// sprite stress test
-#if 0
-    {
-        ZoneScopedN("Sprites");
-        std::array<Sprite, 3> sprites{interactipTipSprite, talkTipSprite, kaeruSprite};
+            sc.skinnedMeshes.reserve(mc.meshes.size());
+            for (const auto meshId : mc.meshes) {
+                sc.skinnedMeshes.push_back(renderer.createSkinnedMesh(meshId));
+            }
 
-        std::default_random_engine e1(1337);
-        std::uniform_int_distribution<int> uniform_dist(0, 1280);
-        std::uniform_real_distribution<float> angleDist(0.f, glm::pi<float>() / 2.f);
-        for (int x = 0; x < 100; ++x) {
-            for (int y = 0; y < 100; ++y) {
-                const auto& sprite = sprites[(x * y) % 3];
-                const auto pos = glm::vec2{uniform_dist(e1), uniform_dist(e1)};
-                const auto rot = angleDist(e1);
-                uiRenderer.drawSprite(sprite, pos, rot);
+            if (sc.animations.contains("Idle")) {
+                sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations.at("Idle"));
             }
         }
     }
-#endif
 
-    renderer.endDrawing();
+    // extract player spawn name from scene node name
+    if (e.all_of<PlayerSpawnComponent>()) {
+        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        if (sceneNodeName.empty()) { // created manually
+            return;
+        }
+        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
+
+    // extract camera name from scene node name
+    if (e.all_of<CameraComponent>()) {
+        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        if (sceneNodeName.empty()) { // created manually
+            return;
+        }
+        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
 }

@@ -60,11 +60,6 @@ else()
   )
 endif()
 
-find_package(Vulkan REQUIRED)
-target_link_libraries(imgui PUBLIC
-  Vulkan::Vulkan
-)
-
 add_library(imgui::imgui ALIAS imgui)
 
 ## tinygltf
@@ -99,3 +94,18 @@ add_library(freetype::freetype ALIAS freetype)
 ## utfcpp
 add_subdirectory(utfcpp)
 add_library(utf8cpp::utf8cpp ALIAS utf8cpp)
+
+## entt
+add_subdirectory(entt)
+
+## json
+option(JSON_MultipleHeaders "Use non-amalgamated version of the library." ON)
+option(JSON_Install         "Install CMake targets during install step." OFF)
+add_subdirectory(json)
+
+## fmt
+add_subdirectory(fmt)
+set_target_properties(fmt PROPERTIES
+  PUBLIC_HEADER ""
+)
+

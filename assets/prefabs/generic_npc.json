@@ -1,0 +1,8 @@
+{
+  "mesh": {
+    "mesh": "assets/models/human_base.gltf"
+  },
+  "movement": {
+    "maxSpeed": [4, 4, 4]
+  }
+}

@@ -142,7 +142,8 @@ math::Sphere calculateBoundingSphereWorld(
     const auto scale = getTransformScale(transform);
     float maxScale = std::max({scale.x, scale.y, scale.z});
     if (hasSkeleton) {
-        maxScale = 1.f; // ignore scale for skeleton meshes (TODO: fix)
+        maxScale = 5.f; // ignore scale for skeleton meshes (TODO: fix)
+                        // setting scale to 1.f causes prolems with frustum culling
     }
     auto sphereWorld = s;
     sphereWorld.radius *= maxScale;
