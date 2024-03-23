@@ -8,7 +8,7 @@ This is a monorepo and contains both the engine (in `edbr` directory) and variou
 
 ![latest](screenshots/08.png)
 
-![shadows](screenshots/06.png)
+![another](screenshots/09.png)
 
 ## Features:
 
