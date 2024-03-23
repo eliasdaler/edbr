@@ -2,41 +2,41 @@
 	path = third_party/glfw
 	url = https://github.com/glfw/glfw
 [submodule "third_party/vk-bootstrap"]
-	path = third_party/vk-bootstrap
+	path = edbr/third_party/vk-bootstrap
 	url = https://github.com/charles-lunarg/vk-bootstrap
 [submodule "third_party/vma"]
-	path = third_party/vma
+	path = edbr/third_party/vma
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
 [submodule "third_party/imgui"]
-	path = third_party/imgui
+	path = edbr/third_party/imgui
 	url = https://github.com/ocornut/imgui
 [submodule "third_party/glm"]
-	path = third_party/glm
+	path = edbr/third_party/glm
 	url = https://github.com/g-truc/glm
 [submodule "third_party/tinygltf"]
-	path = third_party/tinygltf
+	path = edbr/third_party/tinygltf
 	url = https://github.com/syoyo/tinygltf
 [submodule "third_party/SDL"]
-	path = third_party/SDL
+	path = edbr/third_party/SDL
 	url = https://github.com/libsdl-org/SDL
 [submodule "third_party/tracy"]
-	path = third_party/tracy
+	path = edbr/third_party/tracy
 	url = https://github.com/wolfpld/tracy
 [submodule "third_party/volk"]
-	path = third_party/volk
+	path = edbr/third_party/volk
 	url = https://github.com/zeux/volk
 [submodule "third_party/freetype"]
-	path = third_party/freetype
+	path = edbr/third_party/freetype
 	url = https://github.com/freetype/freetype
 [submodule "third_party/utfcpp"]
-	path = third_party/utfcpp
+	path = edbr/third_party/utfcpp
 	url = https://github.com/nemtrif/utfcpp
 [submodule "third_party/entt"]
-	path = third_party/entt
+	path = edbr/third_party/entt
 	url = https://github.com/skypjack/entt
 [submodule "third_party/json"]
-	path = third_party/json
+	path = edbr/third_party/json
 	url = https://github.com/nlohmann/json
 [submodule "third_party/fmt"]
-	path = third_party/fmt
+	path = edbr/third_party/fmt
 	url = https://github.com/fmtlib/fmt

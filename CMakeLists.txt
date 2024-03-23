@@ -24,5 +24,5 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
   fetch_submodules()
 endif()
 
-add_subdirectory(third_party)
-add_subdirectory(src)
+add_subdirectory(edbr)
+add_subdirectory(games)
