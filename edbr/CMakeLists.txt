@@ -87,7 +87,6 @@ target_link_libraries(edbr
   PUBLIC
     volk::volk_headers
     vk-bootstrap::vk-bootstrap
-    # vkb::vkb
     GPUOpen::VulkanMemoryAllocator
 
     fmt::fmt

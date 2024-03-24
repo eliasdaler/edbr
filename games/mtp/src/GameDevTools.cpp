@@ -74,5 +74,5 @@ void Game::updateDevTools(float dt)
         ImGui::End();
     }
 
-    // ImGui::ShowDemoWindow();
+    ImGui::ShowDemoWindow();
 }
