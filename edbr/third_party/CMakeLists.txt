@@ -12,15 +12,25 @@ option(SDL_TEST "Build the SDL2_test library" OFF)
 option(SDL_AUDIO_ENABLED_BY_DEFAULT "Enable the Audio subsystem" OFF)
 add_subdirectory(SDL)
 
-# vkb
+# vk-bootstrap - we use custom target for easier build process
 add_subdirectory(vk-bootstrap)
 add_library(vkb
   "${CMAKE_CURRENT_SOURCE_DIR}/vk-bootstrap/src/VkBootstrap.cpp"
 )
+set_target_properties(vkb PROPERTIES
+    CXX_STANDARD 20
+    CXX_EXTENSIONS OFF
+)
+find_package(Vulkan)
 target_include_directories(vkb PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/vk-bootstrap/src/"
+  "${Vulkan_INCLUDE_DIRS}"
 )
 add_library(vkb::vkb ALIAS vkb)
+if (MSVC)
+  target_compile_definitions(vkb PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+  target_compile_definitions(vk-bootstrap PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+endif()
 
 # vma
 add_subdirectory(vma)
@@ -76,6 +86,9 @@ add_library(tinygltf::tinygltf ALIAS tinygltf)
 option(TRACY_ENABLE "" OFF)
 option(TRACY_ON_DEMAND "" ON)
 add_subdirectory(tracy)
+if (MSVC)
+  target_compile_definitions(TracyClient PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+endif()
 
 ## freetype
 option(FT_DISABLE_ZLIB
@@ -111,4 +124,6 @@ add_subdirectory(fmt)
 set_target_properties(fmt PROPERTIES
   PUBLIC_HEADER ""
 )
-
+if (MSVC)
+  target_compile_definitions(fmt PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+endif()

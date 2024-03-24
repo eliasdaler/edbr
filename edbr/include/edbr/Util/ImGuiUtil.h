@@ -8,7 +8,7 @@
 #include <edbr/Graphics/IdTypes.h>
 
 struct GPUImage;
-struct GfxDevice;
+class GfxDevice;
 
 namespace util
 {

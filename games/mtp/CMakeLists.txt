@@ -27,7 +27,7 @@ target_link_libraries(mtpgame PRIVATE
 )
 
 # copy assets
-add_custom_target(copy_assets ALL
+add_custom_command(TARGET mtpgame POST_BUILD
   COMMENT "Copying mtp assets to $<TARGET_FILE_DIR:mtpgame>/assets"
   COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:mtpgame>/assets"
 )

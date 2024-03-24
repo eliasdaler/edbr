@@ -36,13 +36,15 @@ function(target_add_extra_warnings target)
   endif()
 
   if(MSVC)
-    target_compile_options(${target}
-      PRIVATE /W3
+    target_compile_options(${target} PRIVATE
+        /W3
 	    # /permissive- - disabled until MS fixes it!
         /wd4127 # Conditional expression is constant
         /wd4324 # Structure was padded due to alignment specifier
         /wd4505 # Unreferenced local function has been removed
       )
+
+      target_compile_definitions(${target} PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
   endif()
 endfunction()
 

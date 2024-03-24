@@ -86,7 +86,8 @@ target_include_directories(edbr PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include")
 target_link_libraries(edbr
   PUBLIC
     volk::volk_headers
-    vkb::vkb
+    vk-bootstrap::vk-bootstrap
+    # vkb::vkb
     GPUOpen::VulkanMemoryAllocator
 
     fmt::fmt
