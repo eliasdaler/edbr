@@ -13,6 +13,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+
 #include <edbr/Graphics/Vulkan/GPUBuffer.h>
 #include <edbr/Graphics/Vulkan/GPUImage.h>
 #include <edbr/Graphics/Vulkan/Init.h>
@@ -39,27 +42,10 @@ void GfxDevice::init(SDL_Window* window, const char* appName, bool vSync)
 
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
-    swapchain.create(device, (std::uint32_t)w, (std::uint32_t)h, vSync);
+    swapchainFormat = VK_FORMAT_B8G8R8A8_SRGB;
+    swapchain.create(device, swapchainFormat, (std::uint32_t)w, (std::uint32_t)h, vSync);
 
     createCommandBuffers();
-
-    { // Dear ImGui
-        vkutil::initSwapchainViews(imguiData, device, swapchain.getImages());
-        vkutil::initImGui(
-            imguiData,
-            instance,
-            physicalDevice,
-            device,
-            graphicsQueueFamily,
-            graphicsQueue,
-            window);
-    }
-
-    for (std::size_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
-        frames[i].tracyVkCtx =
-            TracyVkContext(physicalDevice, device, graphicsQueue, frames[i].mainCommandBuffer);
-    }
-
     imageCache.bindlessSetManager.init(device);
 
     { // create white texture
@@ -72,6 +58,16 @@ void GfxDevice::init(SDL_Window* window, const char* appName, bool vSync)
             },
             "white texture",
             &pixel);
+    }
+
+    // Dear ImGui
+    ImGui::CreateContext();
+    imGuiBackend.init(*this, swapchainFormat);
+    ImGui_ImplSDL2_InitForVulkan(window);
+
+    for (std::size_t i = 0; i < graphics::FRAME_OVERLAP; ++i) {
+        frames[i].tracyVkCtx =
+            TracyVkContext(physicalDevice, device, graphicsQueue, frames[i].mainCommandBuffer);
     }
 }
 
@@ -117,7 +113,6 @@ void GfxDevice::initVulkan(SDL_Window* window, const char* appName)
 
     physicalDevice = vkb::PhysicalDeviceSelector{instance}
                          .set_minimum_version(1, 3)
-                         .add_required_extension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
                          .set_required_features(deviceFeatures)
                          .set_required_features_12(features12)
                          .set_required_features_13(features13)
@@ -241,7 +236,8 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage)
         { // draw Dear ImGui
             TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
             vkutil::cmdBeginLabel(cmd, "Draw Dear ImGui");
-            vkutil::drawImGui(imguiData, cmd, swapchain.getExtent(), swapchainImageIndex);
+            imGuiBackend.draw(
+                cmd, *this, swapchain.getImageView(swapchainImageIndex), swapchain.getExtent());
             vkutil::cmdEndLabel(cmd);
         }
 
@@ -280,7 +276,11 @@ void GfxDevice::cleanup()
         TracyVkDestroy(frame.tracyVkCtx);
     }
 
-    vkutil::cleanupImGui(imguiData, device);
+    // cleanup Dear ImGui
+    imGuiBackend.cleanup(*this);
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
     swapchain.cleanup(device);
 
     executor.cleanup(device);

@@ -174,6 +174,16 @@ PipelineBuilder& PipelineBuilder::setCullMode(VkCullModeFlags cullMode, VkFrontF
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::enableCulling()
+{
+    return setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+}
+
+PipelineBuilder& PipelineBuilder::disableCulling()
+{
+    return setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+}
+
 PipelineBuilder& PipelineBuilder::setMultisamplingNone()
 {
     multisampling.sampleShadingEnable = VK_FALSE;
@@ -208,7 +218,9 @@ PipelineBuilder& PipelineBuilder::disableBlending()
 PipelineBuilder& PipelineBuilder::enableBlending(
     VkBlendOp blendOp,
     VkBlendFactor srcBlendFactor,
-    VkBlendFactor dstBlendFactor)
+    VkBlendFactor dstBlendFactor,
+    VkBlendFactor srcAlphaBlendFactor,
+    VkBlendFactor dstAlphaBlendFactor)
 {
     colorBlendAttachment.blendEnable = VK_TRUE;
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -216,8 +228,8 @@ PipelineBuilder& PipelineBuilder::enableBlending(
     colorBlendAttachment.srcColorBlendFactor = srcBlendFactor;
     colorBlendAttachment.dstColorBlendFactor = dstBlendFactor;
     colorBlendAttachment.colorBlendOp = blendOp;
-    colorBlendAttachment.srcAlphaBlendFactor = srcBlendFactor;
-    colorBlendAttachment.dstAlphaBlendFactor = dstBlendFactor;
+    colorBlendAttachment.srcAlphaBlendFactor = srcAlphaBlendFactor;
+    colorBlendAttachment.dstAlphaBlendFactor = dstAlphaBlendFactor;
     colorBlendAttachment.alphaBlendOp = blendOp;
 
     return *this;

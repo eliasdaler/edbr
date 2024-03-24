@@ -24,9 +24,11 @@ public:
         VkCommandBuffer cmd,
         std::size_t frameIndex,
         void* newData,
-        std::size_t dataSize);
+        std::size_t dataSize,
+        std::size_t offset = 0,
+        bool sync = true) const;
 
-    const GPUBuffer& getBuffer() { return gpuBuffer; }
+    const GPUBuffer& getBuffer() const { return gpuBuffer; }
 
 private:
     std::size_t framesInFlight{0};

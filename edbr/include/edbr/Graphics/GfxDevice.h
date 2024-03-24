@@ -15,7 +15,7 @@
 
 #include <edbr/Graphics/Common.h>
 #include <edbr/Graphics/Vulkan/Swapchain.h>
-#include <edbr/Graphics/Vulkan/VulkanImGui.h>
+#include <edbr/Graphics/Vulkan/VulkanImGuiBackend.h>
 #include <edbr/Graphics/Vulkan/VulkanImmediateExecutor.h>
 
 #include <edbr/Graphics/ImageCache.h>
@@ -27,6 +27,8 @@ struct CreateImageInfo;
 
 struct GPUBuffer;
 struct GPUImage;
+
+struct SDL_Window;
 
 class GfxDevice {
 public:
@@ -126,6 +128,7 @@ private: // data
     VkQueue graphicsQueue;
 
     VkSurfaceKHR surface;
+    VkFormat swapchainFormat;
     Swapchain swapchain;
 
     std::array<FrameData, graphics::FRAME_OVERLAP> frames{};
@@ -133,7 +136,7 @@ private: // data
 
     VulkanImmediateExecutor executor;
 
-    VulkanImGuiData imguiData;
+    VulkanImGuiBackend imGuiBackend;
     bool imguiDrawn{true};
 
     VkSampleCountFlagBits supportedSampleCounts;

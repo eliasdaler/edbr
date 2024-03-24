@@ -44,6 +44,8 @@ set(SHADERS
   depth_resolve.frag
   sprite.vert
   sprite.frag
+  imgui.vert
+  imgui.frag
 )
 
 get_target_property(EDBR_SOURCE_DIR edbr SOURCE_DIR)

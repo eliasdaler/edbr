@@ -28,7 +28,7 @@ add_library(edbr
   src/Graphics/Vulkan/Util.cpp
   src/Graphics/Vulkan/VmaImpl.cpp
   src/Graphics/Vulkan/VolkImpl.cpp
-  src/Graphics/Vulkan/VulkanImGui.cpp
+  src/Graphics/Vulkan/VulkanImGuiBackend.cpp
   src/Graphics/Vulkan/VulkanImmediateExecutor.cpp
 
   # Graphics

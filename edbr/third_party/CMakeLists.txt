@@ -37,7 +37,6 @@ set(IMGUI_SOURCES
   # C++ additions
   "misc/cpp/imgui_stdlib.cpp"
   # backend
-  "backends/imgui_impl_vulkan.cpp"
   "backends/imgui_impl_sdl2.cpp"
 )
 
@@ -45,10 +44,6 @@ list(TRANSFORM IMGUI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/imgui/")
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
 set_property(TARGET imgui PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_compile_definitions(imgui
-  PRIVATE
-    IMGUI_IMPL_VULKAN_NO_PROTOTYPES
-)
 
 target_include_directories(imgui
   PUBLIC

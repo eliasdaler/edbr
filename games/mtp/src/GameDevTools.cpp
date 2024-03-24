@@ -16,6 +16,15 @@ void Game::updateDevTools(float dt)
     if (ImGui::Begin("Debug")) {
         ImGui::Text("FPS: %d", (int)displayedFPS);
 
+        static const auto interactTipImageId =
+            gfxDevice.loadImageFromFile("assets/images/ui/interact_tip.png");
+        static const auto talkTipImageId =
+            gfxDevice.loadImageFromFile("assets/images/ui/talk_tip.png");
+
+        util::ImGuiImage(gfxDevice, interactTipImageId);
+        ImGui::SameLine();
+        util::ImGuiImage(gfxDevice, talkTipImageId);
+
         using namespace devtools;
         BeginPropertyTable();
         {
@@ -64,4 +73,6 @@ void Game::updateDevTools(float dt)
         }
         ImGui::End();
     }
+
+    // ImGui::ShowDemoWindow();
 }

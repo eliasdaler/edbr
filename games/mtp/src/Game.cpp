@@ -271,7 +271,6 @@ void Game::customDraw()
         renderer.draw(cmd, camera, sceneData);
 
         { // UI
-            ZoneScopedN("UI");
             TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "UI", tracy::Color::Purple);
             vkutil::cmdBeginLabel(cmd, "UI");
             spriteRenderer.draw(cmd, renderer.getDrawImage());

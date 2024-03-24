@@ -22,7 +22,7 @@ void SpriteDrawingPipeline::init(
     const auto bufferRange = VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(SpriteDrawPushConstants),
+        .size = sizeof(PushConstants),
     };
 
     const auto layouts = std::array{gfxDevice.getBindlessDescSetLayout()};
@@ -34,7 +34,7 @@ void SpriteDrawingPipeline::init(
                    .setShaders(vertexShader, fragShader)
                    .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                    .setPolygonMode(VK_POLYGON_MODE_FILL)
-                   .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                   .disableCulling()
                    .setMultisamplingNone()
                    .enableBlending()
                    .setColorAttachmentFormat(drawImageFormat)
@@ -71,6 +71,7 @@ void SpriteDrawingPipeline::draw(
     const glm::mat4& viewProj,
     const std::vector<SpriteDrawCommand>& spriteDrawCommands)
 {
+    TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Sprite drawing", tracy::Color::Purple);
     if (spriteDrawCommands.empty()) {
         return;
     }
@@ -120,7 +121,7 @@ void SpriteDrawingPipeline::draw(
             continue;
         }
 
-        const auto pushConstants = SpriteDrawPushConstants{
+        const auto pushConstants = PushConstants{
             .viewProj = viewProj,
             .commandsBuffer = commandBuffer.address,
             .shaderID = currShaderId,
@@ -130,7 +131,7 @@ void SpriteDrawingPipeline::draw(
             pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            sizeof(SpriteDrawPushConstants),
+            sizeof(PushConstants),
             &pushConstants);
 
         const auto numDraws = last ? i - startIndex + 1 : i - startIndex;

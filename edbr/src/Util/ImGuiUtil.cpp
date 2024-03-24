@@ -1,5 +1,8 @@
 #include <edbr/Util/ImGuiUtil.h>
 
+#include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/Vulkan/GPUImage.h>
+
 #include <array>
 
 namespace util
@@ -25,6 +28,26 @@ bool ImGuiColorEdit3(const char* name, glm::vec4& c)
         return true;
     }
     return false;
+}
+
+void ImGuiImage(const GfxDevice& gfxDevice, const ImageId imageId, float scale)
+{
+    return ImGuiImage(gfxDevice.getImage(imageId), scale);
+}
+
+void ImGuiImage(const GPUImage& image, float scale)
+{
+    return ImGuiImage(
+        (ImageId)image.getBindlessId(),
+        glm::vec2{image.getExtent2D().width, image.getExtent2D().height},
+        scale);
+}
+
+void ImGuiImage(const ImageId imageId, const glm::vec2& size, float scale)
+{
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>((std::uint64_t)imageId),
+        ImVec2{size.x * scale, size.y * scale});
 }
 
 }

@@ -13,7 +13,12 @@
 class Swapchain {
 public:
     void initSyncStructures(VkDevice device);
-    void create(const vkb::Device& device, std::uint32_t width, std::uint32_t height, bool vSync);
+    void create(
+        const vkb::Device& device,
+        VkFormat format,
+        std::uint32_t width,
+        std::uint32_t height,
+        bool vSync);
     void cleanup(VkDevice device);
 
     VkExtent2D getExtent() const { return extent; }
@@ -30,6 +35,11 @@ public:
         VkQueue graphicsQueue,
         std::size_t frameIndex,
         std::uint32_t swapchainImageIndex) const;
+
+    VkImageView getImageView(std::size_t swapchainImageIndex)
+    {
+        return imageViews[swapchainImageIndex];
+    }
 
 private:
     struct FrameData {

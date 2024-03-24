@@ -30,27 +30,18 @@ void Swapchain::initSyncStructures(VkDevice device)
 
 void Swapchain::create(
     const vkb::Device& device,
+    VkFormat swapchainFormat,
     std::uint32_t width,
     std::uint32_t height,
     bool vSync)
 {
+    assert(swapchainFormat == VK_FORMAT_B8G8R8A8_SRGB && "TODO: test other formats");
     // vSync = false;
-    const std::array<VkFormat, 2> formats{{
-        VK_FORMAT_B8G8R8A8_SRGB,
-        VK_FORMAT_B8G8R8A8_UNORM,
-    }};
-    auto formatList = VkImageFormatListCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
-        .viewFormatCount = 2,
-        .pViewFormats = formats.data(),
-    };
     swapchain = vkb::SwapchainBuilder{device}
-                    .add_pNext(&formatList)
                     .set_desired_format(VkSurfaceFormatKHR{
-                        .format = VK_FORMAT_B8G8R8A8_SRGB,
+                        .format = swapchainFormat,
                         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
                     })
-                    .set_create_flags(VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)
                     .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                     .set_desired_present_mode(
                         vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)

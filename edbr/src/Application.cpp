@@ -102,7 +102,7 @@ void Application::run()
                 }
             }
 
-            ImGui_ImplVulkan_NewFrame();
+            // ImGui_ImplVulkan_NewFrame();
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 

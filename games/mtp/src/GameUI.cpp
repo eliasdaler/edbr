@@ -119,7 +119,6 @@ void GameUI::draw(SpriteRenderer& uiRenderer)
 
 #if 0
     {
-        ZoneScopedN("Sprites");
         std::array<Sprite, 3> sprites{interactipTipSprite, talkTipSprite, kaeruSprite};
 
         std::default_random_engine e1(1337);
