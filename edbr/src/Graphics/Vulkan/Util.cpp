@@ -51,6 +51,19 @@ void copyImageToImage(
     VkExtent2D srcSize,
     VkExtent2D dstSize)
 {
+    copyImageToImage(cmd, source, destination, srcSize, 0, 0, dstSize.width, dstSize.height);
+}
+
+void copyImageToImage(
+    VkCommandBuffer cmd,
+    VkImage source,
+    VkImage destination,
+    VkExtent2D srcSize,
+    int destX,
+    int destY,
+    int destW,
+    int destH)
+{
     const auto blitRegion = VkImageBlit2{
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
         .srcSubresource =
@@ -74,8 +87,8 @@ void copyImageToImage(
             },
         .dstOffsets =
             {
-                {},
-                {(std::int32_t)dstSize.width, (std::int32_t)dstSize.height, 1},
+                {(std::int32_t)destX, (std::int32_t)destY},
+                {(std::int32_t)(destX + destW), (std::int32_t)(destY + destH), 1},
             },
     };
 
@@ -87,7 +100,7 @@ void copyImageToImage(
         .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         .regionCount = 1,
         .pRegions = &blitRegion,
-        .filter = VK_FILTER_LINEAR,
+        .filter = VK_FILTER_NEAREST,
     };
 
     vkCmdBlitImage2(cmd, &blitInfo);

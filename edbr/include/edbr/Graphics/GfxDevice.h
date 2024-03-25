@@ -13,6 +13,8 @@
 #include <tracy/TracyVulkan.hpp>
 // clang-format on
 
+#include <glm/vec4.hpp>
+
 #include <edbr/Graphics/Common.h>
 #include <edbr/Graphics/Vulkan/Swapchain.h>
 #include <edbr/Graphics/Vulkan/VulkanImGuiBackend.h>
@@ -46,7 +48,11 @@ public:
     void init(SDL_Window* window, const char* appName, bool vSync);
 
     VkCommandBuffer beginFrame();
-    void endFrame(VkCommandBuffer cmd, const GPUImage& drawImage);
+    void endFrame(
+        VkCommandBuffer cmd,
+        const GPUImage& drawImage,
+        const glm::vec4& clearColor = glm::vec4{0.f, 0.f, 0.f, 1.f},
+        bool copyImageIntoSwapchain = true);
     void cleanup();
 
     [[nodiscard]] GPUBuffer createBuffer(

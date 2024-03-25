@@ -7,8 +7,10 @@ struct SDL_Window;
 class Application {
 public:
     struct Params {
-        int screenWidth{640};
-        int screenHeight{640};
+        int windowWidth{640};
+        int windowHeight{480};
+        int renderWidth{};
+        int renderHeight{};
         const char* title{"EDBR Application"};
     };
 

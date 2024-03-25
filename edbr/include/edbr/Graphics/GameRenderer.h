@@ -38,7 +38,7 @@ public:
 public:
     GameRenderer(GfxDevice& gfxDevice, BaseRenderer& baseRenderer);
 
-    void init();
+    void init(const glm::ivec2& drawImageSize);
     void draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData);
     void cleanup();
 
@@ -66,7 +66,7 @@ public:
     VkFormat getDrawImageFormat() const;
 
 private:
-    void createDrawImage(VkExtent2D extent, bool firstCreate);
+    void createDrawImage(const glm::ivec2& drawImageSize, bool firstCreate);
     void initSceneData();
 
     bool isMultisamplingEnabled() const;
@@ -96,7 +96,7 @@ private:
 
     GPUImage resolveDepthImage;
 
-    GPUImage postFXDrawImage;
+    ImageId postFXDrawImageId{NULL_IMAGE_ID};
 
     bool shadowsEnabled{true};
     VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};

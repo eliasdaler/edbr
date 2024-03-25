@@ -45,6 +45,16 @@ void copyImageToImage(
     VkExtent2D srcSize,
     VkExtent2D dstSize);
 
+void copyImageToImage(
+    VkCommandBuffer cmd,
+    VkImage source,
+    VkImage destination,
+    VkExtent2D srcSize,
+    int destX,
+    int destY,
+    int destW,
+    int destH);
+
 void generateMipmaps(
     VkCommandBuffer cmd,
     VkImage image,

@@ -62,6 +62,8 @@ void GfxDevice::init(SDL_Window* window, const char* appName, bool vSync)
 
     // Dear ImGui
     ImGui::CreateContext();
+    auto& io = ImGui::GetIO();
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
     imGuiBackend.init(*this, swapchainFormat);
     ImGui_ImplSDL2_InitForVulkan(window);
 
@@ -205,59 +207,112 @@ VkCommandBuffer GfxDevice::beginFrame()
     return cmd;
 }
 
-void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage)
+namespace
 {
-    const auto& frame = getCurrentFrame();
+std::array<int, 4> calculateSwapchainBlitExtent(
+    VkExtent2D drawImageExtent,
+    VkExtent2D swapchainExtent,
+    bool doLetterboxing)
+{
+    const auto ir = glm::vec2{drawImageExtent.width, drawImageExtent.height};
+    const auto swapchainSize = glm::vec2{swapchainExtent.width, swapchainExtent.height};
+    const auto scale = std::min(swapchainSize.x / ir.x, swapchainSize.y / ir.y);
+    const auto ss = glm::vec2{swapchainSize} / (ir * scale);
 
-    // we'll copy from draw image to swapchain
-    vkutil::transitionImage(
-        cmd,
-        drawImage.image,
-        VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    std::array<float, 4> vp{0.f, 0.f, 1.f, 1.f};
 
+    if (doLetterboxing) {
+        // letterboxing
+        if (ss.x > ss.y) { // won't fit horizontally - add vertical bars
+            vp[2] = ss.y / ss.x;
+            vp[0] = (1.f - vp[2]) / 2.f; // center horizontally
+        } else { // won'f fit vertically - add horizonal bars
+            vp[3] = ss.x / ss.y;
+            vp[1] = (1.f - vp[3]) / 2.f; // center vertically
+        }
+    }
+
+    const auto destX = std::ceil(vp[0] * swapchainSize.x);
+    const auto destY = std::ceil(vp[1] * swapchainSize.y);
+    const auto destW = std::ceil(vp[2] * swapchainSize.x);
+    const auto destH = std::ceil(vp[3] * swapchainSize.y);
+
+    return {(int)destX, (int)destY, (int)destW, (int)destH};
+}
+}
+
+void GfxDevice::endFrame(
+    VkCommandBuffer cmd,
+    const GPUImage& drawImage,
+    const glm::vec4& clearColor,
+    bool copyImageIntoSwapchain)
+{
     // get swapchain image
     const auto [swapchainImage, swapchainImageIndex] =
         swapchain.acquireImage(device, getCurrentFrameIndex());
 
-    // copy from draw image into swapchain
-    vkutil::transitionImage(
-        cmd, swapchainImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    vkutil::copyImageToImage(
-        cmd, drawImage.image, swapchainImage, drawImage.getExtent2D(), swapchain.getExtent());
+    auto swapchainLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    {
+        // clear swapchain image
+        VkImageSubresourceRange clearRange =
+            vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+        vkutil::transitionImage(cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_GENERAL);
+        swapchainLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        const auto clearValue =
+            VkClearColorValue{{clearColor.x, clearColor.y, clearColor.z, clearColor.w}};
+        vkCmdClearColorImage(
+            cmd, swapchainImage, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+    }
+
+    if (copyImageIntoSwapchain) {
+        // copy from draw image into swapchain
+        vkutil::transitionImage(
+            cmd,
+            drawImage.image,
+            VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        vkutil::transitionImage(
+            cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        swapchainLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+        const auto [destX, destY, destW, destH] =
+            calculateSwapchainBlitExtent(drawImage.getExtent2D(), getSwapchainExtent(), true);
+        vkutil::copyImageToImage(
+            cmd,
+            drawImage.image,
+            swapchainImage,
+            drawImage.getExtent2D(),
+            destX,
+            destY,
+            destW,
+            destH);
+    }
 
     if (imguiDrawn) {
         vkutil::transitionImage(
-            cmd,
-            swapchainImage,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+            cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        swapchainLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         { // draw Dear ImGui
-            TracyVkZoneC(frame.tracyVkCtx, cmd, "ImGui", tracy::Color::VioletRed);
+            TracyVkZoneC(getTracyVkCtx(), cmd, "ImGui", tracy::Color::VioletRed);
             vkutil::cmdBeginLabel(cmd, "Draw Dear ImGui");
             imGuiBackend.draw(
                 cmd, *this, swapchain.getImageView(swapchainImageIndex), swapchain.getExtent());
             vkutil::cmdEndLabel(cmd);
         }
-
-        // prepare for present
-        vkutil::transitionImage(
-            cmd,
-            swapchainImage,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    } else {
-        // prepare for present
-        vkutil::transitionImage(
-            cmd,
-            swapchainImage,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     }
 
-    // TODO: don't collect every frame?
-    TracyVkCollect(frame.tracyVkCtx, frame.mainCommandBuffer);
+    // prepare for present
+    vkutil::transitionImage(cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    swapchainLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    {
+        // TODO: don't collect every frame?
+        auto& frame = getCurrentFrame();
+        TracyVkCollect(frame.tracyVkCtx, frame.mainCommandBuffer);
+    }
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 

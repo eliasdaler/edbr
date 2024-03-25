@@ -92,4 +92,5 @@ private:
     // only display update FPS every 1 seconds, otherwise it's too noisy
     float displayedFPS{0.f};
     float displayFPSDelay{1.f};
+    bool gameDrawnInWindow{true};
 };

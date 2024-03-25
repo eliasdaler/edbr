@@ -7,6 +7,7 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/Graphics/ColorUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Util/FS.h>
@@ -27,8 +28,10 @@ Game::Game() :
 void Game::customInit()
 {
     baseRenderer.init();
-    renderer.init();
+    renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
+
+    gameDrawnInWindow = false;
 
     skyboxDir = "assets/images/skybox";
 
@@ -42,7 +45,7 @@ void Game::customInit()
         static const float zNear = 1.f;
         static const float zFar = 64.f;
         static const float fovX = glm::radians(45.f);
-        static const float aspectRatio = (float)params.screenWidth / (float)params.screenHeight;
+        static const float aspectRatio = (float)params.renderWidth / (float)params.renderHeight;
 
         camera.setUseInverseDepth(true);
         camera.init(fovX, zNear, zFar, aspectRatio);
@@ -277,7 +280,10 @@ void Game::customDraw()
             vkutil::cmdEndLabel(cmd);
         }
 
-        gfxDevice.endFrame(cmd, renderer.getDrawImage());
+        const auto clearColor =
+            gameDrawnInWindow ? util::sRGBToLinear(97, 120, 159) : glm::vec4{0.f, 0.f, 0.f, 1.f};
+        bool copyImageToSwapchain = !gameDrawnInWindow;
+        gfxDevice.endFrame(cmd, renderer.getDrawImage(), clearColor, copyImageToSwapchain);
     }
 }
 

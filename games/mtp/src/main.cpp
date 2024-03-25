@@ -7,7 +7,13 @@ int main()
     util::setCurrentDirToExeDir();
 
     Game game{};
-    game.init({.screenWidth = 1280, .screenHeight = 960, .title = "Project MTP"});
+    game.init({
+        .windowWidth = 2400,
+        .windowHeight = 1080,
+        .renderWidth = 1280,
+        .renderHeight = 960,
+        .title = "Project MTP",
+    });
     game.run();
     game.cleanup();
 }

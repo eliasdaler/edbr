@@ -32,6 +32,10 @@ void operator delete(void* ptr, std::size_t) noexcept
 void Application::init(const Params& ps)
 {
     params = ps;
+    if (params.renderWidth == 0 && params.renderHeight == 0) {
+        params.renderWidth = params.windowWidth;
+        params.renderHeight = params.windowHeight;
+    }
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0) {
@@ -45,8 +49,8 @@ void Application::init(const Params& ps)
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
         // size
-        ps.screenWidth,
-        ps.screenHeight,
+        ps.windowWidth,
+        ps.windowHeight,
         SDL_WINDOW_VULKAN);
 
     if (!window) {

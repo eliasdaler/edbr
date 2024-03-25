@@ -13,6 +13,15 @@ void Game::updateDevTools(float dt)
         displayedFPS = avgFPS;
     }
 
+    if (gameDrawnInWindow) {
+        const auto windowFlags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize;
+        if (ImGui::Begin("Game", nullptr, windowFlags)) {
+            auto& drawImage = renderer.getDrawImage();
+            util::ImGuiImage(drawImage);
+        }
+        ImGui::End();
+    }
+
     if (ImGui::Begin("Debug")) {
         ImGui::Text("FPS: %d", (int)displayedFPS);
 
@@ -74,5 +83,5 @@ void Game::updateDevTools(float dt)
         ImGui::End();
     }
 
-    ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
 }

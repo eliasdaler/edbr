@@ -18,13 +18,13 @@ GameRenderer::GameRenderer(GfxDevice& gfxDevice, BaseRenderer& baseRenderer) :
     gfxDevice(gfxDevice), baseRenderer(baseRenderer)
 {}
 
-void GameRenderer::init()
+void GameRenderer::init(const glm::ivec2& drawImageSize)
 {
     initSceneData();
 
     samples = gfxDevice.getMaxSupportedSamplingCount(); // needs to be called before
                                                         // createDrawImage
-    createDrawImage(gfxDevice.getSwapchainExtent(), true);
+    createDrawImage(drawImageSize, true);
 
     skinningPipeline.init(gfxDevice);
 
@@ -40,11 +40,11 @@ void GameRenderer::init()
     postFXPipeline.init(gfxDevice, drawImageFormat);
 }
 
-void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
+void GameRenderer::createDrawImage(const glm::ivec2& drawImageSize, bool firstCreate)
 {
     const auto drawImageExtent = VkExtent3D{
-        .width = extent.width,
-        .height = extent.height,
+        .width = (std::uint32_t)drawImageSize.x,
+        .height = (std::uint32_t)drawImageSize.y,
         .depth = 1,
     };
 
@@ -66,11 +66,7 @@ void GameRenderer::createDrawImage(VkExtent2D extent, bool firstCreate)
 
         if (firstCreate) {
             createImageInfo.samples = VK_SAMPLE_COUNT_1_BIT; // no MSAA
-            postFXDrawImage = gfxDevice.createImageRaw(createImageInfo);
-            vkutil::
-                addDebugLabel(gfxDevice.getDevice(), postFXDrawImage.image, "post FX draw image");
-            vkutil::addDebugLabel(
-                gfxDevice.getDevice(), postFXDrawImage.imageView, "post FX draw image view");
+            postFXDrawImageId = gfxDevice.createImage(createImageInfo, "post FX draw image");
         }
     }
 
@@ -356,6 +352,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Post FX", tracy::Color::Purple);
         vkutil::cmdBeginLabel(cmd, "Post FX");
 
+        const auto& postFXDrawImage = gfxDevice.getImage(postFXDrawImageId);
         vkutil::transitionImage(
             cmd,
             postFXDrawImage.image,
@@ -394,7 +391,6 @@ void GameRenderer::cleanup()
     csmPipeline.cleanup(gfxDevice);
     skinningPipeline.cleanup(gfxDevice);
 
-    gfxDevice.destroyImage(postFXDrawImage);
     gfxDevice.destroyImage(resolveDepthImage);
 }
 
@@ -448,7 +444,10 @@ void GameRenderer::onMultisamplingStateUpdate()
         gfxDevice.destroyImage(drawImage);
     }
 
-    createDrawImage(gfxDevice.getSwapchainExtent(), false);
+    const auto& drawImage = gfxDevice.getImage(drawImageId);
+    const auto prevDrawImageSize =
+        glm::ivec2{drawImage.getExtent2D().width, drawImage.getExtent2D().height};
+    createDrawImage(prevDrawImageSize, false);
 
     // recreate pipelines
     meshPipeline.init(gfxDevice, drawImageFormat, depthImageFormat, samples);
@@ -570,7 +569,7 @@ SkinnedMesh GameRenderer::createSkinnedMesh(MeshId id) const
 const GPUImage& GameRenderer::getDrawImage() const
 {
     // this is our "real" draw image as far as other systems are concerned
-    return postFXDrawImage;
+    return gfxDevice.getImage(postFXDrawImageId);
 }
 
 VkFormat GameRenderer::getDrawImageFormat() const
