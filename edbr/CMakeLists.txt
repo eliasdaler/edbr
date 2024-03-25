@@ -10,6 +10,7 @@ add_library(edbr
   src/DevTools/EntityInfoDisplayer.cpp
   src/DevTools/EntityTreeView.cpp
   src/DevTools/ImGuiPropertyTable.cpp
+  src/DevTools/Im3dState.cpp
 
   # ECS
   src/ECS/ComponentFactory.cpp
@@ -95,6 +96,7 @@ target_link_libraries(edbr
     utf8cpp::utf8cpp
     EnTT::EnTT
     imgui::imgui
+    im3d::im3d
 
   PRIVATE
     tinygltf::tinygltf

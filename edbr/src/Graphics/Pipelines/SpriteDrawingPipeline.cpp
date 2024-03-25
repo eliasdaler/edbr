@@ -84,15 +84,15 @@ void SpriteDrawingPipeline::draw(
         spriteDrawCommands.data(),
         spriteDrawCommands.size() * sizeof(SpriteDrawCommand));
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    gfxDevice.bindBindlessDescSet(cmd, pipelineLayout);
-
     const auto renderInfo = vkutil::createRenderingInfo({
         .renderExtent = drawImage.getExtent2D(),
         .colorImageView = drawImage.imageView,
     });
 
     vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    gfxDevice.bindBindlessDescSet(cmd, pipelineLayout);
 
     const auto viewport = VkViewport{
         .x = 0,

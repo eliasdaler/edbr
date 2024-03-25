@@ -115,6 +115,7 @@ public:
 
     std::uint32_t getCurrentFrameIndex() const;
     VkExtent2D getSwapchainExtent() const { return swapchain.getExtent(); }
+    VkFormat getSwapchainFormat() const { return swapchainFormat; }
     const TracyVkCtx& getTracyVkCtx() const;
 
 private:

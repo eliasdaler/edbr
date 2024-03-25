@@ -129,14 +129,14 @@ void VulkanImGuiBackend::draw(
 
     copyBuffers(cmd, gfxDevice);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    gfxDevice.bindBindlessDescSet(cmd, pipelineLayout);
-
     const auto renderInfo = vkutil::createRenderingInfo({
         .renderExtent = swapchainExtent,
         .colorImageView = swapchainImageView,
     });
     vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    gfxDevice.bindBindlessDescSet(cmd, pipelineLayout);
 
     const auto targetWidth = (float)swapchainExtent.width;
     const auto targetHeight = (float)swapchainExtent.height;
@@ -293,19 +293,17 @@ void VulkanImGuiBackend::copyBuffers(VkCommandBuffer cmd, GfxDevice& gfxDevice) 
     std::size_t currentVertexOffset = 0;
     for (int i = 0; i < drawData->CmdListsCount; ++i) {
         const auto& cmdList = *drawData->CmdLists[i];
-        const auto* idxData = reinterpret_cast<const ImDrawIdx*>(cmdList.IdxBuffer.Data);
-        const auto* vtxData = reinterpret_cast<const ImDrawVert*>(cmdList.VtxBuffer.Data);
         idxBuffer.uploadNewData(
             cmd,
             currFrameIndex,
-            (void*)cmdList.IdxBuffer.Data,
+            cmdList.IdxBuffer.Data,
             sizeof(ImDrawIdx) * cmdList.IdxBuffer.Size,
             sizeof(ImDrawIdx) * currentIndexOffset,
             false);
         vtxBuffer.uploadNewData(
             cmd,
             currFrameIndex,
-            (void*)cmdList.VtxBuffer.Data,
+            cmdList.VtxBuffer.Data,
             sizeof(ImDrawVert) * cmdList.VtxBuffer.Size,
             sizeof(ImDrawVert) * currentVertexOffset,
             false);

@@ -31,7 +31,15 @@ void Game::customInit()
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
 
-    gameDrawnInWindow = false;
+    { // im3d
+        im3d.init(gfxDevice, renderer.getDrawImage().format);
+        im3d.addRenderState(
+            Im3dState::WorldNoDepthLayer,
+            Im3dState::RenderState{.clearDepth = true, .viewProj = glm::mat4{1.f}});
+        im3d.addRenderState(
+            Im3dState::WorldWithDepthLayer,
+            Im3dState::RenderState{.clearDepth = false, .viewProj = glm::mat4{1.f}});
+    }
 
     skyboxDir = "assets/images/skybox";
 
@@ -119,6 +127,10 @@ void Game::customUpdate(float dt)
     if (!io.WantCaptureKeyboard) {
         handleInput(dt);
     }
+    if (!gameDrawnInWindow) {
+        gameWindowPos = {480, 0};
+        gameWindowSize = {1440, 1080};
+    }
 
     cameraController.update(camera, dt);
 
@@ -131,12 +143,55 @@ void Game::customUpdate(float dt)
         camera.setPosition(newPos);
     }
 
+    // im3d
+    {
+        const auto internalSize = glm::vec2{params.renderWidth, params.renderHeight};
+        /* const auto& mouse = Engine::getInputManager().getMouse();
+        bool isMousePressed = mouse.isHeld(SDL_BUTTON(1));
+        const auto mouseScreenPos = fromWindowCoordsToScreenCoords(mouse.getPosition());
+        */
+        const auto mouseScreenPos = glm::ivec2{};
+        bool isMousePressed = false;
+        im3d.newFrame(dt, internalSize, camera, mouseScreenPos, isMousePressed);
+
+        im3d.updateCameraViewProj(Im3dState::WorldNoDepthLayer, camera.getViewProj());
+        im3d.updateCameraViewProj(Im3dState::WorldWithDepthLayer, camera.getViewProj());
+    }
+
     // movement
     movementSystemUpdate(registry, dt);
     transformSystemUpdate(registry, dt);
     skeletonAnimationSystemUpdate(registry, dt);
 
     updateDevTools(dt);
+
+    im3d.endFrame();
+
+    { // draw  text
+        if (gameDrawnInWindow) {
+            ImGui::Begin(gameWindowLabel);
+            im3d.drawText(camera.getViewProj(), gameWindowPos, gameWindowSize);
+            ImGui::End();
+        } else {
+            // TODO: get proper window coords
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32_BLACK_TRANS);
+            ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+            ImGui::SetNextWindowSize(ImVec2{
+                (float)gfxDevice.getSwapchainExtent().width,
+                (float)gfxDevice.getSwapchainExtent().height});
+
+            ImGui::Begin(
+                "Invisible",
+                nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs |
+                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+                    ImGuiWindowFlags_NoBringToFrontOnFocus);
+            im3d.drawText(camera.getViewProj(), gameWindowPos, gameWindowSize);
+            ImGui::End();
+            ImGui::PopStyleColor(1);
+        }
+    }
 }
 
 void Game::handleInput(float dt)
@@ -184,6 +239,7 @@ void Game::customCleanup()
     registry.clear();
 
     gfxDevice.waitIdle();
+    im3d.cleanup(gfxDevice);
     spriteRenderer.cleanup();
     renderer.cleanup();
     baseRenderer.cleanup();
@@ -280,10 +336,19 @@ void Game::customDraw()
             vkutil::cmdEndLabel(cmd);
         }
 
+        const auto& drawImage = renderer.getDrawImage();
+        { // Im3D
+            TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "im3d", tracy::Color::WebMaroon);
+            vkutil::cmdBeginLabel(cmd, "im3d");
+            im3d.draw(cmd, gfxDevice, drawImage.imageView, drawImage.getExtent2D());
+            vkutil::cmdEndLabel(cmd);
+        }
+
         const auto clearColor =
             gameDrawnInWindow ? util::sRGBToLinear(97, 120, 159) : glm::vec4{0.f, 0.f, 0.f, 1.f};
         bool copyImageToSwapchain = !gameDrawnInWindow;
-        gfxDevice.endFrame(cmd, renderer.getDrawImage(), clearColor, copyImageToSwapchain);
+
+        gfxDevice.endFrame(cmd, drawImage, clearColor, copyImageToSwapchain);
     }
 }
 

@@ -150,6 +150,29 @@ PipelineBuilder& PipelineBuilder::setShaders(
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::setShaders(
+    VkShaderModule vertexShader,
+    VkShaderModule geometryShader,
+    VkShaderModule fragmentShader)
+{
+    shaderStages.clear();
+
+    if (vertexShader) {
+        shaderStages.push_back(
+            vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
+    }
+    if (geometryShader) {
+        shaderStages.push_back(
+            vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, geometryShader));
+    }
+    if (fragmentShader) {
+        shaderStages.push_back(
+            vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
+    }
+
+    return *this;
+}
+
 PipelineBuilder& PipelineBuilder::setInputTopology(VkPrimitiveTopology topology)
 {
     inputAssembly.topology = topology;

@@ -94,6 +94,7 @@ void GfxDevice::initVulkan(SDL_Window* window, const char* appName)
     }
 
     const auto deviceFeatures = VkPhysicalDeviceFeatures{
+        .geometryShader = VK_TRUE, // for im3d
         .depthClamp = VK_TRUE,
         .samplerAnisotropy = VK_TRUE,
     };

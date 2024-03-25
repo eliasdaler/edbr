@@ -20,6 +20,10 @@ public:
     VkPipeline build(VkDevice device);
 
     PipelineBuilder& setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
+    PipelineBuilder& setShaders(
+        VkShaderModule vertexShader,
+        VkShaderModule geometryShader,
+        VkShaderModule fragmentShader);
     PipelineBuilder& setInputTopology(VkPrimitiveTopology topology);
     PipelineBuilder& setPolygonMode(VkPolygonMode mode);
     PipelineBuilder& setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);

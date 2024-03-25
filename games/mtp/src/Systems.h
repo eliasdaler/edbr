@@ -25,7 +25,7 @@ void updateEntityTransforms(
     const glm::mat4& parentWorldTransform)
 {
     auto [tc, hc] = registry.get<TransformComponent, const HierarchyComponent>(e);
-    if (hc.hasParent()) {
+    if (!hc.hasParent()) {
         tc.worldTransform = tc.transform.asMatrix();
     } else {
         const auto prevTransform = tc.worldTransform;

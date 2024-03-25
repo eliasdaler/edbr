@@ -40,3 +40,6 @@
 [submodule "third_party/fmt"]
 	path = edbr/third_party/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "edbr/third_party/im3d"]
+	path = edbr/third_party/im3d
+	url = https://github.com/john-chapman/im3d

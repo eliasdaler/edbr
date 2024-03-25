@@ -7,6 +7,8 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
+#include <glm/vec2.hpp>
+
 struct GPUImage {
     VkImage image;
     VkImageView imageView;
@@ -20,6 +22,7 @@ struct GPUImage {
 
     static const auto NULL_BINDLESS_ID = std::numeric_limits<std::uint32_t>::max();
 
+    glm::ivec2 getSize2D() const { return glm::ivec2{extent.width, extent.height}; }
     VkExtent2D getExtent2D() const { return VkExtent2D{extent.width, extent.height}; }
 
     std::uint32_t getBindlessId() const

@@ -18,8 +18,10 @@
 #include <edbr/FreeCameraController.h>
 #include <edbr/SceneCache.h>
 
-#include "DevTools/CustomEntityTreeView.h"
 #include <edbr/DevTools/EntityInfoDisplayer.h>
+#include <edbr/DevTools/Im3dState.h>
+
+#include "DevTools/CustomEntityTreeView.h"
 
 #include "EntityInitializer.h"
 #include "GameUI.h"
@@ -92,5 +94,12 @@ private:
     // only display update FPS every 1 seconds, otherwise it's too noisy
     float displayedFPS{0.f};
     float displayFPSDelay{1.f};
-    bool gameDrawnInWindow{true};
+
+    bool gameDrawnInWindow{false};
+    const char* gameWindowLabel{"Game##window"};
+
+    glm::ivec2 gameWindowPos;
+    glm::ivec2 gameWindowSize;
+
+    Im3dState im3d;
 };

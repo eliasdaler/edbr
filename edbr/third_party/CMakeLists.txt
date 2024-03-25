@@ -66,6 +66,16 @@ endif()
 
 add_library(imgui::imgui ALIAS imgui)
 
+## im3d
+add_library(im3d
+  "${CMAKE_CURRENT_LIST_DIR}/im3d/im3d.cpp"
+)
+add_library(im3d::im3d ALIAS im3d)
+
+target_include_directories(im3d PUBLIC
+  "${CMAKE_CURRENT_LIST_DIR}/im3d"
+)
+
 ## tinygltf
 option(TINYGLTF_BUILD_LOADER_EXAMPLE "Build loader_example(load glTF and dump infos)" OFF)
 option(TINYGLTF_INSTALL "Install tinygltf files during install step." OFF)
