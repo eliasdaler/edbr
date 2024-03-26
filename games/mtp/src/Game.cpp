@@ -39,6 +39,9 @@ void Game::customInit()
     { // im3d
         im3d.init(gfxDevice, renderer.getDrawImage().format);
         im3d.addRenderState(
+            Im3dState::DefaultLayer,
+            Im3dState::RenderState{.clearDepth = false, .viewProj = glm::mat4{1.f}});
+        im3d.addRenderState(
             Im3dState::WorldNoDepthLayer,
             Im3dState::RenderState{.clearDepth = true, .viewProj = glm::mat4{1.f}});
         im3d.addRenderState(

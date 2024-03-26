@@ -162,6 +162,10 @@ void Im3dState::newFrame(
         ad.m_projScaleY = tanf(camera.getFOVX());
     }
 
+    Camera uiCamera;
+    uiCamera.initOrtho2D(vpSize);
+    updateCameraViewProj(Im3dState::DefaultLayer, uiCamera.getViewProj());
+
     // to clip coords
     const auto ndc = edbr::util::fromWindowCoordsToNDC(mousePos, static_cast<glm::ivec2>(vpSize));
     const auto ray_clip = glm::vec4{ndc, -1.f, 1.f};

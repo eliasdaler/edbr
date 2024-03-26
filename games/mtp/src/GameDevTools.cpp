@@ -40,17 +40,18 @@ void Game::updateDevTools(float dt)
         ImGui::Checkbox("Draw game in window", &gameDrawnInWindow);
         ImGui::Checkbox("Draw entity tags", &drawEntityTags);
         ImGui::Checkbox("Draw entity heading", &drawEntityHeading);
+        ImGui::Checkbox("Draw gizmo", &drawGizmos);
 
-        /*
-        ImGui::Checkbox("Local gizmo", &Im3d::GetContext().m_gizmoLocal);
-        int gizmoMode = (int)Im3d::GetContext().m_gizmoMode;
-        ImGui::RadioButton("Translate (Ctrl+T)", &gizmoMode, Im3d::GizmoMode_Translation);
-        ImGui::SameLine();
-        ImGui::RadioButton("Rotate (Ctrl+R)", &gizmoMode, Im3d::GizmoMode_Rotation);
-        ImGui::SameLine();
-        ImGui::RadioButton("Scale (Ctrl+S)", &gizmoMode, Im3d::GizmoMode_Scale);
-        Im3d::GetContext().m_gizmoMode = (Im3d::GizmoMode)gizmoMode;
-        */
+        if (drawGizmos) {
+            ImGui::Checkbox("Local gizmo", &Im3d::GetContext().m_gizmoLocal);
+            int gizmoMode = (int)Im3d::GetContext().m_gizmoMode;
+            ImGui::RadioButton("Translate (Ctrl+T)", &gizmoMode, Im3d::GizmoMode_Translation);
+            ImGui::SameLine();
+            ImGui::RadioButton("Rotate (Ctrl+R)", &gizmoMode, Im3d::GizmoMode_Rotation);
+            ImGui::SameLine();
+            ImGui::RadioButton("Scale (Ctrl+S)", &gizmoMode, Im3d::GizmoMode_Scale);
+            Im3d::GetContext().m_gizmoMode = (Im3d::GizmoMode)gizmoMode;
+        }
 
         /* static const auto interactTipImageId =
             gfxDevice.loadImageFromFile("assets/images/ui/interact_tip.png");
@@ -133,10 +134,10 @@ void Game::updateDevTools(float dt)
         Im3dDrawArrow(
             glm::vec4{1.f, 0.f, 1.f, 0.5f}, pos, pos + tc.transform.getLocalFront() * 0.5f);
     }
+
     // Im3d::DrawCapsule(glm2im3d(pos), glm2im3d(pos + glm::vec3{0.f, 1.f, 0.f}), 0.5f, 50);
 
-    /*
-    if (entityTreeView.hasSelectedEntity()) {
+    if (drawGizmos && entityTreeView.hasSelectedEntity()) {
         auto ent = entityTreeView.getSelectedEntity().entity();
         auto e = entt::handle{registry, ent};
         auto& tc = e.get<TransformComponent>();
@@ -145,9 +146,10 @@ void Game::updateDevTools(float dt)
             tc.transform = Transform(im3d2glm(transform));
         }
     }
-    */
 
     Im3d::PopLayerId();
+
+    // Im3dRectFilled({0, 0, 64, 64}, glm::vec4{1.f, 0.f, 1.f, 1.f});
 
     if (drawEntityTags) {
         for (const auto& [e, tc, tagC] : registry.view<TransformComponent, TagComponent>().each()) {

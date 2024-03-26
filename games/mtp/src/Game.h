@@ -102,6 +102,7 @@ private:
     bool drawEntityTags{false};
     bool drawEntityHeading{false};
     bool drawImGui{true};
+    bool drawGizmos{false};
 
     glm::ivec2 gameWindowPos;
     glm::ivec2 gameWindowSize;
