@@ -7,26 +7,10 @@
 #include <array>
 #include <imgui.h>
 
+#include <vulkan/vk_enum_string_helper.h>
+
 namespace
 {
-const char* vkFormatToStr(VkFormat format)
-{
-    switch (format) {
-    case VK_FORMAT_R8G8B8A8_UNORM:
-        return "R8G8B8A8_UNORM";
-    case VK_FORMAT_R8G8B8A8_SRGB:
-        return "R8G8B8A8_SRGB";
-    case VK_FORMAT_R16G16B16A16_SFLOAT:
-        return "R16G16B16A16_SFLOAT";
-    case VK_FORMAT_D32_SFLOAT:
-        return "D32_SFLOAT";
-    case VK_FORMAT_R8_UNORM:
-        return "R8_UNORM";
-    default:
-        return "Unknown";
-    }
-}
-
 void imagePreview(const GPUImage& image, const glm::vec2 maxSize = glm::vec2{512.f, 512.f})
 {
     ImGui::Text("%s (%u, %u)", image.debugName.c_str(), image.extent.width, image.extent.height);
@@ -44,16 +28,39 @@ void ResourcesInspector::update(
     const MaterialCache& materialCache)
 {
     ImGui::Begin("Resources");
+
+    static bool showPreviewOnHover = true;
+    ImGui::Checkbox("Preview on hover", &showPreviewOnHover);
     static ImageId selectedImageId{NULL_IMAGE_ID};
+
     static bool showPreviewWindow = true;
+    static bool showFormatColumn = false;
+    static bool showUsageColumn = false;
     if (ImGui::TreeNode("Images")) {
+        ImGui::Checkbox("Format", &showFormatColumn);
+        ImGui::SameLine();
+        ImGui::Checkbox("Usage", &showUsageColumn);
+
         static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_Borders |
                                        ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
-        if (ImGui::BeginTable("Images", 4, flags)) {
-            ImGui::TableSetupColumn("id", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("debugName");
-            ImGui::TableSetupColumn("format", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("size", ImGuiTableColumnFlags_WidthFixed);
+        int numColumns = 3;
+        if (showFormatColumn) {
+            ++numColumns;
+        }
+        if (showUsageColumn) {
+            ++numColumns;
+        }
+
+        if (ImGui::BeginTable("Images", numColumns, flags)) {
+            ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Size");
+            if (showFormatColumn) {
+                ImGui::TableSetupColumn("Format", ImGuiTableColumnFlags_WidthFixed);
+            }
+            if (showUsageColumn) {
+                ImGui::TableSetupColumn("Usage");
+            }
             ImGui::TableHeadersRow();
 
             for (const auto& image : imageCache.images) {
@@ -71,7 +78,7 @@ void ResourcesInspector::update(
                     showPreviewWindow = true;
                 };
 
-                if (ImGui::IsItemHovered()) {
+                if (showPreviewOnHover && ImGui::IsItemHovered()) {
                     if (ImGui::BeginItemTooltip()) {
                         imagePreview(image);
                         ImGui::EndTooltip();
@@ -79,10 +86,17 @@ void ResourcesInspector::update(
                 }
 
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(vkFormatToStr(image.format));
-
-                ImGui::TableNextColumn();
                 ImGui::Text("(%u, %u)", image.extent.width, image.extent.height);
+
+                if (showFormatColumn) {
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(string_VkFormat(image.format));
+                }
+
+                if (showUsageColumn) {
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(string_VkImageUsageFlags(image.usage).c_str());
+                }
 
                 ImGui::PopID();
             }
@@ -97,16 +111,16 @@ void ResourcesInspector::update(
         ImGui::ColorEdit3("##Color", arr.data(), flags);
     };
 
-    if (ImGui::TreeNodeEx("Materials", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::TreeNode("Materials")) {
         static ImGuiTableFlags flags =
             ImGuiTableFlags_ScrollY | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
         if (ImGui::BeginTable("Images", 10, flags)) {
-            ImGui::TableSetupColumn("id", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("name");
-            ImGui::TableSetupColumn("base col", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("metal", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("rough", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("emissive", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Base col", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Metal", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Rough", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Emissive", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("D tex", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("N tex", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("MR tex", ImGuiTableColumnFlags_WidthFixed);
@@ -144,7 +158,7 @@ void ResourcesInspector::update(
                         selectedImageId = id;
                         showPreviewWindow = true;
                     }
-                    if (ImGui::IsItemHovered()) {
+                    if (showPreviewOnHover && ImGui::IsItemHovered()) {
                         if (ImGui::BeginItemTooltip()) {
                             const auto image = imageCache.getImage(id);
                             imagePreview(image);
