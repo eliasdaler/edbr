@@ -11,8 +11,6 @@
 #include <im3d_math.h>
 #include <imgui.h>
 
-#include <glm/trigonometric.hpp>
-
 namespace
 {
 static const int MAX_VTX_COUNT = 1000000;

@@ -214,7 +214,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .lightsBuffer = lightDataBuffer.getBuffer().address,
             .numLights = (std::uint32_t)lightDataCPU.size(),
             .sunlightIndex = sunlightIndex,
-            .materialsBuffer = baseRenderer.materialDataBuffer.address,
+            .materialsBuffer = baseRenderer.getMaterialDataBufferAddress(),
         };
         sceneDataBuffer.uploadNewData(
             cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));

@@ -6,6 +6,8 @@
 #include <edbr/Graphics/Material.h>
 
 class MaterialCache {
+    friend class ResourcesInspector;
+
 public:
     void addMaterial(MaterialId id, Material material);
     const Material& getMaterial(MaterialId id) const;

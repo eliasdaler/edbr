@@ -11,6 +11,7 @@ add_library(edbr
   src/DevTools/EntityTreeView.cpp
   src/DevTools/ImGuiPropertyTable.cpp
   src/DevTools/Im3dState.cpp
+  src/DevTools/ResourcesInspector.cpp
 
   # ECS
   src/ECS/ComponentFactory.cpp

@@ -472,6 +472,7 @@ ImageId GfxDevice::createImage(
     auto image = createImageRaw(createInfo);
     if (debugName) {
         vkutil::addDebugLabel(device, image.image, debugName);
+        image.debugName = debugName;
     }
     if (pixelData) {
         uploadImageData(image, pixelData);
@@ -648,7 +649,7 @@ GPUImage GfxDevice::loadImageFromFileRaw(
     auto data = util::loadImage(path);
     assert(data.pixels);
 
-    const auto image = createImageRaw({
+    auto image = createImageRaw({
         .format = format,
         .usage = usage | //
                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | // for uploading pixel data to image
@@ -663,6 +664,7 @@ GPUImage GfxDevice::loadImageFromFileRaw(
     });
     uploadImageData(image, data.pixels);
 
+    image.debugName = path.string();
     vkutil::addDebugLabel(device, image.image, path.string().c_str());
 
     return image;

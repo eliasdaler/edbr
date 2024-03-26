@@ -12,6 +12,8 @@
 class GfxDevice;
 
 class ImageCache {
+    friend class ResourcesInspector;
+
 public:
     ImageCache(GfxDevice& gfxDevice);
 

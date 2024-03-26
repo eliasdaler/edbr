@@ -110,6 +110,9 @@ public:
     // destroyImage should only be called on images not beloning to image cache / bindless set
     void destroyImage(const GPUImage& image) const;
 
+    // for dev tools only - don't use directly
+    const ImageCache& getImageCache() const { return imageCache; }
+
 public:
     VkDevice getDevice() const { return device; }
 

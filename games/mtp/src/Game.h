@@ -20,6 +20,7 @@
 
 #include <edbr/DevTools/EntityInfoDisplayer.h>
 #include <edbr/DevTools/Im3dState.h>
+#include <edbr/DevTools/ResourcesInspector.h>
 
 #include "DevTools/CustomEntityTreeView.h"
 
@@ -87,6 +88,7 @@ private:
 
     CustomEntityTreeView entityTreeView;
     EntityInfoDisplayer entityInfoDisplayer;
+    ResourcesInspector resourcesInspector;
 
     bool orbitCameraAroundSelectedEntity{false};
     float orbitDistance{8.5f};
@@ -97,6 +99,7 @@ private:
 
     bool gameDrawnInWindow{false};
     const char* gameWindowLabel{"Game##window"};
+    bool drawEntityTags{false};
 
     glm::ivec2 gameWindowPos;
     glm::ivec2 gameWindowSize;

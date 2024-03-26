@@ -55,6 +55,7 @@ GPUImage loadCubemap(GfxDevice& gfxDevice, const std::filesystem::path& imagesDi
     }
 
     const auto cubemapLabel = "cubemap, dir=" + imagesDir.string();
+    img.debugName = cubemapLabel;
     vkutil::addDebugLabel(gfxDevice.getDevice(), img.image, cubemapLabel.c_str());
 
     return img;

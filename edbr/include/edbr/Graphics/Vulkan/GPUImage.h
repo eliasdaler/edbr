@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -19,6 +20,7 @@ struct GPUImage {
     std::uint32_t mipLevels{1};
     std::uint32_t numLayers{1};
     bool isCubemap{false};
+    std::string debugName{};
 
     static const auto NULL_BINDLESS_ID = std::numeric_limits<std::uint32_t>::max();
 
@@ -37,6 +39,8 @@ struct GPUImage {
         assert(id != NULL_BINDLESS_ID);
         this->id = id;
     }
+
+    bool isInitialized() const { return id != NULL_BINDLESS_ID; }
 
 private:
     std::uint32_t id{NULL_BINDLESS_ID}; // bindless id - always equals to ImageId
