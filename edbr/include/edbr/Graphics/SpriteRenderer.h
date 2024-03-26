@@ -45,14 +45,14 @@ public:
         const Font& font,
         const std::string& text,
         const glm::vec2& pos,
-        const glm::vec4& color = glm::vec4{1.f});
+        const LinearColor& color = LinearColor{0.f, 0.f, 0.f, 1.f});
 
     // Draw unfilled rectangle
     // if insetBorder == true, the border is drawn inside the rect
     // otherwise it doesn't overlap the rect and is draw outside of it
     void drawRect(
         const math::FloatRect& rect,
-        const glm::vec4& color,
+        const LinearColor& color,
         float borderWidth = 1.f,
         float rotation = 0.f, // rotation around Z in radians
         const glm::vec2& scale = glm::vec2{1.f},
@@ -61,7 +61,7 @@ public:
 
     void drawFilledRect(
         const math::FloatRect& rect,
-        const glm::vec4& color,
+        const LinearColor& color,
         float rotation = 0.f, // rotation around Z in radians
         const glm::vec2& scale = glm::vec2{1.f},
         const glm::vec2& pivot = glm::vec2{0.f});

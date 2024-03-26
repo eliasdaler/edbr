@@ -5,8 +5,6 @@
 #include "Components.h"
 #include "EntityUtil.h"
 
-#include <edbr/Graphics/ColorUtil.h>
-
 namespace
 {
 bool isLight(entt::const_handle e)
@@ -71,18 +69,18 @@ bool CustomEntityTreeView::displayEntityInView(entt::const_handle e, const std::
     return true;
 }
 
-glm::vec4 CustomEntityTreeView::getDisplayColor(entt::const_handle e) const
+RGBColor CustomEntityTreeView::getDisplayColor(entt::const_handle e) const
 {
     if (isStaticGeometry(e)) {
-        return util::colorRGB(200, 200, 200);
+        return RGBColor{200, 200, 200};
     } else if (isLight(e)) {
-        return util::colorRGB(255, 255, 0);
+        return RGBColor{255, 255, 0};
     } else if (e.all_of<TriggerComponent>()) {
-        return util::colorRGB(182, 228, 209);
+        return RGBColor{182, 228, 209};
     } else if (e.all_of<PlayerSpawnComponent>()) {
-        return util::colorRGB(255, 180, 122);
+        return RGBColor{255, 180, 122};
     } else if (e.all_of<CameraComponent>()) {
-        return util::colorRGB(237, 252, 223);
+        return RGBColor{237, 252, 223};
     }
-    return glm::vec4{1.f};
+    return RGBColor{255, 255, 255};
 }

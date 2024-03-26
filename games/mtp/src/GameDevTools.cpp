@@ -131,8 +131,7 @@ void Game::updateDevTools(float dt)
 
     Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
     if (drawEntityHeading) {
-        Im3dDrawArrow(
-            glm::vec4{1.f, 0.f, 1.f, 0.5f}, pos, pos + tc.transform.getLocalFront() * 0.5f);
+        Im3dDrawArrow(RGBColor{255, 0, 255, 128}, pos, pos + tc.transform.getLocalFront() * 0.5f);
     }
 
     // Im3d::DrawCapsule(glm2im3d(pos), glm2im3d(pos + glm::vec3{0.f, 1.f, 0.f}), 0.5f, 50);
@@ -154,7 +153,11 @@ void Game::updateDevTools(float dt)
     if (drawEntityTags) {
         for (const auto& [e, tc, tagC] : registry.view<TransformComponent, TagComponent>().each()) {
             if (!tagC.getTag().empty()) {
-                Im3dText(tc.transform.getPosition(), 1.f, glm::vec4{1.f}, tagC.getTag().c_str());
+                Im3dText(
+                    tc.transform.getPosition(),
+                    1.f,
+                    RGBColor{255, 255, 255},
+                    tagC.getTag().c_str());
             }
         }
     }

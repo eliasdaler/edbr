@@ -1,8 +1,8 @@
 #pragma once
 
 #include <glm/vec2.hpp>
-#include <glm/vec4.hpp>
 
+#include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/IdTypes.h>
 
 #include <edbr/Math/Rect.h>
@@ -28,5 +28,5 @@ public:
     // its center, you can set this to glm::vec2{0.5, 0.5}
     glm::vec2 pivot{0.f};
 
-    glm::vec4 color{1.f}; // the color the sprite is multiplied by in the shader
+    LinearColor color{1.f}; // the color the sprite is multiplied by in the shader
 };

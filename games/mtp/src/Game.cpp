@@ -7,7 +7,6 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
-#include <edbr/Graphics/ColorUtil.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
@@ -373,8 +372,8 @@ void Game::customDraw()
         }
 
         const auto endFrameProps = GfxDevice::EndFrameProps{
-            .clearColor = gameDrawnInWindow ? util::sRGBToLinear(97, 120, 159) :
-                                              glm::vec4{0.f, 0.f, 0.f, 1.f},
+            .clearColor = gameDrawnInWindow ? edbr::rgbToLinear(97, 120, 159) :
+                                              LinearColor{0.f, 0.f, 0.f, 1.f},
             .copyImageIntoSwapchain = !gameDrawnInWindow,
             .drawImageBlitRect =
                 {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},

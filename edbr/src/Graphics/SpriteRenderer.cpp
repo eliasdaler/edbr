@@ -95,7 +95,7 @@ void SpriteRenderer::drawText(
     const Font& font,
     const std::string& text,
     const glm::vec2& pos,
-    const glm::vec4& color)
+    const LinearColor& color)
 {
     float x = 0.0f;
     int lineNum = 0;
@@ -132,7 +132,7 @@ void SpriteRenderer::drawText(
 
 void SpriteRenderer::drawRect(
     const math::FloatRect& rect,
-    const glm::vec4& color,
+    const LinearColor& color,
     float borderWidth,
     float rotation,
     const glm::vec2& scale,
@@ -217,7 +217,7 @@ void SpriteRenderer::drawRect(
 
 void SpriteRenderer::drawFilledRect(
     const math::FloatRect& rect,
-    const glm::vec4& color,
+    const LinearColor& color,
     float rotation,
     const glm::vec2& scale,
     const glm::vec2& pivot)

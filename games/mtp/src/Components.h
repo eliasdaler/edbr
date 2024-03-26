@@ -6,7 +6,6 @@
 #include <vector>
 
 #include <glm/mat4x4.hpp>
-#include <glm/vec4.hpp>
 
 #include <edbr/Graphics/GPUMesh.h>
 #include <edbr/Graphics/Light.h>

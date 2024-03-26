@@ -2,13 +2,12 @@
 
 #include <imgui.h>
 
-#include <edbr/Graphics/ColorUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
 
 void EntityInfoDisplayer::displayEntityInfo(entt::const_handle e, float dt)
 {
     ImGui::Text("Entity id: %d", (int)e.entity());
-    static const auto componentNameColor = util::colorRGB(220, 215, 252);
+    static const auto componentNameColor = RGBColor{220, 215, 252};
     for (const auto& displayer : componentDisplayers) {
         if (!displayer.componentExists(e)) {
             continue;

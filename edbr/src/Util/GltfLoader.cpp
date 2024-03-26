@@ -179,11 +179,11 @@ bool hasEmissiveTexture(const tinygltf::Material& material)
     return textureIndex != -1;
 }
 
-glm::vec4 getDiffuseColor(const tinygltf::Material& material)
+LinearColor getDiffuseColor(const tinygltf::Material& material)
 {
     const auto c = material.pbrMetallicRoughness.baseColorFactor;
     assert(c.size() == 4);
-    return {(float)c[0], (float)c[1], (float)c[2], (float)c[3]};
+    return LinearColor{(float)c[0], (float)c[1], (float)c[2], (float)c[3]};
 }
 
 std::filesystem::path getNormalMapTexturePath(

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/vec4.hpp>
+#include <edbr/Graphics/Color.h>
 
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
@@ -24,10 +24,7 @@ public:
     }
 
     virtual const std::string& getEntityDisplayName(entt::const_handle e) const;
-    virtual glm::vec4 getDisplayColor(entt::const_handle e) const
-    {
-        return glm::vec4{1.f, 1.f, 1.f, 1.f};
-    }
+    virtual RGBColor getDisplayColor(entt::const_handle e) const { return RGBColor{255, 255, 255}; }
 
 private:
     entt::const_handle selectedEntity{};

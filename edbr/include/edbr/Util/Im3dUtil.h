@@ -6,11 +6,17 @@
 
 #include <im3d.h>
 
+#include <edbr/Graphics/Color.h>
 #include <edbr/Math/Rect.h>
 
-inline Im3d::Color edbr2im3d(const glm::vec4& color)
+inline Im3d::Color edbr2im3d(const RGBColor& c)
 {
-    return {color.x, color.y, color.z, color.w};
+    return {
+        (float)c.r / 255.f,
+        (float)c.g / 255.f,
+        (float)c.b / 255.f,
+        (float)c.a / 255.f,
+    };
 }
 
 inline Im3d::Vec2 glm2im3d(const glm::vec2& v)
@@ -58,7 +64,7 @@ inline glm::mat4 im3d2glm(const Im3d::Mat4& m)
 }
 
 inline void Im3dDrawArrow(
-    const glm::vec4& color,
+    const RGBColor& color,
     glm::vec3 start,
     glm::vec3 end,
     float arrowSize = 5.0)
@@ -73,14 +79,14 @@ inline void Im3dDrawArrow(
 inline void Im3dText(
     const glm::vec3& position,
     float textSize,
-    const glm::vec4& color,
+    const RGBColor& color,
     const char* text)
 {
     static Im3d::TextFlags textFlags = Im3d::TextFlags_Default;
     Im3d::Text(glm2im3d(position), textSize, edbr2im3d(color), textFlags, text);
 }
 
-inline void Im3dRect(const math::FloatRect& rect, const glm::vec4& borderColor)
+inline void Im3dRect(const math::FloatRect& rect, const RGBColor& borderColor)
 {
     const auto a = glm2im3d(glm::vec3{rect.getTopLeftCorner(), 0.f});
     const auto b = glm2im3d(glm::vec3{rect.getTopRightCorner(), 0.f});
@@ -93,7 +99,7 @@ inline void Im3dRect(const math::FloatRect& rect, const glm::vec4& borderColor)
     Im3d::PopDrawState();
 }
 
-inline void Im3dRectFilled(const math::FloatRect& rect, const glm::vec4& fillColor)
+inline void Im3dRectFilled(const math::FloatRect& rect, const RGBColor& fillColor)
 {
     // assert(false && "doesn't work for some reason");
     const auto a = glm2im3d(glm::vec3{rect.getTopLeftCorner(), 0.f});

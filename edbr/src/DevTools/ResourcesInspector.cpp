@@ -105,9 +105,9 @@ void ResourcesInspector::update(
         ImGui::TreePop();
     }
 
-    const auto displayColor = [](glm::vec4 color) {
+    const auto displayColor = [](const LinearColor& color) {
         const auto flags = ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoInputs;
-        std::array<float, 4> arr{color.x, color.y, color.z, color.w};
+        std::array<float, 4> arr{color.r, color.g, color.b, color.a};
         ImGui::ColorEdit3("##Color", arr.data(), flags);
     };
 

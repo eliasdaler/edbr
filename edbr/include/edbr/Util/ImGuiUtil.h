@@ -14,8 +14,8 @@ class GfxDevice;
 namespace util
 {
 ImVec4 toImVec4(const glm::vec4& v);
-void ImGuiTextColored(const glm::vec4& c, const char* fmt, ...);
-bool ImGuiColorEdit3(const char* name, glm::vec4& c);
+ImVec4 toImVec4(const RGBColor& c);
+void ImGuiTextColored(const RGBColor& c, const char* fmt, ...);
 bool ImGuiColorEdit3(const char* name, LinearColor& c);
 
 void ImGuiImage(const GfxDevice& gfxDevice, const ImageId imageId, float scale = 1.f);

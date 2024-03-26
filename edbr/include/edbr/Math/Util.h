@@ -2,8 +2,7 @@
 
 #include <span>
 
-#include <glm/gtc/quaternion.hpp>
-#include <glm/vec4.hpp>
+#include <glm/vec3.hpp>
 
 #include <edbr/Math/Sphere.h>
 

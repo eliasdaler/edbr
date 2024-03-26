@@ -5,7 +5,7 @@ public:
     void displayExtraFilters() override;
     bool displayEntityInView(entt::const_handle e, const std::string& label) const override;
     const std::string& getEntityDisplayName(entt::const_handle e) const override;
-    glm::vec4 getDisplayColor(entt::const_handle e) const override;
+    RGBColor getDisplayColor(entt::const_handle e) const override;
 
 private:
     bool displayStaticGeometry{false};

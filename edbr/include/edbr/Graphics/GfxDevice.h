@@ -15,12 +15,12 @@
 
 #include <glm/vec4.hpp>
 
+#include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/Common.h>
+#include <edbr/Graphics/ImageCache.h>
 #include <edbr/Graphics/Vulkan/Swapchain.h>
 #include <edbr/Graphics/Vulkan/VulkanImGuiBackend.h>
 #include <edbr/Graphics/Vulkan/VulkanImmediateExecutor.h>
-
-#include <edbr/Graphics/ImageCache.h>
 
 namespace vkutil
 {
@@ -50,7 +50,7 @@ public:
     VkCommandBuffer beginFrame();
 
     struct EndFrameProps {
-        const glm::vec4 clearColor{0.f, 0.f, 0.f, 1.f};
+        const LinearColor clearColor{0.f, 0.f, 0.f, 1.f};
         bool copyImageIntoSwapchain{true};
         glm::ivec4 drawImageBlitRect{}; // where to blit draw image to
         bool drawImGui{true};

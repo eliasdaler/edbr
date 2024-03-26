@@ -1,6 +1,5 @@
 #include <edbr/DevTools/EntityTreeView.h>
 
-#include <edbr/Graphics/ColorUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
 
 #include <fmt/printf.h>

@@ -223,7 +223,7 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
         swapchainLayout = VK_IMAGE_LAYOUT_GENERAL;
 
         const auto clearValue = VkClearColorValue{
-            {props.clearColor.x, props.clearColor.y, props.clearColor.z, props.clearColor.w}};
+            {props.clearColor.r, props.clearColor.g, props.clearColor.b, props.clearColor.a}};
         vkCmdClearColorImage(
             cmd, swapchainImage, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
     }
