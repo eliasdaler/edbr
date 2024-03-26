@@ -41,6 +41,7 @@ add_library(edbr
   src/Graphics/GfxDevice.cpp
   src/Graphics/ImageCache.cpp
   src/Graphics/ImageLoader.cpp
+  src/Graphics/Letterbox.cpp
   src/Graphics/MaterialCache.cpp
   src/Graphics/MeshCache.cpp
   src/Graphics/MipMapGeneration.cpp

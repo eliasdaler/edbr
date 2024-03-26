@@ -9,6 +9,7 @@
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/Graphics/ColorUtil.h>
 #include <edbr/Graphics/Cubemap.h>
+#include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
@@ -128,8 +129,10 @@ void Game::customUpdate(float dt)
         handleInput(dt);
     }
     if (!gameDrawnInWindow) {
-        gameWindowPos = {480, 0};
-        gameWindowSize = {1440, 1080};
+        const auto blitRect = util::
+            calculateLetterbox(renderer.getDrawImage().getSize2D(), gfxDevice.getSwapchainSize());
+        gameWindowPos = {blitRect.x, blitRect.y};
+        gameWindowSize = {blitRect.z, blitRect.w};
     }
 
     cameraController.update(camera, dt);
@@ -344,11 +347,15 @@ void Game::customDraw()
             vkutil::cmdEndLabel(cmd);
         }
 
-        const auto clearColor =
-            gameDrawnInWindow ? util::sRGBToLinear(97, 120, 159) : glm::vec4{0.f, 0.f, 0.f, 1.f};
-        bool copyImageToSwapchain = !gameDrawnInWindow;
+        const auto endFrameProps = GfxDevice::EndFrameProps{
+            .clearColor = gameDrawnInWindow ? util::sRGBToLinear(97, 120, 159) :
+                                              glm::vec4{0.f, 0.f, 0.f, 1.f},
+            .copyImageIntoSwapchain = !gameDrawnInWindow,
+            .drawImageBlitRect =
+                {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
+        };
 
-        gfxDevice.endFrame(cmd, drawImage, clearColor, copyImageToSwapchain);
+        gfxDevice.endFrame(cmd, drawImage, endFrameProps);
     }
 }
 

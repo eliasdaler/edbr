@@ -1,6 +1,5 @@
 #include <edbr/Graphics/GfxDevice.h>
 
-#include <array>
 #include <iostream>
 #include <limits>
 
@@ -208,45 +207,7 @@ VkCommandBuffer GfxDevice::beginFrame()
     return cmd;
 }
 
-namespace
-{
-std::array<int, 4> calculateSwapchainBlitExtent(
-    VkExtent2D drawImageExtent,
-    VkExtent2D swapchainExtent,
-    bool doLetterboxing)
-{
-    const auto ir = glm::vec2{drawImageExtent.width, drawImageExtent.height};
-    const auto swapchainSize = glm::vec2{swapchainExtent.width, swapchainExtent.height};
-    const auto scale = std::min(swapchainSize.x / ir.x, swapchainSize.y / ir.y);
-    const auto ss = glm::vec2{swapchainSize} / (ir * scale);
-
-    std::array<float, 4> vp{0.f, 0.f, 1.f, 1.f};
-
-    if (doLetterboxing) {
-        // letterboxing
-        if (ss.x > ss.y) { // won't fit horizontally - add vertical bars
-            vp[2] = ss.y / ss.x;
-            vp[0] = (1.f - vp[2]) / 2.f; // center horizontally
-        } else { // won'f fit vertically - add horizonal bars
-            vp[3] = ss.x / ss.y;
-            vp[1] = (1.f - vp[3]) / 2.f; // center vertically
-        }
-    }
-
-    const auto destX = std::ceil(vp[0] * swapchainSize.x);
-    const auto destY = std::ceil(vp[1] * swapchainSize.y);
-    const auto destW = std::ceil(vp[2] * swapchainSize.x);
-    const auto destH = std::ceil(vp[3] * swapchainSize.y);
-
-    return {(int)destX, (int)destY, (int)destW, (int)destH};
-}
-}
-
-void GfxDevice::endFrame(
-    VkCommandBuffer cmd,
-    const GPUImage& drawImage,
-    const glm::vec4& clearColor,
-    bool copyImageIntoSwapchain)
+void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const EndFrameProps& props)
 {
     // get swapchain image
     const auto [swapchainImage, swapchainImageIndex] =
@@ -261,13 +222,13 @@ void GfxDevice::endFrame(
         vkutil::transitionImage(cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_GENERAL);
         swapchainLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-        const auto clearValue =
-            VkClearColorValue{{clearColor.x, clearColor.y, clearColor.z, clearColor.w}};
+        const auto clearValue = VkClearColorValue{
+            {props.clearColor.x, props.clearColor.y, props.clearColor.z, props.clearColor.w}};
         vkCmdClearColorImage(
             cmd, swapchainImage, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
     }
 
-    if (copyImageIntoSwapchain) {
+    if (props.copyImageIntoSwapchain) {
         // copy from draw image into swapchain
         vkutil::transitionImage(
             cmd,
@@ -278,17 +239,25 @@ void GfxDevice::endFrame(
             cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         swapchainLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-        const auto [destX, destY, destW, destH] =
-            calculateSwapchainBlitExtent(drawImage.getExtent2D(), getSwapchainExtent(), true);
-        vkutil::copyImageToImage(
-            cmd,
-            drawImage.image,
-            swapchainImage,
-            drawImage.getExtent2D(),
-            destX,
-            destY,
-            destW,
-            destH);
+        if (props.drawImageBlitRect != glm::ivec4{}) {
+            vkutil::copyImageToImage(
+                cmd,
+                drawImage.image,
+                swapchainImage,
+                drawImage.getExtent2D(),
+                props.drawImageBlitRect.x,
+                props.drawImageBlitRect.y,
+                props.drawImageBlitRect.z,
+                props.drawImageBlitRect.w);
+        } else {
+            // will stretch image to swapchain
+            vkutil::copyImageToImage(
+                cmd,
+                drawImage.image,
+                swapchainImage,
+                drawImage.getExtent2D(),
+                getSwapchainExtent());
+        }
     }
 
     if (imguiDrawn) {

@@ -48,11 +48,13 @@ public:
     void init(SDL_Window* window, const char* appName, bool vSync);
 
     VkCommandBuffer beginFrame();
-    void endFrame(
-        VkCommandBuffer cmd,
-        const GPUImage& drawImage,
-        const glm::vec4& clearColor = glm::vec4{0.f, 0.f, 0.f, 1.f},
-        bool copyImageIntoSwapchain = true);
+
+    struct EndFrameProps {
+        const glm::vec4 clearColor{0.f, 0.f, 0.f, 1.f};
+        bool copyImageIntoSwapchain{true};
+        glm::ivec4 drawImageBlitRect{}; // where to blit draw image to
+    };
+    void endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const EndFrameProps& props);
     void cleanup();
 
     [[nodiscard]] GPUBuffer createBuffer(
@@ -117,7 +119,13 @@ public:
     VkDevice getDevice() const { return device; }
 
     std::uint32_t getCurrentFrameIndex() const;
+
     VkExtent2D getSwapchainExtent() const { return swapchain.getExtent(); }
+    glm::ivec2 getSwapchainSize() const
+    {
+        return {getSwapchainExtent().width, getSwapchainExtent().height};
+    }
+
     VkFormat getSwapchainFormat() const { return swapchainFormat; }
     const TracyVkCtx& getTracyVkCtx() const;
 
