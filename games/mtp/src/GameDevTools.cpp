@@ -4,6 +4,7 @@
 #include "EntityUtil.h"
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
+#include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Util/Im3dUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
 
@@ -35,9 +36,21 @@ void Game::updateDevTools(float dt)
 
     if (ImGui::Begin("Debug")) {
         ImGui::Text("FPS: %d", (int)displayedFPS);
+
         ImGui::Checkbox("Draw game in window", &gameDrawnInWindow);
         ImGui::Checkbox("Draw entity tags", &drawEntityTags);
+        ImGui::Checkbox("Draw entity heading", &drawEntityHeading);
+
+        /*
         ImGui::Checkbox("Local gizmo", &Im3d::GetContext().m_gizmoLocal);
+        int gizmoMode = (int)Im3d::GetContext().m_gizmoMode;
+        ImGui::RadioButton("Translate (Ctrl+T)", &gizmoMode, Im3d::GizmoMode_Translation);
+        ImGui::SameLine();
+        ImGui::RadioButton("Rotate (Ctrl+R)", &gizmoMode, Im3d::GizmoMode_Rotation);
+        ImGui::SameLine();
+        ImGui::RadioButton("Scale (Ctrl+S)", &gizmoMode, Im3d::GizmoMode_Scale);
+        Im3d::GetContext().m_gizmoMode = (Im3d::GizmoMode)gizmoMode;
+        */
 
         /* static const auto interactTipImageId =
             gfxDevice.loadImageFromFile("assets/images/ui/interact_tip.png");
@@ -52,6 +65,12 @@ void Game::updateDevTools(float dt)
         BeginPropertyTable();
         {
             DisplayProperty("Level", level.getPath().string());
+
+            const auto& mousePos = inputManager.getMouse().getPosition();
+            const auto& gameScreenPos = edbr::util::getGameWindowScreenCoord(
+                mousePos, gameWindowPos, gameWindowSize, {params.renderWidth, params.renderHeight});
+            DisplayProperty("Mouse pos", mousePos);
+            DisplayProperty("Game screen pos", gameScreenPos);
 
             const auto cameraPos = camera.getPosition();
             DisplayProperty("Cam pos", cameraPos);
@@ -110,16 +129,26 @@ void Game::updateDevTools(float dt)
     const auto& pos = tc.transform.getPosition();
 
     Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
-    Im3dDrawArrow(glm::vec4{1.f, 0.f, 1.f, 0.5f}, pos, pos + tc.transform.getLocalFront() * 0.5f);
+    if (drawEntityHeading) {
+        Im3dDrawArrow(
+            glm::vec4{1.f, 0.f, 1.f, 0.5f}, pos, pos + tc.transform.getLocalFront() * 0.5f);
+    }
     // Im3d::DrawCapsule(glm2im3d(pos), glm2im3d(pos + glm::vec3{0.f, 1.f, 0.f}), 0.5f, 50);
 
-    Im3d::Mat4 transform = glm2im3d(tc.worldTransform);
-    if (Im3d::Gizmo("Gizmo", (float*)&transform)) {
+    /*
+    if (entityTreeView.hasSelectedEntity()) {
+        auto ent = entityTreeView.getSelectedEntity().entity();
+        auto e = entt::handle{registry, ent};
+        auto& tc = e.get<TransformComponent>();
+        Im3d::Mat4 transform = glm2im3d(tc.worldTransform);
+        if (Im3d::Gizmo("Gizmo", (float*)&transform)) {
+            tc.transform = Transform(im3d2glm(transform));
+        }
     }
+    */
 
     Im3d::PopLayerId();
 
-    // draw tags
     if (drawEntityTags) {
         for (const auto& [e, tc, tagC] : registry.view<TransformComponent, TagComponent>().each()) {
             if (!tagC.getTag().empty()) {

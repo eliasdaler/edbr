@@ -164,11 +164,11 @@ void Im3dState::newFrame(
 
     // to clip coords
     const auto ndc = edbr::util::fromWindowCoordsToNDC(mousePos, static_cast<glm::ivec2>(vpSize));
-    const auto ray_clip = glm::vec4{ndc, 0.f, 1.f};
+    const auto ray_clip = glm::vec4{ndc, -1.f, 1.f};
 
     // to eye coords
     auto ray_eye = glm::inverse(camera.getProjection()) * ray_clip;
-    ray_eye = glm::vec4{glm::vec2(ray_eye), 0.f, 0.f};
+    ray_eye = glm::vec4{glm::vec2(ray_eye), -1.f, 0.f};
 
     // to world coords
     auto ray_wor = glm::inverse(camera.getView()) * ray_eye;

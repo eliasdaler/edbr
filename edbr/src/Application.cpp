@@ -38,7 +38,7 @@ void Application::init(const Params& ps)
     }
 
     // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0) {
         printf("SDL could not initialize. SDL Error: %s\n", SDL_GetError());
         std::exit(1);
     }
@@ -94,15 +94,16 @@ void Application::run()
 
         while (accumulator >= dt) {
             ZoneScopedN("Tick");
-
+            inputManager.onNewFrame();
             { // event processing
                 SDL_Event event;
                 while (SDL_PollEvent(&event)) {
-                    ImGui_ImplSDL2_ProcessEvent(&event);
                     if (event.type == SDL_QUIT) {
                         isRunning = false;
                         return;
                     }
+                    inputManager.handleEvent(event);
+                    ImGui_ImplSDL2_ProcessEvent(&event);
                 }
             }
 
@@ -111,6 +112,7 @@ void Application::run()
             ImGui::NewFrame();
 
             // update
+            inputManager.update(dt);
             customUpdate(dt);
 
             accumulator -= dt;
@@ -137,6 +139,7 @@ void Application::cleanup()
     customCleanup();
 
     gfxDevice.cleanup();
+    inputManager.cleanup();
 
     SDL_DestroyWindow(window);
     SDL_Quit();

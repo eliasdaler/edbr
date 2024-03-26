@@ -260,7 +260,7 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
         }
     }
 
-    if (imguiDrawn) {
+    if (props.drawImGui) {
         vkutil::transitionImage(
             cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         swapchainLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;

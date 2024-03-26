@@ -1,6 +1,7 @@
 #pragma once
 
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Input/InputManager.h>
 
 struct SDL_Window;
 
@@ -36,4 +37,6 @@ protected:
     bool frameLimit{true};
     float frameTime{0.f};
     float avgFPS{0.f};
+
+    InputManager inputManager;
 };

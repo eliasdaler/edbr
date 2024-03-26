@@ -53,6 +53,7 @@ public:
         const glm::vec4 clearColor{0.f, 0.f, 0.f, 1.f};
         bool copyImageIntoSwapchain{true};
         glm::ivec4 drawImageBlitRect{}; // where to blit draw image to
+        bool drawImGui{true};
     };
     void endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const EndFrameProps& props);
     void cleanup();
@@ -155,7 +156,6 @@ private: // data
     VulkanImmediateExecutor executor;
 
     VulkanImGuiBackend imGuiBackend;
-    bool imguiDrawn{true};
 
     VkSampleCountFlagBits supportedSampleCounts;
     VkSampleCountFlagBits highestSupportedSamples{VK_SAMPLE_COUNT_1_BIT};

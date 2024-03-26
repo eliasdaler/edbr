@@ -8,6 +8,7 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/Graphics/ColorUtil.h>
+#include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Scene.h>
@@ -28,6 +29,9 @@ Game::Game() :
 
 void Game::customInit()
 {
+    inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
+    inputManager.loadMapping("assets/data/input_mapping.json");
+
     baseRenderer.init();
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
@@ -153,9 +157,14 @@ void Game::customUpdate(float dt)
         bool isMousePressed = mouse.isHeld(SDL_BUTTON(1));
         const auto mouseScreenPos = fromWindowCoordsToScreenCoords(mouse.getPosition());
         */
-        const auto mouseScreenPos = glm::ivec2{};
-        bool isMousePressed = false;
-        im3d.newFrame(dt, internalSize, camera, mouseScreenPos, isMousePressed);
+        const auto& mouse = inputManager.getMouse();
+        bool isMousePressed = mouse.isHeld(SDL_BUTTON(1));
+        const auto& gameScreenPos = edbr::util::getGameWindowScreenCoord(
+            mouse.getPosition(),
+            gameWindowPos,
+            gameWindowSize,
+            {params.renderWidth, params.renderHeight});
+        im3d.newFrame(dt, internalSize, camera, gameScreenPos, isMousePressed);
 
         im3d.updateCameraViewProj(Im3dState::WorldNoDepthLayer, camera.getViewProj());
         im3d.updateCameraViewProj(Im3dState::WorldWithDepthLayer, camera.getViewProj());
@@ -199,7 +208,18 @@ void Game::customUpdate(float dt)
 
 void Game::handleInput(float dt)
 {
-    cameraController.handleInput(camera);
+    cameraController.handleInput(inputManager, camera);
+
+    const auto& actionMapping = inputManager.getActionMapping();
+    static const auto toggleFreeCameraAction = actionMapping.getActionTagHash("ToggleFreeCamera");
+    if (actionMapping.wasJustPressed(toggleFreeCameraAction)) {
+        orbitCameraAroundSelectedEntity = !orbitCameraAroundSelectedEntity;
+    }
+
+    static const auto toggleImGuiAction = actionMapping.getActionTagHash("ToggleImGuiVisibility");
+    if (actionMapping.wasJustPressed(toggleImGuiAction)) {
+        drawImGui = !drawImGui;
+    }
 
     if (orbitCameraAroundSelectedEntity) {
         handlePlayerInput(dt);
@@ -208,18 +228,20 @@ void Game::handleInput(float dt)
 
 void Game::handlePlayerInput(float dt)
 {
-    const auto moveStickState = util::getStickState({
-        .up = SDL_SCANCODE_W,
-        .down = SDL_SCANCODE_S,
-        .left = SDL_SCANCODE_A,
-        .right = SDL_SCANCODE_D,
-    });
+    const auto& actionMapping = inputManager.getActionMapping();
+    // a bit lazy, better store somewhere
+    static const auto horizonalWalkAxis = actionMapping.getActionTagHash("MoveX");
+    static const auto verticalWalkAxis = actionMapping.getActionTagHash("MoveY");
+    static const auto sprintAction = actionMapping.getActionTagHash("Sprint");
+
+    const auto moveStickState =
+        util::getStickState(actionMapping, horizonalWalkAxis, verticalWalkAxis);
 
     auto player = eu::getPlayerEntity(registry);
     if (moveStickState != glm::vec2{}) {
         auto& mc = player.get<MovementComponent>();
         auto speed = mc.maxSpeed;
-        if (!util::isKeyPressed(SDL_SCANCODE_LSHIFT)) {
+        if (!actionMapping.isHeld(sprintAction)) {
             speed /= 3.5f; // TODO: make walk speed configurable
         }
 
@@ -353,6 +375,7 @@ void Game::customDraw()
             .copyImageIntoSwapchain = !gameDrawnInWindow,
             .drawImageBlitRect =
                 {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
+            .drawImGui = drawImGui,
         };
 
         gfxDevice.endFrame(cmd, drawImage, endFrameProps);

@@ -1,43 +1,39 @@
 #include <edbr/FreeCameraController.h>
 
 #include <edbr/Graphics/Camera.h>
+#include <edbr/Input/InputManager.h>
 #include <edbr/Util/InputUtil.h>
 
 #include <fmt/printf.h>
 
-void FreeCameraController::handleInput(const Camera& camera)
+void FreeCameraController::handleInput(const InputManager& im, const Camera& camera)
 {
+    const auto& actionMapping = im.getActionMapping();
+    static const auto moveXAxis = actionMapping.getActionTagHash("CameraMoveX");
+    static const auto moveYAxis = actionMapping.getActionTagHash("CameraMoveY");
+    static const auto moveZAxis = actionMapping.getActionTagHash("CameraMoveZ");
+    static const auto moveFastAction = actionMapping.getActionTagHash("CameraMoveFast");
+
     const auto camFront = camera.getTransform().getLocalFront();
     const auto camRight = camera.getTransform().getLocalRight();
 
-    const auto moveStickState = util::getStickState({
-        .up = SDL_SCANCODE_W,
-        .down = SDL_SCANCODE_S,
-        .left = SDL_SCANCODE_A,
-        .right = SDL_SCANCODE_D,
-    });
+    const auto moveStickState = util::getStickState(actionMapping, moveXAxis, moveYAxis);
+    const auto zAxisState = actionMapping.getAxisValue(moveZAxis);
+
     glm::vec3 moveVector{};
     moveVector += camFront * (-moveStickState.y);
     moveVector += camRight * moveStickState.x;
-
-    if (util::isKeyPressed(SDL_SCANCODE_Q)) {
-        moveVector -= math::GlobalUpAxis / 2.f;
-    }
-    if (util::isKeyPressed(SDL_SCANCODE_E)) {
-        moveVector += math::GlobalUpAxis / 2.f;
-    }
+    moveVector += math::GlobalUpAxis * zAxisState;
 
     moveVelocity = moveVector * moveSpeed;
-    if (util::isKeyPressed(SDL_SCANCODE_LSHIFT)) {
+
+    if (actionMapping.isHeld(moveFastAction)) {
         moveVelocity *= 2.f;
     }
 
-    const auto rotateStickState = util::getStickState({
-        .up = SDL_SCANCODE_UP,
-        .down = SDL_SCANCODE_DOWN,
-        .left = SDL_SCANCODE_LEFT,
-        .right = SDL_SCANCODE_RIGHT,
-    });
+    static const auto rotateXAxis = actionMapping.getActionTagHash("CameraRotateX");
+    static const auto rotateYAxis = actionMapping.getActionTagHash("CameraRotateY");
+    const auto rotateStickState = util::getStickState(actionMapping, rotateXAxis, rotateYAxis);
 
     rotationVelocity.x = -rotateStickState.x * rotateSpeed;
     rotationVelocity.y = -rotateStickState.y * rotateSpeed;

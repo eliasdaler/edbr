@@ -1,6 +1,7 @@
 #include <edbr/Util/InputUtil.h>
 
 #include <edbr/Graphics/Camera.h>
+#include <edbr/Input/ActionMapping.h>
 
 #include <SDL2/SDL_keyboard.h>
 
@@ -12,22 +13,13 @@ bool isKeyPressed(SDL_Scancode scancode)
     return state[scancode] != 0;
 }
 
-glm::vec2 getStickState(const StickBindings& bindings)
+glm::vec2 getStickState(
+    const ActionMapping& actionMapping,
+    const ActionTagHash& horizontalAxis,
+    const ActionTagHash& verticalAxis)
 {
-    glm::vec2 stick{};
-    if (isKeyPressed(bindings.up)) {
-        stick.y -= 1.f;
-    }
-    if (isKeyPressed(bindings.down)) {
-        stick.y += 1.f;
-    }
-    if (isKeyPressed(bindings.left)) {
-        stick.x -= 1.f;
-    }
-    if (isKeyPressed(bindings.right)) {
-        stick.x += 1.f;
-    }
-    return stick;
+    return glm::
+        vec2{actionMapping.getAxisValue(horizontalAxis), actionMapping.getAxisValue(verticalAxis)};
 }
 
 glm::vec3 calculateStickHeading(const Camera& camera, const glm::vec2& stickState)

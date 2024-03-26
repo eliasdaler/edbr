@@ -71,6 +71,14 @@ add_library(edbr
   src/Util/OSUtil.cpp
   src/Util/StringUtil.cpp
 
+  src/Input/ActionMapping.cpp
+  src/Input/ButtonState.cpp
+  src/Input/GamepadState.cpp
+  src/Input/InputManager.cpp
+  src/Input/InputStringMap.cpp
+  src/Input/KeyboardState.cpp
+  src/Input/MouseState.cpp
+
   src/Application.cpp
   src/FreeCameraController.cpp
   src/SceneCache.cpp

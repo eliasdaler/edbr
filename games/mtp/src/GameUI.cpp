@@ -73,7 +73,7 @@ void GameUI::draw(SpriteRenderer& uiRenderer)
 {
 #if 1
     { // draw test UI
-        // uiRenderer.drawSprite(talkTipSprite, {128.f, 160.f});
+      // uiRenderer.drawSprite(talkTipSprite, {128.f, 160.f});
 
         /*
         uiRenderer.drawSprite(testSprite, {128.f, 250.f}, glm::pi<float>() / 4.f);
@@ -88,12 +88,14 @@ void GameUI::draw(SpriteRenderer& uiRenderer)
 
         // uiRenderer.drawSprite(kaeruSprite, kaeruTransform.asMatrix());
 
+        /*
         uiRenderer.drawText(defaultFont, strings[0], glm::vec2{64.f, 64.f});
         uiRenderer.drawText(
             defaultFont, strings[1], glm::vec2{64.f, 90.f}, glm::vec4{1.f, 1.f, 0.f, 1.f});
 
         uiRenderer.drawText(
             defaultFont, strings[2], glm::vec2{64.f, 120.f}, glm::vec4{1.f, 0.f, 1.f, 1.f});
+            */
 
         /* for (int i = 0; i < 8; ++i) {
             const auto rotation = i * glm::pi<float>() / 4.f;

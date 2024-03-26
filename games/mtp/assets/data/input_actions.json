@@ -1,0 +1,44 @@
+{
+	"actions": [
+		"PrimaryAction",
+    "Sprint",
+    "Inventory",
+    "Pause",
+    "CursorLeft",
+    "CursorRight",
+    "CursorUp",
+    "CursorDown",
+    "CursorConfirm",
+    "MenuExit",
+    "CameraMoveFast",
+    "ToggleFreeCamera",
+    "ToggleImGuiVisibility"
+	],
+	"axes": [
+		"MoveX",
+		"MoveY",
+		"CameraMoveX",
+		"CameraMoveY",
+		"CameraMoveZ",
+		"CameraRotateX",
+		"CameraRotateY"
+	],
+  "keyRepeat": {
+    "CursorLeft": {
+      "startDelay": 0.25,
+      "repeatPeriod": 0.15
+    },
+    "CursorRight": {
+      "startDelay": 0.25,
+      "repeatPeriod": 0.15
+    },
+    "CursorUp": {
+      "startDelay": 0.25,
+      "repeatPeriod": 0.15
+    },
+    "CursorDown": {
+      "startDelay": 0.25,
+      "repeatPeriod": 0.15
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+	"keyboard": {
+		"action": {
+      "PrimaryAction": [ "F" ],
+      "Inventory": [ "I" ],
+      "Sprint": [ "LShift" ],
+      "Pause": [ "Escape" ],
+      "CursorLeft": [ "A", "Left" ],
+      "CursorRight": [ "D", "Right" ],
+      "CursorUp": [ "W", "Up" ],
+      "CursorDown": [ "S", "Down" ],
+      "CursorConfirm": [ "F", "Return" ],
+      "MenuExit": [ "Escape" ],
+      "CameraMoveFast": [ "LShift" ],
+      "ToggleFreeCamera": [ "C" ],
+      "ToggleImGuiVisibility": [ "Tab" ]
+    },
+		"axisButton": [
+			{
+				"key": "A",
+				"tag": "MoveX",
+				"scale": -1.0
+			},
+			{
+				"key": "D",
+				"tag": "MoveX",
+				"scale": 1.0
+			},
+			{
+				"key": "W",
+				"tag": "MoveY",
+				"scale": -1.0
+			},
+			{
+				"key": "S",
+				"tag": "MoveY",
+				"scale": 1.0
+			},
+			{
+				"key": "A",
+				"tag": "CameraMoveX",
+				"scale": -1.0
+			},
+			{
+				"key": "D",
+				"tag": "CameraMoveX",
+				"scale": 1.0
+			},
+			{
+				"key": "W",
+				"tag": "CameraMoveY",
+				"scale": -1.0
+			},
+			{
+				"key": "S",
+				"tag": "CameraMoveY",
+				"scale": 1.0
+			},
+			{
+				"key": "Q",
+				"tag": "CameraMoveZ",
+				"scale": -1.0
+			},
+			{
+				"key": "E",
+				"tag": "CameraMoveZ",
+				"scale": 1.0
+			},
+			{
+				"key": "Up",
+				"tag": "CameraRotateY",
+				"scale": -1.0
+			},
+			{
+				"key": "Down",
+				"tag": "CameraRotateY",
+				"scale": 1.0
+			},
+			{
+				"key": "Left",
+				"tag": "CameraRotateX",
+				"scale": -1.0
+			},
+			{
+				"key": "Right",
+				"tag": "CameraRotateX",
+				"scale": 1.0
+			}
+		]
+	},
+	"gamepad": {
+		"action": {
+      "PrimaryAction": [ "A" ],
+      "Inventory": [ "Y" ],
+      "Sprint": [ "B" ],
+      "Pause": [ "Start" ],
+      "CursorLeft": [ "DPadLeft", "LeftX-" ],
+      "CursorRight": [ "DPadRight", "LeftX+" ],
+      "CursorUp": [ "DPadUp", "LeftY-" ],
+      "CursorDown": [ "DPadDown", "LeftY+" ],
+      "CursorConfirm": [ "A" ],
+      "MenuExit": [ "B" ],
+      "CameraMoveFast": [ "B" ],
+      "ToggleFreeCamera": [ "RightStick" ],
+      "ToggleImGuiVisibility": [ "LeftStick" ]
+    },
+		"axis": [
+			{
+				"axis": "LeftX",
+				"tag": "MoveX"
+			},
+			{
+				"axis": "LeftY",
+				"tag": "MoveY"
+			},
+			{
+				"axis": "LeftX",
+				"tag": "CameraMoveX"
+			},
+			{
+				"axis": "LeftY",
+				"tag": "CameraMoveY"
+			},
+			{
+				"axis": "RightX",
+				"tag": "CameraRotateX"
+			},
+			{
+				"axis": "RightY",
+				"tag": "CameraRotateY"
+			}
+		],
+		"axisButton": [
+			{
+				"button": "DPadUp",
+				"tag": "MoveY",
+				"scale": -1.0
+			},
+			{
+				"button": "DPadDown",
+				"tag": "MoveY",
+				"scale": 1.0
+			},
+			{
+				"button": "DPadLeft",
+				"tag": "MoveX",
+				"scale": -1.0
+			},
+			{
+				"button": "DPadRight",
+				"tag": "MoveX",
+				"scale": 1.0
+			},
+			{
+				"button": "LeftShoulder",
+				"tag": "CameraMoveZ",
+				"scale": -1.0
+			},
+			{
+				"button": "RightShoulder",
+				"tag": "CameraMoveZ",
+				"scale": 1.0
+			}
+		]
+	}
+}
+
+

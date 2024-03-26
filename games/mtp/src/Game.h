@@ -100,6 +100,8 @@ private:
     bool gameDrawnInWindow{false};
     const char* gameWindowLabel{"Game##window"};
     bool drawEntityTags{false};
+    bool drawEntityHeading{false};
+    bool drawImGui{true};
 
     glm::ivec2 gameWindowPos;
     glm::ivec2 gameWindowSize;
