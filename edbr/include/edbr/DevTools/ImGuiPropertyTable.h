@@ -6,6 +6,7 @@
 
 #include <glm/fwd.hpp>
 
+#include <edbr/Graphics/Color.h>
 #include <edbr/Math/Rect.h>
 
 namespace devtools
@@ -41,6 +42,9 @@ void DisplayProperty(const char* name, const T& v)
 
 void DisplayPropertyF(const char* name, const char* fmt, ...);
 void DisplayColorProperty(const char* name, const glm::vec4& v);
+
+void DisplayColorProperty(const char* name, const RGBColor& c);
+void DisplayColorProperty(const char* name, const LinearColor& c);
 
 void EndPropertyTable();
 

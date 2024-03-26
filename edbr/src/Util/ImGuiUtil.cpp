@@ -30,6 +30,16 @@ bool ImGuiColorEdit3(const char* name, glm::vec4& c)
     return false;
 }
 
+bool ImGuiColorEdit3(const char* name, LinearColor& c)
+{
+    std::array<float, 4> arrC{c.r, c.g, c.b, c.a};
+    if (ImGui::ColorEdit3(name, arrC.data())) {
+        c = LinearColor{arrC[0], arrC[1], arrC[2], arrC[2]};
+        return true;
+    }
+    return false;
+}
+
 void ImGuiImage(const GfxDevice& gfxDevice, const ImageId imageId, float scale)
 {
     return ImGuiImage(gfxDevice.getImage(imageId), scale);

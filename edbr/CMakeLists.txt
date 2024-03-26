@@ -5,6 +5,7 @@ add_library(edbr
   src/Core/JsonDataLoader.cpp
   src/Core/JsonFile.cpp
   src/Core/JsonMath.cpp
+  src/Core/JsonGraphics.cpp
 
   # DevTools
   src/DevTools/EntityInfoDisplayer.cpp

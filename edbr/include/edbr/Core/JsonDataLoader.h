@@ -6,6 +6,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <edbr/Core/JsonGraphics.h>
 #include <edbr/Core/JsonMath.h>
 
 class JsonDataLoader {

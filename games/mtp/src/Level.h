@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string>
 
-#include <glm/vec4.hpp>
+#include <edbr/Graphics/Color.h>
 
 class Level {
 public:
@@ -46,8 +46,8 @@ public:
     const std::string& getSkyboxName() const { return skyboxName; }
     bool hasSkybox() const { return !skyboxName.empty(); }
 
-    const glm::vec4& getAmbientLightColor() const { return ambientLightColor; }
-    void setAmbientLightColor(const glm::vec4& c) { ambientLightColor = c; }
+    const LinearColor& getAmbientLightColor() const { return ambientLightColor; }
+    void setAmbientLightColor(const LinearColor& c) { ambientLightColor = c; }
 
     float getAmbientLightIntensity() const { return ambientLightIntensity; }
     void setAmbientLightIntensity(float v) { ambientLightIntensity = v; }
@@ -55,8 +55,8 @@ public:
     bool isFogActive() const { return fogActive; }
     void setFogActive(bool b) { fogActive = b; }
 
-    const glm::vec4& getFogColor() const { return fogColor; }
-    void setFogColor(const glm::vec4& c) { fogColor = c; }
+    const LinearColor& getFogColor() const { return fogColor; }
+    void setFogColor(const LinearColor& c) { fogColor = c; }
 
     float getFogDensity() const { return fogDensity; }
     void setFogDensity(float v) { fogDensity = v; }
@@ -79,13 +79,13 @@ private:
     std::string defaultCameraName;
 
     std::string skyboxName;
-    glm::vec4 ambientLightColor;
+    LinearColor ambientLightColor;
     float ambientLightIntensity{0.f};
 
     bool fogActive{false};
-    glm::vec4 fogColor;
+    LinearColor fogColor;
     float fogDensity{0.f};
 
-    static const glm::vec4 DefaultAmbientLightColor;
+    static const LinearColor DefaultAmbientLightColor;
     static const float DefaultAmbientLightIntensity;
 };

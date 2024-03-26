@@ -5,7 +5,8 @@
 
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
+
+#include <edbr/Graphics/Color.h>
 
 enum class LightType {
     None,
@@ -18,7 +19,7 @@ struct Light {
     std::string name;
     LightType type{LightType::None};
 
-    glm::vec4 color;
+    LinearColor color;
     float range{0.f};
     float intensity{0.f};
 
@@ -59,7 +60,7 @@ struct GPULightData {
     std::uint32_t type;
     glm::vec3 direction;
     float range;
-    glm::vec3 color;
+    LinearColorNoAlpha color;
     float intensity;
     glm::vec2 scaleOffset;
     float shadowMapIndex;

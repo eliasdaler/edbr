@@ -6,6 +6,7 @@
 
 #include <edbr/Graphics/BaseRenderer.h>
 #include <edbr/Graphics/CPUMesh.h>
+#include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/GPUMesh.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Graphics/Scene.h>
@@ -90,6 +91,16 @@ glm::vec4 tg2glmVec4(const std::vector<double>& vec)
 
     assert(vec.size() == 3);
     return {vec[0], vec[1], vec[2], 1.f};
+}
+
+LinearColor tg2LinearColor(const std::vector<double>& vec)
+{
+    if (vec.size() == 4) {
+        return LinearColor{(float)vec[0], (float)vec[1], (float)vec[2], (float)vec[3]};
+    }
+
+    assert(vec.size() == 3);
+    return LinearColor{(float)vec[0], (float)vec[1], (float)vec[2], 1.f};
 }
 
 glm::quat tg2glmQuat(const std::vector<double>& vec)
@@ -540,7 +551,7 @@ Light loadLight(const tinygltf::Light& tLight)
     Light light;
     light.name = tLight.name;
     light.type = fromGLTFLightType(tLight.type);
-    light.color = tg2glmVec4(tLight.color);
+    light.color = tg2LinearColor(tLight.color);
     light.intensity = gltfIntensityConvert((float)tLight.intensity);
     light.range = (float)tLight.range;
     light.setConeAngles((float)tLight.spot.innerConeAngle, (float)tLight.spot.outerConeAngle);

@@ -3,7 +3,7 @@
 #include <edbr/Core/JsonFile.h>
 
 // Blender's defaults
-const glm::vec4 Level::DefaultAmbientLightColor = glm::vec4{0.051f, 0.051f, 0.051f, 1.f};
+const LinearColor Level::DefaultAmbientLightColor = LinearColor{0.051f, 0.051f, 0.051f, 1.f};
 const float Level::DefaultAmbientLightIntensity{1.0f};
 
 Level::Level() :

@@ -7,6 +7,7 @@
 
 #include <edbr/Graphics/Vulkan/GPUImage.h>
 
+#include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/GPUMesh.h>
 #include <edbr/Graphics/Light.h>
 #include <edbr/Graphics/MeshDrawCommand.h>
@@ -29,9 +30,9 @@ class GameRenderer {
 public:
     struct SceneData {
         const Camera& camera;
-        glm::vec4 ambientColor;
+        LinearColor ambientColor;
         float ambientIntensity;
-        glm::vec4 fogColor;
+        LinearColor fogColor;
         float fogDensity;
     };
 
@@ -110,11 +111,11 @@ private:
         glm::vec4 cameraPos;
 
         // ambient
-        glm::vec3 ambientColor;
+        LinearColorNoAlpha ambientColor;
         float ambientIntensity;
 
         // fog
-        glm::vec3 fogColor;
+        LinearColorNoAlpha fogColor;
         float fogDensity;
 
         // CSM data

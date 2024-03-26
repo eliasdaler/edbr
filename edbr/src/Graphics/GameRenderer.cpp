@@ -198,9 +198,9 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .proj = sceneData.camera.getProjection(),
             .viewProj = sceneData.camera.getViewProj(),
             .cameraPos = glm::vec4{sceneData.camera.getPosition(), 1.f},
-            .ambientColor = glm::vec3{sceneData.ambientColor},
+            .ambientColor = LinearColorNoAlpha{sceneData.ambientColor},
             .ambientIntensity = sceneData.ambientIntensity,
-            .fogColor = glm::vec3{sceneData.fogColor},
+            .fogColor = LinearColorNoAlpha{sceneData.fogColor},
             .fogDensity = sceneData.fogDensity,
             .cascadeFarPlaneZs =
                 glm::vec4{
@@ -493,7 +493,7 @@ void GameRenderer::addLight(const Light& light, const Transform& transform)
         }
     }
 
-    ld.color = glm::vec3{light.color};
+    ld.color = LinearColorNoAlpha{light.color};
     ld.intensity = light.intensity;
     if (light.type == LightType::Directional) {
         ld.intensity = 1.0; // don't have intensity for directional light yet
