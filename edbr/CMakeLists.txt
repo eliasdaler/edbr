@@ -109,6 +109,8 @@ target_link_libraries(edbr
     imgui::imgui
     im3d::im3d
 
+    Jolt::Jolt
+
   PRIVATE
     tinygltf::tinygltf
     stb::image

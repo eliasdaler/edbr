@@ -9,6 +9,7 @@ add_executable(mtpgame
   src/GameSceneLoader.cpp
   src/GameUI.cpp
   src/Level.cpp
+  src/PhysicsSystem.cpp
 
   src/main.cpp
 )

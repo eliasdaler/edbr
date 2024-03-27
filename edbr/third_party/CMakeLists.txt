@@ -128,3 +128,11 @@ set_target_properties(fmt PROPERTIES
 if (MSVC)
   target_compile_definitions(fmt PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
 endif()
+
+## jolt
+## TODO: only enable in Debug
+## option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" OFF)
+option(OVERRIDE_CXX_FLAGS "Override CMAKE_CXX_FLAGS_DEBUG/RELEASE" OFF)
+option(ENABLE_ALL_WARNINGS "Enable all warnings and warnings as errors" OFF)
+add_subdirectory(JoltPhysics/Build)
+add_library(Jolt::Jolt ALIAS Jolt)

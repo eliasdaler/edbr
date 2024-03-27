@@ -35,6 +35,8 @@ void Game::customInit()
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
 
+    physicsSystem.init();
+
     { // im3d
         im3d.init(gfxDevice, renderer.getDrawImage().format);
         im3d.addRenderState(
@@ -174,6 +176,7 @@ void Game::customUpdate(float dt)
 
     // movement
     movementSystemUpdate(registry, dt);
+    physicsSystem.update(dt);
     transformSystemUpdate(registry, dt);
     skeletonAnimationSystemUpdate(registry, dt);
 
@@ -264,6 +267,7 @@ void Game::handlePlayerInput(float dt)
 void Game::customCleanup()
 {
     registry.clear();
+    physicsSystem.cleanup();
 
     gfxDevice.waitIdle();
     im3d.cleanup(gfxDevice);

@@ -27,6 +27,7 @@
 #include "EntityInitializer.h"
 #include "GameUI.h"
 #include "Level.h"
+#include "PhysicsSystem.h"
 
 class ComponentFactory;
 
@@ -108,4 +109,6 @@ private:
     glm::ivec2 gameWindowSize;
 
     Im3dState im3d;
+
+    PhysicsSystem physicsSystem;
 };
