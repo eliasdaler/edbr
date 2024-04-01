@@ -24,7 +24,7 @@ endif()
 
 
 # Check that git submodules were cloned
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/edbr/third_party/SDL/CMakeLists.txt")
   include(FetchSubmodules)
   fetch_submodules()
 endif()

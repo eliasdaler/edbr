@@ -6,7 +6,7 @@ function(target_add_extra_warnings target)
       PRIVATE
         -Wall
         -Wextra
-        # -Wpedantic (disable until Jolt is fixed)
+        -Wpedantic
     )
 
     # ignore some warnings
