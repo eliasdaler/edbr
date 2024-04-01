@@ -6,10 +6,20 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/EntityFactory.h>
+#include <edbr/SceneCache.h>
+#include <edbr/Util/JoltUtil.h>
 
 #include <edbr/Graphics/GameRenderer.h>
 
 #include "Components.h"
+#include "PhysicsSystem.h"
+
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
 
 namespace
 {
@@ -86,6 +96,7 @@ EntityCreateInfo createEntityFromNode(
         auto& mc = e.emplace<MeshComponent>();
         mc.meshes = primitives;
         mc.meshTransforms.resize(primitives.size());
+        mc.meshPath = scene.path;
 
         // skeleton
         if (node.skinId != -1) {
@@ -136,6 +147,7 @@ void createEntitiesFromNode(
     assert(loadInfo.entity.entity() != entt::null);
     auto e = loadInfo.entity;
     if (loadInfo.createdFromPrefab) {
+        onPlaceEntityOnScene(loadCtx, e);
         return;
     }
 
@@ -162,6 +174,8 @@ void createEntitiesFromNode(
             createEntitiesFromNode(loadCtx, scene, childNode, e);
         }
     }
+
+    onPlaceEntityOnScene(loadCtx, e);
 }
 
 } // end of anonymous namespace
@@ -174,6 +188,70 @@ void createEntitiesFromScene(const SceneLoadContext& loadCtx, const Scene& scene
     for (const auto& nodePtr : scene.nodes) {
         if (nodePtr) {
             ::createEntitiesFromNode(loadCtx, scene, *nodePtr, {});
+        }
+    }
+}
+
+void onPlaceEntityOnScene(const util::SceneLoadContext& loadCtx, entt::handle e)
+{
+    if (auto mcPtr = e.try_get<MeshComponent>(); mcPtr) {
+        const auto& mc = *mcPtr;
+        const auto& prefabName = e.get<MetaInfoComponent>().prefabName;
+        if (prefabName == "pine_tree" || prefabName == "collision" ||
+            prefabName == "static_geometry" || prefabName == "ball" || prefabName == "trigger" ||
+            prefabName == "ground_tile" || prefabName == "generic_npc") {
+            auto& scene =
+                loadCtx.sceneCache.loadScene(loadCtx.renderer.getBaseRenderer(), mc.meshPath);
+            JPH::Ref<JPH::Shape> shape;
+            bool staticBody = true;
+            if (prefabName == "ball") {
+                shape = new JPH::SphereShape(0.25f);
+                staticBody = false;
+            } else if (prefabName == "pine_tree") {
+                shape = new JPH::CylinderShape(2.6f, 1.8f);
+                shape = new JPH::
+                    RotatedTranslatedShape({0.f, 2.6f, 0.f}, JPH::Quat().sIdentity(), shape);
+            } else if (prefabName == "generic_npc") {
+                // FIXME: should be (1.f, 0.5f) but the character has stupid scale!
+                // (0.1f)
+                shape = new JPH::CylinderShape(10.f, 3.f);
+                shape = new JPH::
+                    RotatedTranslatedShape({0.f, 10.f, 0.f}, JPH::Quat().sIdentity(), shape);
+            } else if (prefabName == "ground_tile") {
+                const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
+                auto size = aabb.calculateSize();
+
+                // completely flat tile
+                bool almostZeroHeight = 0.f;
+                if (size.y < 0.001f) {
+                    size.y = 0.1f;
+                    almostZeroHeight = true;
+                }
+
+                // for completely flat tiles, the origin will be at the center of the tile
+                // for tiles with height, it will be at the center of the bottom AABB plane
+                shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
+                const auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
+                shape = new JPH::
+                    RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
+            } else {
+                std::vector<const CPUMesh*> meshes;
+                for (const auto& meshId : mc.meshes) {
+                    meshes.push_back(&scene.cpuMeshes.at(meshId));
+                }
+                shape = loadCtx.physicsSystem.cacheMeshShape(meshes, mc.meshes, mc.meshTransforms);
+            }
+
+            if (shape) {
+                bool trigger = (prefabName == "trigger");
+                auto bodyId = loadCtx.physicsSystem.createBody(
+                    e, e.get<TransformComponent>().transform, shape, staticBody, trigger);
+                auto& pc = e.emplace<PhysicsComponent>();
+                pc.bodyId = bodyId;
+
+                auto& tc = e.get<TransformComponent>();
+                loadCtx.physicsSystem.updateTransform(pc.bodyId, tc.transform);
+            }
         }
     }
 }

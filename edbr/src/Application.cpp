@@ -10,6 +10,11 @@
 
 #include <tracy/Tracy.hpp>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+
 #ifdef TRACY_ENABLE
 void* operator new(std ::size_t count)
 {
@@ -36,6 +41,14 @@ void Application::init(const Params& ps)
         params.renderWidth = params.windowWidth;
         params.renderHeight = params.windowHeight;
     }
+
+#ifdef _WIN32
+    // This won't be needed in SDL 3.0.
+    // But without this, the application is scaled to whatever the scale
+    // the user has set - but it shouldn't be scaled that way.
+    BOOL dpi_result = SetProcessDPIAware();
+    assert(dpi_result == TRUE);
+#endif
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0) {

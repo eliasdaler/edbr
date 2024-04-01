@@ -21,12 +21,12 @@ Im3d::Id Im3dState::DefaultLayer;
 Im3d::Id Im3dState::WorldWithDepthLayer;
 Im3d::Id Im3dState::WorldNoDepthLayer;
 
-void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
+void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat, VkFormat depthImageFormat)
 {
     // note that Im3d will sort draw lists in the order that layers are defined in
     Im3dState::DefaultLayer = 0;
-    Im3dState::WorldWithDepthLayer = Im3d::MakeId("WorldNoDepth");
-    Im3dState::WorldNoDepthLayer = Im3d::MakeId("World");
+    Im3dState::WorldWithDepthLayer = Im3d::MakeId("World");
+    Im3dState::WorldNoDepthLayer = Im3d::MakeId("WorldNoDepth");
 
     auto& ap = Im3d::GetAppData();
     ap.m_flipGizmoWhenBehind = false;
@@ -59,7 +59,9 @@ void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
                              .setMultisamplingNone()
                              .enableBlending()
                              .setColorAttachmentFormat(drawImageFormat)
-                             .disableDepthTest()
+                             .setDepthFormat(depthImageFormat)
+                             .enableDepthTest(false, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                             .enableDynamicDepth()
                              .build(device);
         vkutil::addDebugLabel(device, pointsPipeline, "im3d points pipeline");
 
@@ -86,7 +88,10 @@ void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
                             .setMultisamplingNone()
                             .enableBlending()
                             .setColorAttachmentFormat(drawImageFormat)
-                            .disableDepthTest()
+                            .setDepthFormat(depthImageFormat)
+                            .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                            .enableDepthBias(-10.f, 0.0f)
+                            .enableDynamicDepth()
                             .build(device);
         vkutil::addDebugLabel(device, linesPipeline, "im3d lines pipeline");
 
@@ -112,7 +117,9 @@ void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
                                 .setMultisamplingNone()
                                 .enableBlending()
                                 .setColorAttachmentFormat(drawImageFormat)
-                                .disableDepthTest()
+                                .setDepthFormat(depthImageFormat)
+                                .enableDepthTest(false, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                                .enableDynamicDepth()
                                 .build(device);
         vkutil::addDebugLabel(device, trianglesPipeline, "im3d triangles pipeline");
 
@@ -211,7 +218,8 @@ void Im3dState::draw(
     VkCommandBuffer cmd,
     GfxDevice& gfxDevice,
     VkImageView swapchainImageView,
-    VkExtent2D swapchainExtent)
+    VkExtent2D swapchainExtent,
+    VkImageView depthImageView)
 {
     if (Im3d::GetDrawListCount() == 0) {
         return;
@@ -221,12 +229,14 @@ void Im3dState::draw(
     const auto renderInfo = vkutil::createRenderingInfo({
         .renderExtent = swapchainExtent,
         .colorImageView = swapchainImageView,
+        .depthImageView = depthImageView,
     });
     vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
 
     const auto* drawLists = Im3d::GetDrawLists();
     std::size_t currentVertexOffset = 0;
     auto prevPrimType = Im3d::DrawPrimitive_Count;
+    bool depthEnabled = true;
     for (size_t i = 0, n = Im3d::GetDrawListCount(); i < n; ++i) {
         const Im3d::DrawList& drawList = drawLists[i];
 
@@ -279,6 +289,8 @@ void Im3dState::draw(
             };
             vkCmdSetScissor(cmd, 0, 1, &scissor);
         }
+
+        vkCmdSetDepthTestEnable(cmd, renderState.depthTest);
 
         const auto& ad = Im3d::GetAppData();
         const auto viewport = glm::vec2{ad.m_viewportSize.x, ad.m_viewportSize.y};

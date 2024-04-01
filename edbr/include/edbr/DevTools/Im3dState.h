@@ -18,7 +18,7 @@ class GfxDevice;
 
 class Im3dState {
 public:
-    void init(GfxDevice& device, VkFormat drawImageFormat);
+    void init(GfxDevice& device, VkFormat drawImageFormat, VkFormat depthImageFormat);
 
     void cleanup(GfxDevice& gfxDevice);
     void newFrame(
@@ -31,7 +31,8 @@ public:
         VkCommandBuffer cmd,
         GfxDevice& gfxDevice,
         VkImageView swapchainImageView,
-        VkExtent2D swapchainExtent);
+        VkExtent2D swapchainExtent,
+        VkImageView depthImageView);
 
     void endFrame();
 
@@ -41,11 +42,8 @@ public:
         const glm::ivec2& gameWindowSize);
 
     struct RenderState {
-        bool clearDepth{false};
+        bool depthTest{false};
         glm::mat4 viewProj;
-        std::array<int, 4> viewport{};
-
-        bool hasCustomViewport() const { return viewport != std::array<int, 4>{}; }
     };
 
     static Im3d::Id DefaultLayer;

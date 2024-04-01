@@ -1,14 +1,17 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <edbr/Graphics/CPUMesh.h>
 #include <edbr/Graphics/Light.h>
 #include <edbr/Graphics/Material.h>
 #include <edbr/Graphics/SkeletalAnimation.h>
 #include <edbr/Graphics/Skeleton.h>
+#include <edbr/Math/AABB.h>
 #include <edbr/Math/Transform.h>
 
 struct SceneNode {
@@ -30,6 +33,8 @@ struct SceneMesh {
 };
 
 struct Scene {
+    std::filesystem::path path;
+
     // root nodes
     std::vector<std::unique_ptr<SceneNode>> nodes;
 
@@ -37,4 +42,10 @@ struct Scene {
     std::vector<Skeleton> skeletons;
     std::unordered_map<std::string, SkeletalAnimation> animations;
     std::vector<Light> lights;
+    std::unordered_map<MeshId, CPUMesh> cpuMeshes;
 };
+
+namespace edbr
+{
+math::AABB calculateBoundingBoxLocal(const Scene& scene, const std::vector<MeshId> meshes);
+}

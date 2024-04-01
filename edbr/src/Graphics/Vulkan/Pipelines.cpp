@@ -98,7 +98,11 @@ VkPipeline PipelineBuilder::build(VkDevice device)
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     };
 
-    const auto dynamicStates = std::array{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    auto dynamicStates = std::vector{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    if (dynamicDepth) {
+        dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE);
+    }
+
     const auto dynamicInfo = VkPipelineDynamicStateCreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = (std::uint32_t)dynamicStates.size(),
@@ -310,6 +314,22 @@ PipelineBuilder& PipelineBuilder::disableDepthTest()
     depthStencil.maxDepthBounds = 1.f;
 
     return *this;
+}
+
+PipelineBuilder& PipelineBuilder::enableDynamicDepth()
+{
+    dynamicDepth = true;
+
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::enableDepthBias(float constantFactor, float slopeFactor)
+{
+    rasterizer.depthBiasEnable = true;
+    rasterizer.depthBiasConstantFactor = constantFactor;
+    rasterizer.depthBiasSlopeFactor = slopeFactor;
+
+    return* this;
 }
 
 ComputePipelineBuilder::ComputePipelineBuilder(VkPipelineLayout pipelineLayout) :

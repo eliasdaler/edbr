@@ -43,3 +43,6 @@
 [submodule "edbr/third_party/im3d"]
 	path = edbr/third_party/im3d
 	url = https://github.com/john-chapman/im3d
+[submodule "edbr/third_party/JoltPhysics"]
+	path = edbr/third_party/JoltPhysics
+	url = https://github.com/jrouwe/JoltPhysics

@@ -475,9 +475,8 @@ GPUImage GfxDevice::createImageRaw(const vkutil::CreateImageInfo& createInfo) co
 {
     std::uint32_t mipLevels = 1;
     if (createInfo.mipMap) {
-        mipLevels = static_cast<std::uint32_t>(std::floor(
-                        std::log2(std::max(createInfo.extent.width, createInfo.extent.height)))) +
-                    1;
+        const auto maxExtent = std::max(createInfo.extent.width, createInfo.extent.height);
+        mipLevels = (std::uint32_t)std::floor(std::log2(maxExtent)) + 1;
     }
 
     if (createInfo.isCubemap) {

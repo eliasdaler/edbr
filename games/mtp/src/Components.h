@@ -7,6 +7,9 @@
 
 #include <glm/mat4x4.hpp>
 
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/BodyID.h>
+
 #include <edbr/Graphics/GPUMesh.h>
 #include <edbr/Graphics/Light.h>
 #include <edbr/Graphics/SkeletalAnimation.h>
@@ -37,9 +40,18 @@ struct MeshComponent {
     std::filesystem::path meshPath; // path to gltf scene from which model is loaded
 };
 
+struct ColliderComponent {};
+
 struct MovementComponent {
     glm::vec3 maxSpeed;
     glm::vec3 velocity;
+    glm::vec3 effectiveVelocity;
+
+    // smooth rotation
+    glm::quat startHeading;
+    glm::quat targetHeading;
+    float rotationProgress{0.f}; // from [0 to rotationTime] (used for slerp)
+    float rotationTime{0.f};
 };
 
 struct SkeletonComponent {
@@ -60,3 +72,7 @@ struct PlayerSpawnComponent {};
 struct CameraComponent {};
 
 struct PlayerComponent {};
+
+struct PhysicsComponent {
+    JPH::BodyID bodyId;
+};

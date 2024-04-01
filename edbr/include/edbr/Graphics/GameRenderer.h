@@ -65,6 +65,8 @@ public:
 
     const GPUImage& getDrawImage() const;
     VkFormat getDrawImageFormat() const;
+    const GPUImage& getDepthImage() const;
+    VkFormat getDepthImageFormat() const;
 
 private:
     void createDrawImage(const glm::ivec2& drawImageSize, bool firstCreate);
@@ -94,9 +96,7 @@ private:
     ImageId drawImageId{NULL_IMAGE_ID};
     ImageId resolveImageId{NULL_IMAGE_ID};
     ImageId depthImageId{NULL_IMAGE_ID};
-
-    GPUImage resolveDepthImage;
-
+    ImageId resolveDepthImageId{NULL_IMAGE_ID};
     ImageId postFXDrawImageId{NULL_IMAGE_ID};
 
     bool shadowsEnabled{true};

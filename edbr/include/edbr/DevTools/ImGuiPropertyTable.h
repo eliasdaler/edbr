@@ -30,6 +30,26 @@ namespace detail
     void DisplayPropertyImpl(const math::FloatRect& v);
 }
 
+
+template<std::size_t N>
+void DisplayProperty(const char* name, const char (&str)[N])
+{
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(name);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::TextUnformatted(str);
+};
+
+inline void DisplayProperty(const char* name, const char* str)
+{
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(name);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::TextUnformatted(str);
+};
+
 template<typename T>
 void DisplayProperty(const char* name, const T& v)
 {
@@ -52,9 +72,8 @@ namespace detail
 {
     template<typename T>
     void DisplayPropertyImpl(const T& v)
-
     {
-        ImGui::TextUnformatted(std::to_string(v).c_str());
+      ImGui::TextUnformatted(std::to_string(v).c_str());
     }
 } // end of namespace detail
 

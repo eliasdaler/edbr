@@ -1,6 +1,7 @@
 #include <edbr/Graphics/FrustumCulling.h>
 
 #include <edbr/Graphics/Camera.h>
+#include <edbr/Math/AABB.h>
 #include <edbr/Math/Sphere.h>
 
 #include <algorithm>
@@ -132,6 +133,46 @@ bool isInFrustum(const Frustum& frustum, const math::Sphere& s)
         isOnOrForwardPlane(frustum.farFace, s) && isOnOrForwardPlane(frustum.nearFace, s) &&
         isOnOrForwardPlane(frustum.leftFace, s) && isOnOrForwardPlane(frustum.rightFace, s) &&
         isOnOrForwardPlane(frustum.topFace, s) && isOnOrForwardPlane(frustum.bottomFace, s));
+}
+
+bool isInFrustum(const Frustum& frustum, const math::AABB& aabb)
+{
+    glm::vec3 vmin, vmax;
+    bool ret = true;
+    for (int i = 0; i < 6; ++i) {
+        const auto& plane = frustum.getPlane(i);
+        // X axis
+        if (plane.normal.x < 0) {
+            vmin.x = aabb.min.x;
+            vmax.x = aabb.max.x;
+        } else {
+            vmin.x = aabb.max.x;
+            vmax.x = aabb.min.x;
+        }
+        // Y axis
+        if (plane.normal.y < 0) {
+            vmin.y = aabb.min.y;
+            vmax.y = aabb.max.y;
+        } else {
+            vmin.y = aabb.max.y;
+            vmax.y = aabb.min.y;
+        }
+        // Z axis
+        if (plane.normal.z < 0) {
+            vmin.z = aabb.min.z;
+            vmax.z = aabb.max.z;
+        } else {
+            vmin.z = aabb.max.z;
+            vmax.z = aabb.min.z;
+        }
+        if (plane.getSignedDistanceToPlane(vmin) < 0) {
+            return false;
+        }
+        if (plane.getSignedDistanceToPlane(vmax) <= 0) {
+            ret = true;
+        }
+    }
+    return ret;
 }
 
 math::Sphere calculateBoundingSphereWorld(

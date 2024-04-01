@@ -47,6 +47,7 @@ add_library(edbr
   src/Graphics/MeshCache.cpp
   src/Graphics/MipMapGeneration.cpp
   src/Graphics/NBuffer.cpp
+  src/Graphics/Scene.cpp
   src/Graphics/ShadowMapping.cpp
   src/Graphics/SkeletonAnimator.cpp
   src/Graphics/Sprite.cpp
@@ -109,6 +110,8 @@ target_link_libraries(edbr
     imgui::imgui
     im3d::im3d
 
+    Jolt::Jolt
+
   PRIVATE
     tinygltf::tinygltf
     stb::image
@@ -144,6 +147,11 @@ target_compile_definitions(edbr
     GLM_FORCE_EXPLICIT_CTOR
     GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_ENABLE_EXPERIMENTAL
+)
+
+target_compile_definitions(edbr
+  PUBLIC
+    JPH_DEBUG_RENDERER
 )
 
 target_link_libraries(edbr PUBLIC Tracy::TracyClient)

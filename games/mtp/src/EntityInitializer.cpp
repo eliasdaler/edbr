@@ -10,6 +10,8 @@
 #include <entt/entity/registry.hpp>
 #include <fmt/printf.h>
 
+#include "PhysicsSystem.h"
+
 namespace
 {
 std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
@@ -94,6 +96,15 @@ void EntityInitializer::initEntity(entt::handle e) const
 
     // extract camera name from scene node name
     if (e.all_of<CameraComponent>()) {
+        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        if (sceneNodeName.empty()) { // created manually
+            return;
+        }
+        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
+
+    // extract camera name from scene node name
+    if (e.all_of<TriggerComponent>()) {
         const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
         if (sceneNodeName.empty()) { // created manually
             return;

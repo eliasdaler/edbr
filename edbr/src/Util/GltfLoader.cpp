@@ -625,11 +625,9 @@ Scene loadGltfFile(BaseRenderer& renderer, const std::filesystem::path& path)
         }
     }
 
-    Scene scene{};
+    Scene scene{.path = path};
     // load meshes
     scene.meshes.reserve(gltfModel.meshes.size());
-    std::string meshName;
-    meshName.resize(255);
     for (const auto& gltfMesh : gltfModel.meshes) {
         SceneMesh mesh;
         mesh.primitives.resize(gltfMesh.primitives.size());
@@ -637,10 +635,7 @@ Scene loadGltfFile(BaseRenderer& renderer, const std::filesystem::path& path)
              ++primitiveIdx) {
             // load on CPU
             const auto& gltfPrimitive = gltfMesh.primitives[primitiveIdx];
-            meshName = path.string();
-            meshName += ":";
-            meshName += gltfMesh.name;
-            const auto cpuMesh = loadPrimitive(gltfModel, meshName, gltfPrimitive);
+            auto cpuMesh = loadPrimitive(gltfModel, gltfMesh.name, gltfPrimitive);
             if (cpuMesh.indices.empty()) {
                 continue;
             }
@@ -652,6 +647,7 @@ Scene loadGltfFile(BaseRenderer& renderer, const std::filesystem::path& path)
             }
             const auto meshId = renderer.addMesh(cpuMesh, materialId);
             mesh.primitives[primitiveIdx] = meshId;
+            scene.cpuMeshes.emplace(meshId, std::move(cpuMesh));
         }
         scene.meshes.push_back(std::move(mesh));
     }

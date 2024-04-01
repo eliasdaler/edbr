@@ -43,6 +43,8 @@ public:
     PipelineBuilder& enableDepthTest(bool depthWriteEnable, VkCompareOp op);
     PipelineBuilder& enableDepthClamp();
     PipelineBuilder& disableDepthTest();
+    PipelineBuilder& enableDynamicDepth();
+    PipelineBuilder& enableDepthBias(float constantFactor, float slopeFactor);
 
 private:
     void clear();
@@ -56,6 +58,7 @@ private:
     VkPipelineRenderingCreateInfo renderInfo;
     VkFormat colorAttachmentformat;
     VkPipelineLayout pipelineLayout;
+    bool dynamicDepth{false};
 };
 
 class ComputePipelineBuilder {

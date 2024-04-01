@@ -30,9 +30,30 @@ void addChild(entt::handle parent, entt::handle child)
     parentHC.children.push_back(child);
 }
 
+glm::vec3 getWorldPosition(entt::handle e)
+{
+    return glm::vec3(e.get<TransformComponent>().worldTransform[3]);
+}
+
+glm::vec3 getLocalPosition(entt::handle e)
+{
+    return e.get<TransformComponent>().transform.getPosition();
+}
+
 void setPosition(entt::handle e, const glm::vec3& pos)
 {
-    e.get<TransformComponent>().transform.setPosition(pos);
+    assert(!e.get<HierarchyComponent>().hasParent());
+    auto& tc = e.get<TransformComponent>();
+    tc.transform.setPosition(pos);
+    tc.worldTransform = tc.transform.asMatrix();
+}
+
+void setRotation(entt::handle e, const glm::quat& rotation)
+{
+    assert(!e.get<HierarchyComponent>().hasParent());
+    auto& tc = e.get<TransformComponent>();
+    tc.transform.setHeading(rotation);
+    tc.worldTransform = tc.transform.asMatrix();
 }
 
 void setAnimation(entt::handle e, const std::string& name)
@@ -92,6 +113,8 @@ void spawnPlayer(entt::registry& registry, const std::string& spawnName)
     // copy position and heading (don't copy scale)
     playerTC.transform.setPosition(spawnTC.transform.getPosition());
     playerTC.transform.setHeading(spawnTC.transform.getHeading());
+    assert(!player.get<HierarchyComponent>().hasParent());
+    playerTC.worldTransform = playerTC.transform.asMatrix();
 }
 
 const std::string& getTag(entt::const_handle e)

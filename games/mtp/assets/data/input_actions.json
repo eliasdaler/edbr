@@ -2,6 +2,7 @@
 	"actions": [
 		"PrimaryAction",
     "Sprint",
+    "Jump",
     "Inventory",
     "Pause",
     "CursorLeft",

@@ -32,9 +32,15 @@ void ImGuiTextColored(const RGBColor& c, const char* fmt, ...)
 
 bool ImGuiColorEdit3(const char* name, LinearColor& c)
 {
-    std::array<float, 4> arrC{c.r, c.g, c.b, c.a};
+    const auto imCol = toImVec4(edbr::linearToRGB(c));
+    std::array<float, 4> arrC{imCol.x, imCol.y, imCol.z, imCol.w};
     if (ImGui::ColorEdit3(name, arrC.data())) {
-        c = LinearColor{arrC[0], arrC[1], arrC[2], arrC[2]};
+        const auto newCol = RGBColor{
+            (std::uint8_t)(arrC[0] * 255.f),
+            (std::uint8_t)(arrC[1] * 255.f),
+            (std::uint8_t)(arrC[2] * 255.f),
+            (std::uint8_t)(arrC[3] * 255.f)};
+        c = edbr::rgbToLinear(newCol);
         return true;
     }
     return false;

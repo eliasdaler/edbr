@@ -11,6 +11,50 @@
 #include <im3d.h>
 #include <imgui.h>
 
+namespace
+{
+void drawFrustum(const Camera& camera)
+{
+    const auto corners = edge::calculateFrustumCornersWorldSpace(camera);
+
+    // near plane
+    Im3d::PushColor(Im3d::Color_Magenta);
+    Im3d::DrawQuad(
+        glm2im3d(glm::vec3{corners[0]}),
+        glm2im3d(glm::vec3{corners[1]}),
+        glm2im3d(glm::vec3{corners[2]}),
+        glm2im3d(glm::vec3{corners[3]}));
+    Im3d::PopColor();
+
+    // far plane
+    Im3d::PushColor(Im3d::Color_Orange);
+    Im3d::DrawQuad(
+        glm2im3d(glm::vec3{corners[4]}),
+        glm2im3d(glm::vec3{corners[5]}),
+        glm2im3d(glm::vec3{corners[6]}),
+        glm2im3d(glm::vec3{corners[7]}));
+    Im3d::PopColor();
+
+    // left plane
+    Im3d::DrawQuad(
+        glm2im3d(glm::vec3{corners[4]}),
+        glm2im3d(glm::vec3{corners[5]}),
+        glm2im3d(glm::vec3{corners[1]}),
+        glm2im3d(glm::vec3{corners[0]}));
+
+    // right plane
+    Im3d::DrawQuad(
+        glm2im3d(glm::vec3{corners[7]}),
+        glm2im3d(glm::vec3{corners[6]}),
+        glm2im3d(glm::vec3{corners[2]}),
+        glm2im3d(glm::vec3{corners[3]}));
+
+    for (std::size_t i = 0; i < corners.size(); ++i) {
+        Im3dText(corners[i], 8.f, RGBColor{255, 255, 255, 255}, std::to_string(i).c_str());
+    }
+}
+}
+
 void Game::updateDevTools(float dt)
 {
     if (displayFPSDelay > 0.f) {
@@ -72,10 +116,6 @@ void Game::updateDevTools(float dt)
                 mousePos, gameWindowPos, gameWindowSize, {params.renderWidth, params.renderHeight});
             DisplayProperty("Mouse pos", mousePos);
             DisplayProperty("Game screen pos", gameScreenPos);
-
-            const auto cameraPos = camera.getPosition();
-            DisplayProperty("Cam pos", cameraPos);
-            DisplayProperty("Cam heading", camera.getHeading());
         }
         EndPropertyTable();
 
@@ -106,6 +146,55 @@ void Game::updateDevTools(float dt)
             renderer.updateDevTools(dt);
         }
         ui.updateDevTools(dt);
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("Camera")) {
+        using namespace devtools;
+        BeginPropertyTable();
+        DisplayProperty("Cam pos", camera.getPosition());
+        DisplayProperty("Cam heading", camera.getHeading());
+        EndPropertyTable();
+
+        bool recreateCamera = false;
+        float fovXDeg = glm::degrees(cameraFovX);
+        if (ImGui::DragFloat("fovX", &fovXDeg, 0.1f, 10.f, 120.f)) {
+            cameraFovX = glm::radians(fovXDeg);
+            recreateCamera = true;
+        }
+        if (ImGui::DragFloat("near", &cameraNear, 0.1f, 0.01f, 100.f)) {
+            recreateCamera = true;
+        }
+        if (ImGui::DragFloat("far", &cameraFar, 0.1f, 10.f, 10000.f)) {
+            recreateCamera = true;
+        }
+        if (recreateCamera) {
+            static const float aspectRatio = (float)params.renderWidth / (float)params.renderHeight;
+
+            camera.init(cameraFovX, cameraNear, cameraFar, aspectRatio);
+        }
+
+        ImGui::Checkbox("Smoothing", &smoothCamera);
+        ImGui::DragFloat("Delay", &cameraDelay, 0.1f, 0.f, 1.f);
+        ImGui::DragFloat("Max speed", &cameraMaxSpeed, 0.1f, 10.f, 1000.f);
+        ImGui::DragFloat("Y offser", &cameraYOffset, 0.1f);
+        ImGui::DragFloat("Z offset", &cameraZOffset, 0.1f);
+        ImGui::DragFloat("max offset time", &cameraMaxOffsetTime, 0.1f);
+        ImGui::DragFloat("max offset run", &maxCameraOffsetFactorRun, 0.1f);
+        ImGui::DragFloat("max offset walk", &maxCameraOffsetFactorWalk, 0.1f);
+        ImGui::DragFloat("Test", &testParam, 0.1f);
+        ImGui::Checkbox("Draw track point", &drawCameraTrackPoint);
+
+        /*
+        ImGui::Text("Time walk/run: %.2f", timeWalkingOrRunning);
+        ImGui::Text("Was walk/run: %d", (int)wasWalkingOrRunning);
+        ImGui::Text("walk/run: %d", (int)walkingOrRunning);
+        ImGui::Text("Is running: %d", (int)running);
+        ImGui::Text("Was running: %d", (int)wasRunning);
+        ImGui::Text("Is running (camera): %d", (int)runningCamera);
+        ImGui::Text("Was running (camera): %d", (int)wasRunningCamera);
+        ImGui::Text("offset Z: %.2f", prevOffsetZ);
+        */
     }
     ImGui::End();
 
@@ -148,8 +237,6 @@ void Game::updateDevTools(float dt)
 
     Im3d::PopLayerId();
 
-    // Im3dRectFilled({0, 0, 64, 64}, glm::vec4{1.f, 0.f, 1.f, 1.f});
-
     if (drawEntityTags) {
         for (const auto& [e, tc, tagC] : registry.view<TransformComponent, TagComponent>().each()) {
             if (!tagC.getTag().empty()) {
@@ -161,6 +248,11 @@ void Game::updateDevTools(float dt)
             }
         }
     }
+
+    if (ImGui::Begin("Physics")) {
+        physicsSystem->updateDevUI(inputManager, dt);
+    }
+    ImGui::End();
 
     ImGui::ShowDemoWindow();
 }

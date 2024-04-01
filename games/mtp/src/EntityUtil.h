@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include <glm/gtc/quaternion.hpp>
 #include <glm/vec3.hpp>
 
 #include <entt/entity/handle.hpp>
@@ -14,7 +15,10 @@
 namespace entityutil
 {
 void addChild(entt::handle parent, entt::handle child);
+glm::vec3 getWorldPosition(entt::handle e);
+glm::vec3 getLocalPosition(entt::handle e);
 void setPosition(entt::handle e, const glm::vec3& pos);
+void setRotation(entt::handle e, const glm::quat& rotation);
 void setAnimation(entt::handle e, const std::string& name);
 
 // Find entity by glTF scene node name - pretty slow

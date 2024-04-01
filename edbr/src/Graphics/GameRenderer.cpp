@@ -28,8 +28,8 @@ void GameRenderer::init(const glm::ivec2& drawImageSize)
 
     skinningPipeline.init(gfxDevice);
 
-    const auto cascadePercents = std::array{0.06f, 0.2f, 0.5f};
-    // const auto cascadePercents =  std::array{0.22f, 0.51f, 1.f};
+    const auto cascadePercents = std::array{0.02f, 0.35f, 0.5f};
+    // const auto cascadePercents = std::array{0.04f, 0.1f, 0.5f}; // good for far = 500.f
     csmPipeline.init(gfxDevice, cascadePercents);
 
     meshPipeline.init(gfxDevice, drawImageFormat, depthImageFormat, samples);
@@ -94,19 +94,11 @@ void GameRenderer::createDrawImage(const glm::ivec2& drawImageSize, bool firstCr
         };
 
         // reuse the same id if creating again
-        depthImageId =
-            gfxDevice.createImage(createInfo, "draw image (depth)", nullptr, depthImageId);
+        depthImageId = gfxDevice.createImage(createInfo, "depth image", nullptr, depthImageId);
 
         if (firstCreate) {
             createInfo.samples = VK_SAMPLE_COUNT_1_BIT; // NO MSAA
-            resolveDepthImage = gfxDevice.createImageRaw(createInfo);
-
-            vkutil::addDebugLabel(
-                gfxDevice.getDevice(), resolveDepthImage.image, "draw image (depth resolve)");
-            vkutil::addDebugLabel(
-                gfxDevice.getDevice(),
-                resolveDepthImage.imageView,
-                "draw image depth resolve view");
+            resolveDepthImageId = gfxDevice.createImage(createInfo, "depth resolve");
         }
     }
 }
@@ -320,6 +312,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Depth resolve", tracy::Color::ForestGreen);
         vkutil::cmdBeginLabel(cmd, "Depth resolve");
 
+        const auto& resolveDepthImage = gfxDevice.getImage(resolveDepthImageId);
         vkutil::transitionImage(
             cmd,
             resolveDepthImage.image,
@@ -390,8 +383,6 @@ void GameRenderer::cleanup()
     meshPipeline.cleanup(device);
     csmPipeline.cleanup(gfxDevice);
     skinningPipeline.cleanup(gfxDevice);
-
-    gfxDevice.destroyImage(resolveDepthImage);
 }
 
 void GameRenderer::updateDevTools(float dt)
@@ -575,4 +566,14 @@ const GPUImage& GameRenderer::getDrawImage() const
 VkFormat GameRenderer::getDrawImageFormat() const
 {
     return drawImageFormat;
+}
+
+const GPUImage& GameRenderer::getDepthImage() const
+{
+    return gfxDevice.getImage(isMultisamplingEnabled() ? resolveDepthImageId : depthImageId);
+}
+
+VkFormat GameRenderer::getDepthImageFormat() const
+{
+    return depthImageFormat;
 }

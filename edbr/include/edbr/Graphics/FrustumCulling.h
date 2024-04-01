@@ -8,6 +8,7 @@
 namespace math
 {
 struct Sphere;
+struct AABB;
 }
 class Camera;
 
@@ -30,6 +31,27 @@ struct Frustum {
         }
     };
 
+    const Plane& getPlane(int i) const
+    {
+        switch (i) {
+        case 0:
+            return farFace;
+        case 1:
+            return nearFace;
+        case 2:
+            return leftFace;
+        case 3:
+            return rightFace;
+        case 4:
+            return topFace;
+        case 5:
+            return bottomFace;
+        default:
+            assert(false);
+            return nearFace;
+        }
+    }
+
     Plane farFace;
     Plane nearFace;
 
@@ -47,6 +69,7 @@ std::array<glm::vec3, 8> calculateFrustumCornersWorldSpace(const Camera& camera)
 
 Frustum createFrustumFromCamera(const Camera& camera);
 bool isInFrustum(const Frustum& frustum, const math::Sphere& s);
+bool isInFrustum(const Frustum& frustum, const math::AABB& aabb);
 math::Sphere calculateBoundingSphereWorld(
     const glm::mat4& transform,
     const math::Sphere& s,

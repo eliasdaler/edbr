@@ -10,6 +10,9 @@ add_executable(mtpgame
   src/GameUI.cpp
   src/Level.cpp
 
+  src/JoltDebugRenderer.cpp
+  src/PhysicsSystem.cpp
+
   src/main.cpp
 )
 

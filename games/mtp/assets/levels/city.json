@@ -1,9 +1,9 @@
 {
   "model": "assets/models/levels/city/city.gltf",
   "skybox": "distant_sunset",
-  "default_spawn": "Store",
+  "default_spawn": "ExitAppartment",
   "ambient": {
-    "color": { "rgb": [19, 25, 25] },
+    "color": { "rgb": [35, 150, 150] },
     "intensity": 0.05
   },
   "fog": {

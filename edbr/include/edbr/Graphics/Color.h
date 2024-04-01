@@ -36,9 +36,17 @@ namespace
         return a < b ? b : a;
     }
 
+    // See http://www.brucelindbloom.com/index.html?Eqn_XYZ_to_RGB.html
     float gammaToLinear(float gamma)
     {
-        return gamma < 0.04045 ? gamma / 12.92 : std::pow(maxF(gamma + 0.055, 0.0) / 1.055, 2.4);
+        return gamma < 0.04045f ? gamma / 12.92f :
+                                  std::pow(maxF(gamma + 0.055f, 0.f) / 1.055f, 2.4f);
+    }
+
+    // See http://www.brucelindbloom.com/index.html?Eqn_XYZ_to_RGB.html
+    float linearToGamma(float v)
+    {
+        return v < 0.00313108 ? 12.92 * v : 1.055 * std::pow(v, 1.f / 2.4f) - 0.055f;
     }
 } // end of anonymous namespace
 
@@ -55,6 +63,16 @@ inline LinearColor rgbToLinear(std::uint8_t r, std::uint8_t g, std::uint8_t b, s
 inline LinearColor rgbToLinear(const RGBColor& color)
 {
     return rgbToLinear(color.r, color.g, color.b, color.a);
+}
+
+inline RGBColor linearToRGB(const LinearColor& c)
+{
+    return RGBColor{
+        (std::uint8_t)(linearToGamma(c.r) * 255.f),
+        (std::uint8_t)(linearToGamma(c.g) * 255.f),
+        (std::uint8_t)(linearToGamma(c.b) * 255.f),
+        (std::uint8_t)(c.a * 255.f),
+    };
 }
 
 } // end of namespace edbr

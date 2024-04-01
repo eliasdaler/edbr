@@ -71,6 +71,9 @@ add_library(im3d
   "${CMAKE_CURRENT_LIST_DIR}/im3d/im3d.cpp"
 )
 add_library(im3d::im3d ALIAS im3d)
+if (MSVC)
+  target_compile_definitions(im3d PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+endif()
 
 target_include_directories(im3d PUBLIC
   "${CMAKE_CURRENT_LIST_DIR}/im3d"
@@ -127,4 +130,17 @@ set_target_properties(fmt PROPERTIES
 )
 if (MSVC)
   target_compile_definitions(fmt PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+endif()
+
+## jolt
+## TODO: only enable in Debug
+## option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" OFF)
+option(OVERRIDE_CXX_FLAGS "Override CMAKE_CXX_FLAGS_DEBUG/RELEASE" OFF)
+option(ENABLE_ALL_WARNINGS "Enable all warnings and warnings as errors" OFF)
+option(USE_STATIC_MSVC_RUNTIME_LIBRARY "Use the static MSVC runtime library" OFF)
+option(DEBUG_RENDERER_IN_DISTRIBUTION "Enable debug renderer in Distribution builds" ON)
+add_subdirectory(JoltPhysics/Build)
+add_library(Jolt::Jolt ALIAS Jolt)
+if (MSVC)
+  target_compile_definitions(Jolt PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
 endif()

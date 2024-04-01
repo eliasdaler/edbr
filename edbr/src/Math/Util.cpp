@@ -80,4 +80,54 @@ math::Sphere calculateBoundingSphere(std::span<glm::vec3> positions)
     }
     return s;
 }
+
+glm::vec3 smoothDamp(
+    const glm::vec3& current,
+    glm::vec3 target,
+    glm::vec3& currentVelocity,
+    float smoothTime,
+    float dt,
+    float maxSpeed)
+{
+    if (glm::length(current - target) < 0.0001f) {
+        // really close - just return target and stop moving
+        currentVelocity = glm::vec3{};
+        return target;
+    }
+
+    // default smoothing if maxSpeed not passed
+    smoothTime = std::max(0.0001f, smoothTime);
+
+    auto change = current - target;
+
+    // limit speed if needed
+    float maxChange = maxSpeed * smoothTime;
+    float changeSqMag = glm::length2(change);
+    if (changeSqMag > maxChange * maxChange) {
+        const auto mag = std::sqrt(changeSqMag);
+        change *= maxChange / mag;
+    }
+
+    const auto originalTarget = target;
+    target = current - change;
+
+    // Scary math. (critically damped harmonic oscillator.)
+    // See Game Programming Gems 4, ch 1.10 for details
+    float omega = 2.f / smoothTime;
+    float x = omega * dt;
+    // approximation of e^x
+    float exp = 1.f / (1.f + x + 0.48f * x * x + 0.235f * x * x * x);
+    const auto temp = (currentVelocity + change * omega) * dt;
+
+    currentVelocity = (currentVelocity - temp * omega) * exp;
+    glm::vec3 result = target + (change + temp) * exp;
+    // prevent overshoot
+    if (glm::dot(originalTarget - current, result - originalTarget) > 0) {
+        result = originalTarget;
+        currentVelocity = (result - originalTarget) / dt;
+    }
+
+    return result;
+}
+
 }
