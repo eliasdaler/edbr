@@ -30,8 +30,12 @@ std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
 EntityInitializer::EntityInitializer(
     SceneCache& sceneCache,
     GameRenderer& renderer,
+    MaterialCache& materialCache,
     SkeletalAnimationCache& animationCache) :
-    sceneCache(sceneCache), renderer(renderer), animationCache(animationCache)
+    sceneCache(sceneCache),
+    renderer(renderer),
+    materialCache(materialCache),
+    animationCache(animationCache)
 {}
 
 void EntityInitializer::initEntity(entt::handle e) const
@@ -39,7 +43,8 @@ void EntityInitializer::initEntity(entt::handle e) const
     if (auto mcPtr = e.try_get<MeshComponent>(); mcPtr) {
         auto& mc = *mcPtr;
 
-        const auto& scene = sceneCache.loadScene(renderer.getBaseRenderer(), mc.meshPath);
+        const auto& scene = sceneCache.loadScene(
+            renderer.getBaseRenderer(), renderer.getGfxDevice(), materialCache, mc.meshPath);
         assert(!scene.nodes.empty());
         const auto& node = *scene.nodes[0];
 

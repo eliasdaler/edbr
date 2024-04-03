@@ -28,10 +28,10 @@ namespace eu = entityutil;
 Game::Game() :
     Application(),
     baseRenderer(gfxDevice),
-    renderer(gfxDevice, baseRenderer),
+    renderer(gfxDevice, baseRenderer, materialCache),
     spriteRenderer(gfxDevice),
     sceneCache(animationCache),
-    entityInitializer(sceneCache, renderer, animationCache),
+    entityInitializer(sceneCache, renderer, materialCache, animationCache),
     animationSoundSystem(audioManager)
 {}
 
@@ -60,6 +60,7 @@ void Game::customInit()
     animationCache.loadAnimationData("assets/data/animation_data.json");
 
     baseRenderer.init();
+    materialCache.init(gfxDevice);
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
 
@@ -448,6 +449,7 @@ void Game::customCleanup()
     im3d.cleanup(gfxDevice);
     spriteRenderer.cleanup();
     renderer.cleanup();
+    materialCache.cleanup(gfxDevice);
     baseRenderer.cleanup();
 }
 
@@ -638,6 +640,7 @@ util::SceneLoadContext Game::createSceneLoadContext()
 {
     return util::SceneLoadContext{
         .renderer = renderer,
+        .materialCache = materialCache,
         .entityFactory = entityFactory,
         .registry = registry,
         .sceneCache = sceneCache,
@@ -649,7 +652,7 @@ util::SceneLoadContext Game::createSceneLoadContext()
 
 void Game::loadScene(const std::filesystem::path& path, bool createEntities)
 {
-    const auto& scene = sceneCache.loadScene(baseRenderer, path);
+    const auto& scene = sceneCache.loadScene(baseRenderer, gfxDevice, materialCache, path);
     if (createEntities) {
         util::createEntitiesFromScene(createSceneLoadContext(), scene);
     }

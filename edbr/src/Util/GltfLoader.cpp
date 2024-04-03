@@ -9,6 +9,7 @@
 #include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/GPUMesh.h>
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MaterialCache.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/Skeleton.h>
 #include <edbr/Math/Util.h>
@@ -604,7 +605,11 @@ void loadGltfFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
 
 namespace util
 {
-Scene loadGltfFile(BaseRenderer& renderer, const std::filesystem::path& path)
+Scene loadGltfFile(
+    BaseRenderer& renderer,
+    GfxDevice& gfxDevice,
+    MaterialCache& materialCache,
+    const std::filesystem::path& path)
 {
     const auto fileDir = path.parent_path();
 
@@ -619,8 +624,8 @@ Scene loadGltfFile(BaseRenderer& renderer, const std::filesystem::path& path)
     {
         for (std::size_t materialIdx = 0; materialIdx < gltfModel.materials.size(); ++materialIdx) {
             const auto& gltfMaterial = gltfModel.materials[materialIdx];
-            const auto materialId =
-                renderer.addMaterial(loadMaterial(renderer, gltfModel, fileDir, gltfMaterial));
+            const auto materialId = materialCache.addMaterial(
+                gfxDevice, loadMaterial(renderer, gltfModel, fileDir, gltfMaterial));
             materialMapping.emplace(materialIdx, materialId);
         }
     }

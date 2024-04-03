@@ -199,8 +199,11 @@ void onPlaceEntityOnScene(const util::SceneLoadContext& loadCtx, entt::handle e)
         if (prefabName == "pine_tree" || prefabName == "collision" ||
             prefabName == "static_geometry" || prefabName == "ball" || prefabName == "trigger" ||
             prefabName == "ground_tile" || prefabName == "generic_npc") {
-            auto& scene =
-                loadCtx.sceneCache.loadScene(loadCtx.renderer.getBaseRenderer(), mc.meshPath);
+            auto& scene = loadCtx.sceneCache.loadScene(
+                loadCtx.renderer.getBaseRenderer(),
+                loadCtx.renderer.getGfxDevice(),
+                loadCtx.materialCache,
+                mc.meshPath);
             JPH::Ref<JPH::Shape> shape;
             bool staticBody = true;
             if (prefabName == "ball") {

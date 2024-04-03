@@ -45,7 +45,7 @@ void GfxDevice::init(SDL_Window* window, const char* appName, bool vSync)
     swapchain.create(device, swapchainFormat, (std::uint32_t)w, (std::uint32_t)h, vSync);
 
     createCommandBuffers();
-    imageCache.bindlessSetManager.init(device);
+    imageCache.bindlessSetManager.init(device, getMaxAnisotropy());
 
     { // create white texture
         std::uint32_t pixel = 0xFFFFFFFF;

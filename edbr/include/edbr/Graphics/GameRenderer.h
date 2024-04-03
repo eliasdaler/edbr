@@ -25,6 +25,7 @@ struct SDL_Window;
 class Camera;
 class BaseRenderer;
 class GfxDevice;
+class MaterialCache;
 
 class GameRenderer {
 public:
@@ -37,7 +38,7 @@ public:
     };
 
 public:
-    GameRenderer(GfxDevice& gfxDevice, BaseRenderer& baseRenderer);
+    GameRenderer(GfxDevice& gfxDevice, BaseRenderer& baseRenderer, MaterialCache& materialCache);
 
     void init(const glm::ivec2& drawImageSize);
     void draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData);
@@ -79,6 +80,7 @@ private:
 
     GfxDevice& gfxDevice;
     BaseRenderer& baseRenderer;
+    MaterialCache& materialCache;
 
     SkinningPipeline skinningPipeline;
     CSMPipeline csmPipeline;

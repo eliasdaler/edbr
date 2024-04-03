@@ -8,12 +8,18 @@
 
 class BaseRenderer;
 class SkeletalAnimationCache;
+class GfxDevice;
+class MaterialCache;
 
 class SceneCache {
 public:
     SceneCache(SkeletalAnimationCache& animationCache);
 
-    [[nodiscard]] const Scene& loadScene(BaseRenderer& renderer, const std::filesystem::path& path);
+    [[nodiscard]] const Scene& loadScene(
+        BaseRenderer& renderer,
+        GfxDevice& gfxDevice,
+        MaterialCache& materialCache,
+        const std::filesystem::path& path);
 
 private:
     std::unordered_map<std::string, Scene> sceneCache;

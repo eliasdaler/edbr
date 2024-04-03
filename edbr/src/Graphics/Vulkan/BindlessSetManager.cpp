@@ -15,7 +15,7 @@ static const std::uint32_t texturesBinding = 0;
 static const std::uint32_t samplersBinding = 1;
 }
 
-void BindlessSetManager::init(VkDevice device)
+void BindlessSetManager::init(VkDevice device, float maxAnisotropy)
 {
     { // create pool
         const auto poolSizesBindless = std::array<VkDescriptorPoolSize, 2>{{
@@ -88,10 +88,63 @@ void BindlessSetManager::init(VkDevice device)
 
         VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descSet));
     }
+
+    initDefaultSamplers(device, maxAnisotropy);
+}
+
+void BindlessSetManager::initDefaultSamplers(VkDevice device, float maxAnisotropy)
+{
+    // Keep in sync with bindless.glsl
+    static const std::uint32_t nearestSamplerId = 0;
+    static const std::uint32_t linearSamplerId = 1;
+    static const std::uint32_t shadowSamplerId = 2;
+
+    { // init nearest sampler
+        const auto samplerCreateInfo = VkSamplerCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_NEAREST,
+            .minFilter = VK_FILTER_NEAREST,
+        };
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &nearestSampler));
+        vkutil::addDebugLabel(device, nearestSampler, "nearest");
+        addSampler(device, nearestSamplerId, nearestSampler);
+    }
+
+    { // init linear sampler
+        const auto samplerCreateInfo = VkSamplerCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_LINEAR,
+            .minFilter = VK_FILTER_LINEAR,
+            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            // TODO: make possible to disable anisotropy or set other values?
+            .anisotropyEnable = VK_TRUE,
+            .maxAnisotropy = maxAnisotropy,
+        };
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &linearSampler));
+        vkutil::addDebugLabel(device, linearSampler, "linear");
+        addSampler(device, linearSamplerId, linearSampler);
+    }
+
+    { // init shadow map sampler
+        const auto samplerCreateInfo = VkSamplerCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_LINEAR,
+            .minFilter = VK_FILTER_LINEAR,
+            .compareEnable = VK_TRUE,
+            .compareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
+        };
+        VK_CHECK(vkCreateSampler(device, &samplerCreateInfo, nullptr, &shadowMapSampler));
+        vkutil::addDebugLabel(device, shadowMapSampler, "shadow");
+        addSampler(device, shadowSamplerId, shadowMapSampler);
+    }
 }
 
 void BindlessSetManager::cleanup(VkDevice device)
 {
+    vkDestroySampler(device, nearestSampler, nullptr);
+    vkDestroySampler(device, linearSampler, nullptr);
+    vkDestroySampler(device, shadowMapSampler, nullptr);
+
     vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
     vkDestroyDescriptorPool(device, descPool, nullptr);
 }

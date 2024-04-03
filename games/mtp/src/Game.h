@@ -13,6 +13,7 @@
 #include <edbr/Graphics/Camera.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/GameRenderer.h>
+#include <edbr/Graphics/MaterialCache.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 
@@ -80,6 +81,7 @@ private:
 
 private:
     BaseRenderer baseRenderer;
+    MaterialCache materialCache;
     GameRenderer renderer;
     SpriteRenderer spriteRenderer;
 

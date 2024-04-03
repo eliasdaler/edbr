@@ -8,14 +8,15 @@ class GameRenderer;
 class EntityFactory;
 class SceneCache;
 struct Scene;
-class Game;
 class PhysicsSystem;
+class MaterialCache;
 class SkeletalAnimationCache;
 
 namespace util
 {
 struct SceneLoadContext {
     GameRenderer& renderer;
+    MaterialCache& materialCache;
     EntityFactory& entityFactory;
     entt::registry& registry;
     SceneCache& sceneCache;

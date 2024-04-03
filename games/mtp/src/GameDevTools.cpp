@@ -198,7 +198,6 @@ void Game::updateDevTools(float dt)
     ImGui::End();
 
     const auto& imageCache = gfxDevice.getImageCache();
-    const auto& materialCache = renderer.getBaseRenderer().getMaterialCache();
     resourcesInspector.update(dt, imageCache, materialCache);
 
     if (entityTreeView.hasSelectedEntity()) {

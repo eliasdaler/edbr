@@ -4,6 +4,7 @@
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/FrustumCulling.h>
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MaterialCache.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/Vulkan/Init.h>
 #include <edbr/Graphics/Vulkan/Pipelines.h>
@@ -14,8 +15,11 @@
 
 #include <tracy/Tracy.hpp>
 
-GameRenderer::GameRenderer(GfxDevice& gfxDevice, BaseRenderer& baseRenderer) :
-    gfxDevice(gfxDevice), baseRenderer(baseRenderer)
+GameRenderer::GameRenderer(
+    GfxDevice& gfxDevice,
+    BaseRenderer& baseRenderer,
+    MaterialCache& materialCache) :
+    gfxDevice(gfxDevice), baseRenderer(baseRenderer), materialCache(materialCache)
 {}
 
 void GameRenderer::init(const glm::ivec2& drawImageSize)
@@ -206,7 +210,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             .lightsBuffer = lightDataBuffer.getBuffer().address,
             .numLights = (std::uint32_t)lightDataCPU.size(),
             .sunlightIndex = sunlightIndex,
-            .materialsBuffer = baseRenderer.getMaterialDataBufferAddress(),
+            .materialsBuffer = materialCache.getMaterialDataBufferAddress(),
         };
         sceneDataBuffer.uploadNewData(
             cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
