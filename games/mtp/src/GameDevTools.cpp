@@ -179,7 +179,9 @@ void Game::updateDevTools(float dt)
         ImGui::Checkbox("Smart smoothing", &smoothSmartCamera);
         ImGui::Checkbox("Draw track point", &drawCameraTrackPoint);
         ImGui::DragFloat("Delay", &cameraDelay, 0.1f, 0.f, 1.f);
-        ImGui::DragFloat("Max speed", &cameraMaxSpeed, 0.1f, 10.f, 1000.f);
+        ImGui::DragFloat("Max speed x", &cameraMaxSpeed.x, 0.1f, 10.f, 1000.f);
+        ImGui::DragFloat("Max speed y", &cameraMaxSpeed.y, 0.1f, 10.f, 1000.f);
+        ImGui::DragFloat("Max speed z", &cameraMaxSpeed.z, 0.1f, 10.f, 1000.f);
         ImGui::DragFloat("Y offset", &cameraYOffset, 0.1f);
         ImGui::DragFloat("Z offset", &cameraZOffset, 0.1f);
         ImGui::DragFloat("max offset time", &cameraMaxOffsetTime, 0.1f);

@@ -15,5 +15,9 @@ glm::vec3 smoothDamp(
     glm::vec3& currentVelocity,
     float smoothTime,
     float dt,
-    float maxSpeed = std::numeric_limits<float>::max());
+    glm::vec3 maxSpeed = {
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+    });
 }

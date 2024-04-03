@@ -558,7 +558,13 @@ void GameRenderer::sortDrawList()
 
 SkinnedMesh GameRenderer::createSkinnedMesh(MeshId id) const
 {
-    return baseRenderer.createSkinnedMeshBuffer(id);
+    const auto& mesh = baseRenderer.getMesh(id);
+    SkinnedMesh sm;
+    sm.skinnedVertexBuffer = gfxDevice.createBuffer(
+        mesh.numVertices * sizeof(CPUMesh::Vertex),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    return sm;
 }
 
 const GPUImage& GameRenderer::getDrawImage() const

@@ -348,8 +348,22 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
     prevOffsetZ = zOffset;
 
     float yOffset = cameraYOffset;
-    if (!physicsSystem->isCharacterOnGround()) {
-        yOffset = cameraYOffset / 2.f;
+
+    static float timeFalling = 0.f;
+    static float timeJumping = 0.f;
+    if (isPlayer) {
+        if (!physicsSystem->isCharacterOnGround()) {
+            if (followEntity.get<MovementComponent>().effectiveVelocity.y < 0.f) {
+                timeJumping = 0.f;
+                timeFalling += dt;
+                yOffset = cameraYOffset - std::min(timeFalling / 0.5f, 1.f) * cameraYOffset;
+            } else {
+                timeJumping += dt;
+            }
+        } else {
+            timeFalling = 0.f;
+            timeJumping = 0.f;
+        }
     }
     const auto orbitTarget = getCameraOrbitTarget(followEntity, yOffset, zOffset);
 
@@ -362,17 +376,22 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
 
     if (!smoothCamera) {
         cameraCurrentTrackPointPos = orbitTarget;
-        const auto targetPos =
+        auto targetPos =
             getCameraDesiredPosition(camera, cameraCurrentTrackPointPos, orbitDistance + 2.f);
         camera.setPosition(targetPos);
         return;
     }
 
-    float maxSpeed = cameraMaxSpeed;
+    glm::vec3 maxSpeed = cameraMaxSpeed;
     // when the character moves at full speed, rotation can be too much
     // so it's better to slow down the camera to catch up slower
     if (zOffset > 0.5 * maxCameraOffsetFactorRun * cameraZOffset) {
-        maxSpeed *= 0.75f;
+        maxSpeed.x *= 0.75f;
+        maxSpeed.z *= 0.75f;
+    }
+
+    if (isPlayer && timeFalling > 0.5f) {
+        maxSpeed.y *= 2.f;
     }
 
     cameraCurrentTrackPointPos = util::smoothDamp(

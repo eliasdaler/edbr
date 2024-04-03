@@ -58,7 +58,7 @@ public:
         const glm::mat4& transform,
         std::span<const glm::mat4> jointMatrices);
 
-    SkinnedMesh createSkinnedMesh(MeshId id) const;
+    [[nodiscard]] SkinnedMesh createSkinnedMesh(MeshId id) const;
 
     GfxDevice& getGfxDevice() { return gfxDevice; }
 

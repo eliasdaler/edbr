@@ -209,23 +209,23 @@ public:
 private:
     struct CharacterParams {
         float maxSlopeAngle = glm::radians(60.0f);
-        float maxStrength = 100.0f;
-        float characterPadding = 0.02f;
-        float penetrationRecoverySpeed = 1.0f;
-        float predictiveContactDistance = 0.1f;
+        float maxStrength{100.0f};
+        float characterPadding{0.02f};
+        float penetrationRecoverySpeed{1.0f};
+        float predictiveContactDistance{0.1f};
 
-        float characterRadius = 0.3f;
-        float characterHeight = 0.8f;
+        float characterRadius{0.3f};
+        float characterHeight{0.8f};
 
-        bool enableWalkStairs = false;
-        bool enableStickToFloor = true;
-        bool enableCharacterInertia = false;
+        bool enableWalkStairs{false};
+        bool enableStickToFloor{true};
+        bool enableCharacterInertia{false};
 
-        float characterSpeedRun = 4.0f;
-        float characterSpeedWalk = 1.15f;
-        float jumpSpeed = 9.0f;
-        bool controlMovementDuringJump = true;
-        float gravityFactor{1.75f};
+        float characterSpeedRun{4.f};
+        float characterSpeedWalk{1.15f};
+        float jumpSpeed{8.f};
+        bool controlMovementDuringJump{true};
+        float gravityFactor{1.5f};
         float smallJumpFactor{4.f};
     };
     bool characterOnGround{true};

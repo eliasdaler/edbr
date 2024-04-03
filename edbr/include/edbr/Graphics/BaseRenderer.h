@@ -22,7 +22,6 @@ public:
 public:
     MeshId addMesh(const CPUMesh& cpuMesh, MaterialId material);
     void uploadMesh(const CPUMesh& cpuMesh, GPUMesh& mesh) const;
-    [[nodiscard]] SkinnedMesh createSkinnedMeshBuffer(MeshId meshId) const;
     const GPUMesh& getMesh(MeshId id) const;
 
     GfxDevice& getGfxDevice() { return gfxDevice; }
@@ -32,7 +31,6 @@ private:
 
 private: // data
     GfxDevice& gfxDevice;
-    VulkanImmediateExecutor executor;
 
     MeshCache meshCache;
 };

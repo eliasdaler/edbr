@@ -11,16 +11,11 @@ BaseRenderer::BaseRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice)
 {}
 
 void BaseRenderer::init()
-{
-    executor = gfxDevice.createImmediateExecutor();
-}
+{}
 
 void BaseRenderer::cleanup()
 {
     meshCache.cleanup(gfxDevice);
-
-    auto device = gfxDevice.getDevice();
-    executor.cleanup(device);
 }
 
 MeshId BaseRenderer::addMesh(const CPUMesh& cpuMesh, MaterialId materialId)
@@ -68,7 +63,7 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
     memcpy(data, cpuMesh.vertices.data(), vertexBufferSize);
     memcpy((char*)data + vertexBufferSize, cpuMesh.indices.data(), indexBufferSize);
 
-    executor.immediateSubmit([&](VkCommandBuffer cmd) {
+    gfxDevice.immediateSubmit([&](VkCommandBuffer cmd) {
         const auto vertexCopy = VkBufferCopy{
             .srcOffset = 0,
             .dstOffset = 0,
@@ -107,7 +102,7 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
         void* data = staging.info.pMappedData;
         memcpy(data, cpuMesh.skinningData.data(), vertexBufferSize);
 
-        executor.immediateSubmit([&](VkCommandBuffer cmd) {
+        gfxDevice.immediateSubmit([&](VkCommandBuffer cmd) {
             const auto vertexCopy = VkBufferCopy{
                 .srcOffset = 0,
                 .dstOffset = 0,
@@ -118,17 +113,6 @@ void BaseRenderer::uploadMesh(const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const
 
         gfxDevice.destroyBuffer(staging);
     }
-}
-
-SkinnedMesh BaseRenderer::createSkinnedMeshBuffer(MeshId meshId) const
-{
-    const auto& mesh = getMesh(meshId);
-    SkinnedMesh sm;
-    sm.skinnedVertexBuffer = gfxDevice.createBuffer(
-        mesh.numVertices * sizeof(CPUMesh::Vertex),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    return sm;
 }
 
 const GPUMesh& BaseRenderer::getMesh(MeshId id) const
