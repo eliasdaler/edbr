@@ -6,6 +6,8 @@ This is a monorepo and contains both the engine (in `edbr` directory) and variou
 
 ## Current progress
 
+https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724cf416b
+
 ![latest](screenshots/08.png)
 
 ![another](screenshots/09.png)
