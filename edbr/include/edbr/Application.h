@@ -1,5 +1,7 @@
 #pragma once
 
+#include <edbr/AudioManager.h>
+#include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Input/InputManager.h>
 
@@ -38,5 +40,7 @@ protected:
     float frameTime{0.f};
     float avgFPS{0.f};
 
+    AudioManager audioManager;
     InputManager inputManager;
+    EventManager eventManager;
 };

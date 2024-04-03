@@ -85,6 +85,7 @@ void Game::updateDevTools(float dt)
         ImGui::Checkbox("Draw entity tags", &drawEntityTags);
         ImGui::Checkbox("Draw entity heading", &drawEntityHeading);
         ImGui::Checkbox("Draw gizmo", &drawGizmos);
+        ImGui::Text("Char on ground: %d", (int)physicsSystem->isCharacterOnGround());
 
         if (drawGizmos) {
             ImGui::Checkbox("Local gizmo", &Im3d::GetContext().m_gizmoLocal);
@@ -175,26 +176,19 @@ void Game::updateDevTools(float dt)
         }
 
         ImGui::Checkbox("Smoothing", &smoothCamera);
+        ImGui::Checkbox("Smart smoothing", &smoothSmartCamera);
+        ImGui::Checkbox("Draw track point", &drawCameraTrackPoint);
         ImGui::DragFloat("Delay", &cameraDelay, 0.1f, 0.f, 1.f);
         ImGui::DragFloat("Max speed", &cameraMaxSpeed, 0.1f, 10.f, 1000.f);
-        ImGui::DragFloat("Y offser", &cameraYOffset, 0.1f);
+        ImGui::DragFloat("Y offset", &cameraYOffset, 0.1f);
         ImGui::DragFloat("Z offset", &cameraZOffset, 0.1f);
         ImGui::DragFloat("max offset time", &cameraMaxOffsetTime, 0.1f);
         ImGui::DragFloat("max offset run", &maxCameraOffsetFactorRun, 0.1f);
-        ImGui::DragFloat("max offset walk", &maxCameraOffsetFactorWalk, 0.1f);
         ImGui::DragFloat("Test", &testParam, 0.1f);
-        ImGui::Checkbox("Draw track point", &drawCameraTrackPoint);
+        ImGui::Text(".%2f", prevOffsetZ);
 
-        /*
-        ImGui::Text("Time walk/run: %.2f", timeWalkingOrRunning);
-        ImGui::Text("Was walk/run: %d", (int)wasWalkingOrRunning);
-        ImGui::Text("walk/run: %d", (int)walkingOrRunning);
-        ImGui::Text("Is running: %d", (int)running);
-        ImGui::Text("Was running: %d", (int)wasRunning);
-        ImGui::Text("Is running (camera): %d", (int)runningCamera);
-        ImGui::Text("Was running (camera): %d", (int)wasRunningCamera);
-        ImGui::Text("offset Z: %.2f", prevOffsetZ);
-        */
+        ImGui::DragFloat("Yaw rotate speed", &cameraController.rotateYawSpeed, 0.1f);
+        ImGui::DragFloat("Pitch rotate speed", &cameraController.rotatePitchSpeed, 0.1f);
     }
     ImGui::End();
 
@@ -249,10 +243,7 @@ void Game::updateDevTools(float dt)
         }
     }
 
-    if (ImGui::Begin("Physics")) {
-        physicsSystem->updateDevUI(inputManager, dt);
-    }
-    ImGui::End();
+    physicsSystem->updateDevUI(inputManager, dt);
 
     ImGui::ShowDemoWindow();
 }

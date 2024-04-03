@@ -46,3 +46,12 @@
 [submodule "edbr/third_party/JoltPhysics"]
 	path = edbr/third_party/JoltPhysics
 	url = https://github.com/jrouwe/JoltPhysics
+[submodule "edbr/third_party/openal-soft"]
+	path = edbr/third_party/openal-soft
+	url = https://github.com/kcat/openal-soft
+[submodule "edbr/third_party/vorbis"]
+	path = edbr/third_party/vorbis
+	url = https://github.com/xiph/vorbis
+[submodule "edbr/third_party/ogg"]
+	path = edbr/third_party/ogg
+	url = https://github.com/xiph/ogg

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -18,4 +19,10 @@ struct SkeletalAnimation {
     bool looped{true};
 
     std::string name;
+
+    int startFrame{0};
+    std::map<int, std::vector<std::string>> events;
+
+    // functions
+    const std::vector<std::string>& getEventsForFrame(int frame) const;
 };

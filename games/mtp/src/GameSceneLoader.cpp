@@ -6,6 +6,7 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/EntityFactory.h>
+#include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/SceneCache.h>
 #include <edbr/Util/JoltUtil.h>
 
@@ -102,9 +103,7 @@ EntityCreateInfo createEntityFromNode(
         if (node.skinId != -1) {
             auto& sc = e.emplace<SkeletonComponent>();
             sc.skeleton = scene.skeletons[node.skinId];
-            // FIXME: this is bad - we need to have some sort of cache
-            // and not copy animations everywhere
-            sc.animations = scene.animations;
+            sc.animations = &loadCtx.animationCache.getAnimations(scene.path);
 
             sc.skinnedMeshes.reserve(mc.meshes.size());
             for (const auto meshId : mc.meshes) {

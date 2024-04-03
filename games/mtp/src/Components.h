@@ -43,8 +43,10 @@ struct MeshComponent {
 struct ColliderComponent {};
 
 struct MovementComponent {
-    glm::vec3 maxSpeed;
-    glm::vec3 velocity;
+    glm::vec3 kinematicVelocity; // manual velocity for kinematic objects
+    glm::vec3 maxSpeed; // only for kinematic speed
+
+    glm::vec3 prevFramePosition;
     glm::vec3 effectiveVelocity;
 
     // smooth rotation
@@ -58,7 +60,9 @@ struct SkeletonComponent {
     Skeleton skeleton;
     std::vector<SkinnedMesh> skinnedMeshes;
     SkeletonAnimator skeletonAnimator;
-    std::unordered_map<std::string, SkeletalAnimation> animations;
+
+    // pointer to the animations stored in SkeletalAnimationCache
+    const std::unordered_map<std::string, SkeletalAnimation>* animations{nullptr};
 };
 
 struct LightComponent {
@@ -75,4 +79,18 @@ struct PlayerComponent {};
 
 struct PhysicsComponent {
     JPH::BodyID bodyId;
+};
+
+struct AnimationEventSoundComponent {
+    const std::string& getSoundName(const std::string& eventName) const
+    {
+        if (auto it = eventSounds.find(eventName); it != eventSounds.end()) {
+            return it->second;
+        }
+        static const std::string emptyString{};
+        return emptyString;
+    }
+
+    // event name -> sound name
+    std::unordered_map<std::string, std::string> eventSounds;
 };

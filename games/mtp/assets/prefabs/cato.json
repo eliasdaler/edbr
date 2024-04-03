@@ -4,6 +4,14 @@
   },
   "movement": {
     "maxSpeed": [4, 4, 4]
+  },
+  "animation_event_sound": {
+    "events": {
+      "step1": "step1",
+      "step2": "step2",
+      "pickup_start_sound": "ui/pickup_start",
+      "pickup_end_sound": "ui/pickup"
+    }
   }
 }
 

@@ -5,15 +5,18 @@
 class SceneCache;
 class GameRenderer;
 class PhysicsSystem;
+class SkeletalAnimationCache;
 
 class EntityInitializer {
 public:
-    EntityInitializer(SceneCache& sceneCache, GameRenderer& renderer);
-    void setPhysicsSystem(PhysicsSystem& ps) { physicsSystem = &ps; }
+    EntityInitializer(
+        SceneCache& sceneCache,
+        GameRenderer& renderer,
+        SkeletalAnimationCache& animationCache);
     void initEntity(entt::handle e) const;
 
 private:
     SceneCache& sceneCache;
     GameRenderer& renderer;
-    PhysicsSystem* physicsSystem{nullptr};
+    SkeletalAnimationCache& animationCache;
 };

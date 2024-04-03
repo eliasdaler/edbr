@@ -17,6 +17,7 @@
 #include <edbr/Graphics/SpriteRenderer.h>
 
 #include <edbr/FreeCameraController.h>
+#include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/SceneCache.h>
 
 #include <edbr/DevTools/EntityInfoDisplayer.h>
@@ -29,6 +30,8 @@
 #include "GameSceneLoader.h"
 #include "GameUI.h"
 #include "Level.h"
+
+#include "AnimationSoundSystem.h"
 #include "PhysicsSystem.h"
 
 class ComponentFactory;
@@ -80,13 +83,7 @@ private:
     GameRenderer renderer;
     SpriteRenderer spriteRenderer;
 
-    Camera camera;
-    FreeCameraController cameraController;
-
-    GameUI ui;
-    Level level;
-    std::filesystem::path skyboxDir;
-
+    SkeletalAnimationCache animationCache;
     SceneCache sceneCache;
 
     entt::registry registry;
@@ -94,11 +91,50 @@ private:
     EntityFactory entityFactory;
     EntityInitializer entityInitializer;
 
+    std::unique_ptr<PhysicsSystem> physicsSystem;
+    AnimationSoundSystem animationSoundSystem;
+
+    Level level;
+    std::filesystem::path skyboxDir;
+
+    Camera camera;
+    FreeCameraController cameraController;
+    float cameraNear{1.f};
+    float cameraFar{64.f};
+    float cameraFovX{glm::radians(45.f)};
+
+    bool orbitCameraAroundSelectedEntity{false};
+    bool smoothCamera{true};
+    bool smoothSmartCamera{true};
+    float cameraDelay{0.3f};
+    float orbitDistance{6.5f};
+    float cameraMaxSpeed{6.5f};
+    float cameraYOffset{1.5f};
+    float cameraZOffset{0.25f};
+    float testParam{0.4f};
+
+    glm::vec3 followCameraVelocity;
+    glm::vec3 cameraCurrentTrackPointPos;
+    float prevOffsetZ{cameraZOffset};
+    float cameraMaxOffsetTime{2.f}; // when time reaches maximum offset
+    float maxCameraOffsetFactorRun{7.5f};
+    bool drawCameraTrackPoint{false};
+
+    float prevDesiredOffset{cameraZOffset};
+    float desiredOffsetChangeTimer{0.25f};
+    float desiredOffsetChangeDelayRun{1.25f};
+    float desiredOffsetChangeDelayRecenter{1.f};
+
+    // position and size of where the game is rendered in the window
+    glm::ivec2 gameWindowPos;
+    glm::ivec2 gameWindowSize;
+
+    GameUI ui;
+
+    // DEV
     CustomEntityTreeView entityTreeView;
     EntityInfoDisplayer entityInfoDisplayer;
     ResourcesInspector resourcesInspector;
-
-    bool orbitCameraAroundSelectedEntity{false};
 
     // only display update FPS every 1 seconds, otherwise it's too noisy
     float displayedFPS{0.f};
@@ -111,44 +147,5 @@ private:
     bool drawImGui{true};
     bool drawGizmos{false};
 
-    glm::ivec2 gameWindowPos;
-    glm::ivec2 gameWindowSize;
-
     Im3dState im3d;
-
-    std::unique_ptr<PhysicsSystem> physicsSystem;
-
-    glm::vec3 prevPlayerPos;
-
-    glm::vec3 followCameraVelocity;
-    glm::vec3 cameraCurrentTrackPointPos;
-
-    bool smoothCamera{true};
-    float cameraDelay{0.3f};
-    float orbitDistance{6.5f};
-    float cameraMaxSpeed{6.5f};
-    float cameraYOffset{1.5f};
-    float cameraZOffset{0.25f};
-    float testParam{0.4f};
-
-    float timeWalkingOrRunning{0.f};
-    bool walkingOrRunning{false};
-    bool wasWalkingOrRunning{false};
-    bool running{false};
-    bool wasRunning{false};
-
-    float prevOffsetZ{cameraZOffset};
-    float interpolationOffsetZStart{cameraZOffset};
-    float movingToMaxOffsetTime{0.f};
-    float cameraMaxOffsetTime{2.f}; // when time reaches maximum offset
-    float maxCameraOffsetFactorRun{10.0f};
-    float maxCameraOffsetFactorWalk{1.f}; // TODO: explore if it's worth it
-    bool drawCameraTrackPoint{false};
-    // camera moves to run offset when the speed is big, not just when the character runs
-    bool runningCamera{false};
-    bool wasRunningCamera{false};
-
-    float cameraNear{1.f};
-    float cameraFar{64.f};
-    float cameraFovX{glm::radians(45.f)};
 };

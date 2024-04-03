@@ -10,6 +10,7 @@ class SceneCache;
 struct Scene;
 class Game;
 class PhysicsSystem;
+class SkeletalAnimationCache;
 
 namespace util
 {
@@ -20,6 +21,7 @@ struct SceneLoadContext {
     SceneCache& sceneCache;
     std::string defaultPrefabName;
     PhysicsSystem& physicsSystem;
+    SkeletalAnimationCache& animationCache;
 };
 
 void createEntitiesFromScene(const SceneLoadContext& loadCtx, const Scene& scene);

@@ -21,8 +21,10 @@ void SkeletonAnimator::setAnimation(const Skeleton& skeleton, const SkeletalAnim
 
     jointMatrices.resize(skeleton.joints.size());
 
-    time = 0.f;
+    time = static_cast<float>(animation.startFrame) / ANIMATION_FPS;
     animationFinished = false;
+    currentFrame = 0;
+    frameChanged = false; // ideally should be "true", but update will override it
     this->animation = &animation;
 
     calculateJointMatrices(skeleton);
@@ -43,6 +45,10 @@ void SkeletonAnimator::update(const Skeleton& skeleton, float dt)
             animationFinished = true;
         }
     }
+
+    auto newFrame = (int)std::floor(time * static_cast<float>(ANIMATION_FPS));
+    frameChanged = newFrame != currentFrame;
+    currentFrame = newFrame;
 
     calculateJointMatrices(skeleton);
 }

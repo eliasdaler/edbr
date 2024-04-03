@@ -128,6 +128,9 @@ void Application::run()
             inputManager.update(dt);
             customUpdate(dt);
 
+            eventManager.update();
+            audioManager.update();
+
             accumulator -= dt;
 
             ImGui::Render();
@@ -156,4 +159,5 @@ void Application::cleanup()
 
     SDL_DestroyWindow(window);
     SDL_Quit();
+    audioManager.exit();
 }

@@ -202,6 +202,7 @@ void PhysicsSystem::handleCharacterInput(
     float dt,
     glm::vec3 movementDirection,
     bool jumping,
+    bool jumpHeld,
     bool running)
 {
     JPH::Vec3 movementDir = util::glmToJolt(movementDirection);
@@ -213,7 +214,7 @@ void PhysicsSystem::handleCharacterInput(
         auto charSpeed =
             running ? characterParams.characterSpeedRun : characterParams.characterSpeedWalk;
         if (character->GetGroundState() == JPH::CharacterVirtual::EGroundState::InAir) {
-            charSpeed = characterParams.characterSpeedRun * 0.75f;
+            charSpeed = characterParams.characterSpeedRun * 0.8f;
         }
         // Smooth the player input (if uses inertia)
         characterDesiredVelocity =
@@ -238,11 +239,12 @@ void PhysicsSystem::handleCharacterInput(
     const auto groundVelocity = character->GetGroundVelocity();
     JPH::Vec3 newVelocity;
     bool movingTowardsGround = (currentVerticalVelocity.GetY() - groundVelocity.GetY()) < 0.1f;
-    bool onGround = character->GetGroundState() == JPH::CharacterVirtual::EGroundState::OnGround;
+    characterOnGround =
+        character->GetGroundState() == JPH::CharacterVirtual::EGroundState::OnGround;
     bool useGroundVelocity = characterParams.enableCharacterInertia ?
                                  movingTowardsGround :
                                  !character->IsSlopeTooSteep(character->GetGroundNormal());
-    if (onGround && useGroundVelocity) {
+    if (characterOnGround && useGroundVelocity) {
         // Assume velocity of ground when on ground
         newVelocity = groundVelocity;
         // Jump
@@ -255,8 +257,11 @@ void PhysicsSystem::handleCharacterInput(
 
     // Gravity
     const auto characterUpRotation = JPH::Quat::sIdentity();
-    newVelocity +=
-        (characterUpRotation * physicsSystem.GetGravity() * characterParams.gravityFactor) * dt;
+    auto gravity = physicsSystem.GetGravity() * characterParams.gravityFactor;
+    if (!jumpHeld && newVelocity.GetY() > 0.f) {
+        gravity *= characterParams.smallJumpFactor;
+    }
+    newVelocity += (characterUpRotation * gravity) * dt;
 
     if (playerControlsHorizontalVelocity) {
         // Player input
@@ -455,6 +460,13 @@ glm::vec3 PhysicsSystem::getCharacterVelocity() const
     return util::joltToGLM(character->GetLinearVelocity());
 }
 
+bool PhysicsSystem::isCharacterOnGround() const
+{
+    // NOTE: we have to compute this before physics update and not poll here
+    // otherwise this might be wrong if just calling character->GetGroundState!
+    return characterOnGround;
+}
+
 void PhysicsSystem::cleanup()
 {
     JPH::BodyInterface& body_interface = physicsSystem.GetBodyInterface();
@@ -610,68 +622,73 @@ void PhysicsSystem::doForBody(JPH::BodyID id, std::function<void(const JPH::Body
 
 void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
 {
-    ImGui::Checkbox("Draw collision lines with depth", &drawCollisionLinesWithDepth);
-    ImGui::Checkbox("Draw collision wireframe", &drawCollisionShapeWireframe);
-    ImGui::Checkbox("Draw collision BB", &drawCollisionShapeBoundingBox);
-
     if (im.getKeyboard().wasJustPressed(SDL_SCANCODE_B)) {
         drawCollisionShapeWireframe = !drawCollisionShapeWireframe;
     }
 
+    if (ImGui::Begin("Physics")) {
+        ImGui::Checkbox("Draw collision lines with depth", &drawCollisionLinesWithDepth);
+        ImGui::Checkbox("Draw collision wireframe", &drawCollisionShapeWireframe);
+        ImGui::Checkbox("Draw collision BB", &drawCollisionShapeBoundingBox);
+
+        if (ImGui::CollapsingHeader("Character")) {
+            bool creationParamChanged = false;
+
+            float slopeAngleDeg = glm::degrees(characterParams.maxSlopeAngle);
+            if (ImGui::DragFloat("Max slope angle", &slopeAngleDeg, 0.01f, 0.f, 90.f)) {
+                characterParams.maxSlopeAngle = glm::radians(slopeAngleDeg);
+                creationParamChanged = true;
+            }
+            if (ImGui::DragFloat("Max strength", &characterParams.maxStrength, 1.f, 0.f, 1000.f)) {
+                creationParamChanged = true;
+            }
+            if (ImGui::DragFloat(
+                    "Penetration recovery",
+                    &characterParams.penetrationRecoverySpeed,
+                    0.1f,
+                    0.f,
+                    2.f)) {
+                creationParamChanged = true;
+            }
+            if (ImGui::DragFloat(
+                    "Pred. contact dist.",
+                    &characterParams.predictiveContactDistance,
+                    0.01f,
+                    0.01f,
+                    0.5f)) {
+                creationParamChanged = true;
+            }
+
+            if (ImGui::DragFloat("Radius", &characterParams.characterRadius, 0.1f, 0.1f, 0.6f)) {
+                creationParamChanged = true;
+            }
+            if (ImGui::DragFloat("Height", &characterParams.characterHeight, 0.1f, 0.5f, 2.f)) {
+                creationParamChanged = true;
+            }
+
+            ImGui::Checkbox("Walk stairs", &characterParams.enableWalkStairs);
+            ImGui::Checkbox("Stick to ground", &characterParams.enableStickToFloor);
+            ImGui::Checkbox("Inertia", &characterParams.enableCharacterInertia);
+            ImGui::DragFloat("Run speed", &characterParams.characterSpeedRun, 0.1f);
+            ImGui::DragFloat("Walk speed", &characterParams.characterSpeedWalk, 0.1f);
+            ImGui::DragFloat("Jump speed", &characterParams.jumpSpeed, 0.1f);
+            ImGui::Checkbox("Control during jump", &characterParams.controlMovementDuringJump);
+            ImGui::DragFloat("Gravity factor", &characterParams.gravityFactor, 0.1f, 0.5f, 5.f);
+            ImGui::
+                DragFloat("Small jump factor", &characterParams.smallJumpFactor, 0.1f, 0.5f, 20.f);
+
+            if (creationParamChanged) {
+                const auto prevPos = character->GetPosition();
+                createCharacter(characterParams);
+                character->SetPosition(prevPos);
+            }
+        }
+    }
+    ImGui::End();
+
     debugRenderer.setDrawLinesDepthTest(drawCollisionLinesWithDepth);
     debugRenderer.setDrawShapeWireFrame(drawCollisionShapeWireframe);
     debugRenderer.setDrawBoundingBox(drawCollisionShapeBoundingBox);
-
-    if (ImGui::CollapsingHeader("Character")) {
-        bool creationParamChanged = false;
-
-        float slopeAngleDeg = glm::degrees(characterParams.maxSlopeAngle);
-        if (ImGui::DragFloat("Max slope angle", &slopeAngleDeg, 0.01f, 0.f, 90.f)) {
-            characterParams.maxSlopeAngle = glm::radians(slopeAngleDeg);
-            creationParamChanged = true;
-        }
-        if (ImGui::DragFloat("Max strength", &characterParams.maxStrength, 1.f, 0.f, 1000.f)) {
-            creationParamChanged = true;
-        }
-        if (ImGui::DragFloat(
-                "Penetration recovery",
-                &characterParams.penetrationRecoverySpeed,
-                0.1f,
-                0.f,
-                2.f)) {
-            creationParamChanged = true;
-        }
-        if (ImGui::DragFloat(
-                "Pred. contact dist.",
-                &characterParams.predictiveContactDistance,
-                0.01f,
-                0.01f,
-                0.5f)) {
-            creationParamChanged = true;
-        }
-
-        if (ImGui::DragFloat("Radius", &characterParams.characterRadius, 0.1f, 0.1f, 0.6f)) {
-            creationParamChanged = true;
-        }
-        if (ImGui::DragFloat("Height", &characterParams.characterHeight, 0.1f, 0.5f, 2.f)) {
-            creationParamChanged = true;
-        }
-
-        ImGui::Checkbox("Walk stairs", &characterParams.enableWalkStairs);
-        ImGui::Checkbox("Stick to ground", &characterParams.enableStickToFloor);
-        ImGui::Checkbox("Inertia", &characterParams.enableCharacterInertia);
-        ImGui::DragFloat("Run speed", &characterParams.characterSpeedRun, 0.1f);
-        ImGui::DragFloat("Walk speed", &characterParams.characterSpeedWalk, 0.1f);
-        ImGui::DragFloat("Jump speed", &characterParams.jumpSpeed, 0.1f);
-        ImGui::Checkbox("Control during jump", &characterParams.controlMovementDuringJump);
-        ImGui::DragFloat("Gravity factor", &characterParams.gravityFactor, 0.1f, 0.5f, 5.f);
-
-        if (creationParamChanged) {
-            const auto prevPos = character->GetPosition();
-            createCharacter(characterParams);
-            character->SetPosition(prevPos);
-        }
-    }
 }
 
 entt::handle PhysicsSystem::getEntityByBodyID(const JPH::BodyID& bodyID) const

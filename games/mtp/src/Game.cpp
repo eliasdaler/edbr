@@ -31,7 +31,9 @@ Game::Game() :
     baseRenderer(gfxDevice),
     renderer(gfxDevice, baseRenderer),
     spriteRenderer(gfxDevice),
-    entityInitializer(sceneCache, renderer)
+    sceneCache(animationCache),
+    entityInitializer(sceneCache, renderer, animationCache),
+    animationSoundSystem(audioManager)
 {}
 
 namespace
@@ -56,17 +58,20 @@ void Game::customInit()
 {
     inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
     inputManager.loadMapping("assets/data/input_mapping.json");
+    animationCache.loadAnimationData("assets/data/animation_data.json");
 
     baseRenderer.init();
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
 
-    PhysicsSystem::InitStaticObjects(); // important: need to do this before creating any Jolt
-                                        // objects
+    // important: need to do this before creating any Jolt objects
+    PhysicsSystem::InitStaticObjects();
     physicsSystem = std::make_unique<PhysicsSystem>();
     physicsSystem->init();
 
-    entityInitializer.setPhysicsSystem(*physicsSystem);
+    animationSoundSystem.init(eventManager, "assets/sounds");
+
+    skyboxDir = "assets/images/skybox";
 
     { // im3d
         im3d.init(gfxDevice, renderer.getDrawImageFormat(), renderer.getDepthImageFormat());
@@ -80,8 +85,6 @@ void Game::customInit()
             Im3dState::WorldWithDepthLayer,
             Im3dState::RenderState{.depthTest = true, .viewProj = glm::mat4{1.f}});
     }
-
-    skyboxDir = "assets/images/skybox";
 
     initEntityFactory();
     registerComponents(entityFactory.getComponentFactory());
@@ -99,7 +102,6 @@ void Game::customInit()
     { // create player
         auto e = entityFactory.createEntity(registry, "cato");
         e.emplace<PlayerComponent>();
-        // eu::setAnimation(e, "Think");
     }
 
     // loadLevel("assets/levels/house.json");
@@ -198,82 +200,35 @@ void Game::customUpdate(float dt)
 
     // movement
     movementSystemUpdate(registry, dt);
-    auto player = entityutil::getPlayerEntity(registry);
-
-    physicsSystem->drawDebugShapes(camera);
-    physicsSystem->update(dt, player.get<TransformComponent>().transform.getHeading());
-
-    cameraController.update(camera, dt);
-
-    { // sync player with the virtual character
-        if (player.entity() != entt::null) {
-            prevPlayerPos = eu::getWorldPosition(player);
-            eu::setPosition(player, physicsSystem->getCharacterPosition());
-
-            auto& mc = player.get<MovementComponent>();
-            mc.effectiveVelocity = (eu::getWorldPosition(player) - prevPlayerPos) / dt;
-
-            /* // for testing ghost collisions
-            if (mc.effectiveVelocity.y > 0.01) {
-                printf("%.2f\n", mc.effectiveVelocity.y);
-            } */
+    { // physics
+        auto player = entityutil::getPlayerEntity(registry);
+        physicsSystem->drawDebugShapes(camera);
+        physicsSystem->update(dt, player.get<TransformComponent>().transform.getHeading());
+        { // sync player with the virtual character
+            if (player.entity() != entt::null) {
+                eu::setPosition(player, physicsSystem->getCharacterPosition());
+            }
         }
-    }
-
-    // sync other entities with their physics bodies transforms
-    auto physicsView = registry.view<TransformComponent, PhysicsComponent>();
-    for (auto&& [e, tc, pc] : physicsView.each()) {
-        physicsSystem->syncVisibleTransform(pc.bodyId, tc.transform);
+        // sync other entities with their physics bodies transforms
+        auto physicsView = registry.view<TransformComponent, PhysicsComponent>();
+        for (auto&& [e, tc, pc] : physicsView.each()) {
+            physicsSystem->syncVisibleTransform(pc.bodyId, tc.transform);
+        }
     }
 
     transformSystemUpdate(registry, dt);
-
-    { // update effective velocity and animation
-        auto player = eu::getPlayerEntity(registry);
-        auto& mc = player.get<MovementComponent>();
-        auto velocity = mc.effectiveVelocity;
-        velocity.y = 0.f;
-        const auto velMag = glm::length(velocity);
-
-        wasRunning = running;
-        walkingOrRunning = velMag > 0.2f;
-        running = velMag > 1.5f;
-
-        // update walk/run time
-        if (walkingOrRunning) {
-            timeWalkingOrRunning += dt;
-        } else {
-            timeWalkingOrRunning = 0.f;
-        }
-
-        // setting animation based on velocity
-        // TODO: do this in state machine instead
-        if (std::abs(velMag) <= 0.05f) {
-            const auto& animator = player.get<SkeletonComponent>().skeletonAnimator;
-            if (animator.getCurrentAnimationName() == "Run" ||
-                animator.getCurrentAnimationName() == "Walk") {
-                eu::setAnimation(player, "Idle");
-            }
-        } else if (timeWalkingOrRunning > 0.1f) {
-            // ^^^
-            // when sliding against the wall, "Idle" and "Walk" animations
-            // change too quick - this prevents that (but we might not need it
-            // when blending is added)
-            if (running) {
-                eu::setAnimation(player, "Run");
-            } else if (velMag > 0.2f) {
-                // HACK: sometimes the player can fall slightly when being spawned
-                eu::setAnimation(player, "Walk");
-            }
-        }
-    }
-
-    skeletonAnimationSystemUpdate(registry, dt);
+    movementSystemPostPhysicsUpdate(registry, dt);
+    playerAnimationSystem(registry, *physicsSystem, dt);
+    skeletonAnimationSystemUpdate(registry, eventManager, dt);
 
     // camera update
+    cameraController.update(camera, dt);
     if (orbitCameraAroundSelectedEntity && entityTreeView.hasSelectedEntity()) {
         updateFollowCamera(entityTreeView.getSelectedEntity(), dt);
     }
+
+    // audio needs to be updated after the camera
+    animationSoundSystem.update(registry, camera, dt);
 
     updateDevTools(dt);
 
@@ -334,9 +289,9 @@ void Game::handleInput(float dt)
         drawEntityTags = !drawEntityTags;
     }
 
-    static std::default_random_engine randEngine(1337);
-    static std::uniform_real_distribution<float> scaleDist(2.f, 3.f);
-    if (kb.wasJustPressed(SDL_SCANCODE_F)) {
+    if (kb.wasJustPressed(SDL_SCANCODE_O)) {
+        static std::default_random_engine randEngine(1337);
+        static std::uniform_real_distribution<float> scaleDist(2.f, 3.f);
         auto ball = entityFactory.createEntity(registry, "ball");
         eu::setPosition(ball, camera.getPosition());
         const auto scale = scaleDist(randEngine);
@@ -357,7 +312,7 @@ void Game::handlePlayerInput(float dt)
     const auto moveStickState =
         util::getStickState(actionMapping, horizonalWalkAxis, verticalWalkAxis);
 
-    glm::vec3 moveDir;
+    glm::vec3 moveDir{};
     auto player = entityutil::getPlayerEntity(registry);
 
     if (moveStickState != glm::vec2{}) {
@@ -366,30 +321,18 @@ void Game::handlePlayerInput(float dt)
 
         const auto angle = std::atan2(heading.x, heading.z);
         const auto targetHeading = glm::angleAxis(angle, math::GlobalUpAxis);
-
-        auto& tc = player.get<TransformComponent>();
-        auto& mc = player.get<MovementComponent>();
-        mc.startHeading = tc.transform.getHeading();
-        mc.targetHeading = targetHeading;
-        if (glm::dot(mc.startHeading, targetHeading) < 0) {
-            mc.targetHeading = -mc.targetHeading; // this gives us the shortest rotation
-        }
-
-        mc.rotationTime = 0.12f;
-        mc.rotationProgress = 0.f;
+        eu::rotateSmoothlyTo(player, targetHeading, 0.12f);
     } else {
         moveDir = {};
-
-        auto& mc = player.get<MovementComponent>();
-        mc.rotationProgress = mc.rotationTime;
-        mc.rotationTime = 0.f;
+        eu::stopRotation(player);
     }
 
     static const auto sprintAction = actionMapping.getActionTagHash("Sprint");
     static const auto jumpAction = actionMapping.getActionTagHash("Jump");
     bool jumping = actionMapping.wasJustPressed(jumpAction);
+    bool jumpHeld = actionMapping.isHeld(jumpAction);
     bool sprinting = actionMapping.isHeld(sprintAction);
-    physicsSystem->handleCharacterInput(dt, moveDir, jumping, sprinting);
+    physicsSystem->handleCharacterInput(dt, moveDir, jumping, jumpHeld, sprinting);
 }
 
 void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
@@ -398,14 +341,17 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
 
     bool isPlayer = (followEntity == entityutil::getPlayerEntity(registry));
     float zOffset = 0.f;
-    if (smoothCamera && isPlayer) {
+    if (smoothSmartCamera && isPlayer) {
         zOffset = calculateSmartZOffset(followEntity, dt);
     }
 
     prevOffsetZ = zOffset;
-    wasWalkingOrRunning = walkingOrRunning;
 
-    const auto orbitTarget = getCameraOrbitTarget(followEntity, cameraYOffset, zOffset);
+    float yOffset = cameraYOffset;
+    if (!physicsSystem->isCharacterOnGround()) {
+        yOffset = cameraYOffset / 2.f;
+    }
+    const auto orbitTarget = getCameraOrbitTarget(followEntity, yOffset, zOffset);
 
     if (drawCameraTrackPoint) {
         Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
@@ -425,7 +371,7 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
     float maxSpeed = cameraMaxSpeed;
     // when the character moves at full speed, rotation can be too much
     // so it's better to slow down the camera to catch up slower
-    if (zOffset > 0.9 * maxCameraOffsetFactorRun * cameraZOffset) {
+    if (zOffset > 0.5 * maxCameraOffsetFactorRun * cameraZOffset) {
         maxSpeed *= 0.75f;
     }
 
@@ -444,41 +390,57 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
 
 float Game::calculateSmartZOffset(entt::const_handle followEntity, float dt)
 {
-    float zOffset = 0.f;
-    wasRunningCamera = runningCamera;
-    auto testVelocity = followEntity.get<MovementComponent>().effectiveVelocity;
-    testVelocity.y = 0.f;
-    runningCamera = glm::length(testVelocity) > 3.f;
-    if (walkingOrRunning) {
-        if (!wasWalkingOrRunning) {
-            interpolationOffsetZStart = prevOffsetZ;
-        }
-
-        if ((runningCamera && !wasRunningCamera) || (!runningCamera && wasRunningCamera)) {
-            interpolationOffsetZStart = prevOffsetZ;
-        }
-
-        float maxOffsetFactor =
-            runningCamera ? maxCameraOffsetFactorRun : maxCameraOffsetFactorWalk;
-
-        if (movingToMaxOffsetTime < cameraMaxOffsetTime) {
-            movingToMaxOffsetTime += dt;
-            float p = std::min(movingToMaxOffsetTime / cameraMaxOffsetTime, 1.f);
-            zOffset = std::lerp(interpolationOffsetZStart, cameraZOffset * maxOffsetFactor, p);
-        } else {
-            movingToMaxOffsetTime = cameraMaxOffsetTime;
-            zOffset = cameraZOffset * maxOffsetFactor;
-        }
-    } else {
-        // recenter camera on default offset
-        zOffset = cameraZOffset;
+    bool playerRunning = false;
+    { // TODO: make this prettier?
+        const auto player = eu::getPlayerEntity(registry);
+        const auto& mc = player.get<MovementComponent>();
+        auto velocity = mc.effectiveVelocity;
+        velocity.y = 0.f;
+        const auto velMag = glm::length(velocity);
+        playerRunning = velMag > 1.5f;
     }
-    return zOffset;
+
+    float desiredOffset = cameraZOffset;
+    if (playerRunning) {
+        desiredOffset = cameraZOffset * maxCameraOffsetFactorRun;
+    }
+
+    if (prevOffsetZ == desiredOffset) {
+        return desiredOffset;
+    }
+
+    // this prevents noise - we wait for at least desiredOffsetChangeDelay
+    // before changing the desired offset
+    if (prevDesiredOffset != desiredOffset) {
+        float delay = (desiredOffset == cameraZOffset) ? desiredOffsetChangeDelayRecenter :
+                                                         desiredOffsetChangeDelayRun;
+        if (desiredOffsetChangeTimer < delay) {
+            desiredOffsetChangeTimer += dt;
+            return prevOffsetZ;
+        } else {
+            desiredOffsetChangeTimer = 0.f;
+        }
+    }
+    prevDesiredOffset = desiredOffset;
+
+    // move from max offset to default offset in cameraMaxOffsetTime
+    float v = (cameraZOffset * maxCameraOffsetFactorRun - cameraZOffset) / cameraMaxOffsetTime;
+    float sign = (prevOffsetZ > desiredOffset) ? -1.f : 1.f;
+    if (sign == -1.f) {
+        // move faster to default position (cameraZOffset)
+        // (otherwise the camera will wait until the player matches with the
+        // center which looks weird)
+        v *= 1.5f;
+    }
+    return std::
+        clamp(prevOffsetZ + sign * v * dt, cameraZOffset, cameraZOffset * maxCameraOffsetFactorRun);
 }
 
 void Game::customCleanup()
 {
     registry.clear();
+
+    animationSoundSystem.cleanup(eventManager);
 
     physicsSystem->cleanup();
     physicsSystem.reset();
@@ -668,6 +630,10 @@ void Game::loadLevel(const std::filesystem::path& path)
         renderer.setSkyboxImage(NULL_IMAGE_ID);
     }
 
+    if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
+        audioManager.playMusic(bgmPath);
+    }
+
     loadScene(level.getSceneModelPath(), true);
 }
 
@@ -680,6 +646,7 @@ util::SceneLoadContext Game::createSceneLoadContext()
         .sceneCache = sceneCache,
         .defaultPrefabName = "static_geometry",
         .physicsSystem = *physicsSystem,
+        .animationCache = animationCache,
     };
 }
 
@@ -755,5 +722,11 @@ void Game::registerComponents(ComponentFactory& componentFactory)
     componentFactory.registerComponentLoader(
         "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
             loader.get("maxSpeed", mc.maxSpeed);
+        });
+
+    componentFactory.registerComponentLoader(
+        "animation_event_sound",
+        [](entt::handle e, AnimationEventSoundComponent& sc, const JsonDataLoader& loader) {
+            sc.eventSounds = loader.getLoader("events").getKeyValueMapString();
         });
 }

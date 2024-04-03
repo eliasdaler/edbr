@@ -35,8 +35,8 @@ void FreeCameraController::handleInput(const InputManager& im, const Camera& cam
     static const auto rotateYAxis = actionMapping.getActionTagHash("CameraRotateY");
     const auto rotateStickState = util::getStickState(actionMapping, rotateXAxis, rotateYAxis);
 
-    rotationVelocity.x = -rotateStickState.x * rotateSpeed;
-    rotationVelocity.y = -rotateStickState.y * rotateSpeed;
+    rotationVelocity.x = -rotateStickState.x * rotateYawSpeed;
+    rotationVelocity.y = -rotateStickState.y * rotatePitchSpeed;
 }
 
 void FreeCameraController::update(Camera& camera, float dt)

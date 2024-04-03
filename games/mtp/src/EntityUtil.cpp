@@ -56,6 +56,26 @@ void setRotation(entt::handle e, const glm::quat& rotation)
     tc.worldTransform = tc.transform.asMatrix();
 }
 
+void rotateSmoothlyTo(entt::handle e, const glm::quat& targetHeading, float rotationTime)
+{
+    const auto& tc = e.get<TransformComponent>();
+    auto& mc = e.get<MovementComponent>();
+    mc.startHeading = tc.transform.getHeading();
+    mc.targetHeading = targetHeading;
+    if (glm::dot(mc.startHeading, targetHeading) < 0) {
+        mc.targetHeading = -mc.targetHeading; // this gives us the shortest rotation
+    }
+    mc.rotationTime = rotationTime;
+    mc.rotationProgress = 0.f;
+}
+
+void stopRotation(entt::handle e)
+{
+    auto& mc = e.get<MovementComponent>();
+    mc.rotationProgress = mc.rotationTime;
+    mc.rotationTime = 0.f;
+}
+
 void setAnimation(entt::handle e, const std::string& name)
 {
     auto scPtr = e.try_get<SkeletonComponent>();
@@ -63,7 +83,8 @@ void setAnimation(entt::handle e, const std::string& name)
         return;
     }
     auto& sc = *scPtr;
-    sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations.at(name));
+    assert(sc.animations);
+    sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations->at(name));
 }
 
 entt::handle findEntityBySceneNodeName(entt::registry& registry, const std::string& name)

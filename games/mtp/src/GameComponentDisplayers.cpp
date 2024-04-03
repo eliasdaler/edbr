@@ -58,8 +58,14 @@ void Game::registerComponentDisplayers()
     eid.registerDisplayer("Movement", [](entt::const_handle e, const MovementComponent& mc) {
         BeginPropertyTable();
         {
+            DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
             DisplayProperty("MaxSpeed", mc.maxSpeed);
-            DisplayProperty("Velocity", mc.velocity);
+            // don't display for now: too noisy
+            // DisplayProperty("Velocity (effective)", mc.effectiveVelocity);
+            DisplayProperty("Start heading", mc.startHeading);
+            DisplayProperty("Target heading", mc.targetHeading);
+            DisplayProperty("Rotation progress", mc.rotationProgress);
+            DisplayProperty("Rotation time", mc.rotationTime);
         }
         EndPropertyTable();
     });
@@ -118,6 +124,8 @@ void Game::registerComponentDisplayers()
             DisplayProperty("Animation", animator.getCurrentAnimationName());
             DisplayProperty("Anim length", animator.getAnimation()->duration);
             DisplayProperty("Progress", animator.getProgress());
+            DisplayProperty("Frame", animator.getCurrentFrame());
+            DisplayProperty("Looped", animator.getAnimation()->looped);
         }
         EndPropertyTable();
     });
@@ -163,4 +171,15 @@ void Game::registerComponentDisplayers()
             setCurrentCamera(e);
         }
     });
+
+    eid.registerDisplayer(
+        "AnimationEventSound", [](entt::const_handle e, const AnimationEventSoundComponent& sc) {
+            BeginPropertyTable();
+            {
+                for (const auto& [event, sound] : sc.eventSounds) {
+                    DisplayProperty(event.c_str(), sound);
+                }
+            }
+            EndPropertyTable();
+        });
 }

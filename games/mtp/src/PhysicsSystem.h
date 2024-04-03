@@ -169,13 +169,19 @@ public:
 
     void init();
     void drawDebugShapes(const Camera& camera);
-    void handleCharacterInput(float dt, glm::vec3 movementDirection, bool jumping, bool running);
+    void handleCharacterInput(
+        float dt,
+        glm::vec3 movementDirection,
+        bool jumping,
+        bool jumpHeld,
+        bool running);
     void update(float dt, const glm::quat& characterRotation);
     void cleanup();
 
     void setCharacterPosition(const glm::vec3 pos);
     glm::vec3 getCharacterPosition() const;
     glm::vec3 getCharacterVelocity() const;
+    bool isCharacterOnGround() const;
 
     JPH::Ref<JPH::Shape> cacheMeshShape(
         const std::vector<const CPUMesh*>& meshes,
@@ -217,10 +223,12 @@ private:
 
         float characterSpeedRun = 4.0f;
         float characterSpeedWalk = 1.15f;
-        float jumpSpeed = 7.5f;
+        float jumpSpeed = 9.0f;
         bool controlMovementDuringJump = true;
-        float gravityFactor{2.f};
+        float gravityFactor{1.75f};
+        float smallJumpFactor{4.f};
     };
+    bool characterOnGround{true};
     void createCharacter(const CharacterParams& cp);
     void characterPreUpdate(float dt, const glm::quat& characterRotation);
     void sendCollisionEvents();

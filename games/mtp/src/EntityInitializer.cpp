@@ -4,13 +4,12 @@
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/Graphics/GameRenderer.h>
+#include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/SceneCache.h>
 
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
 #include <fmt/printf.h>
-
-#include "PhysicsSystem.h"
 
 namespace
 {
@@ -28,8 +27,11 @@ std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
 }
 }
 
-EntityInitializer::EntityInitializer(SceneCache& sceneCache, GameRenderer& renderer) :
-    sceneCache(sceneCache), renderer(renderer)
+EntityInitializer::EntityInitializer(
+    SceneCache& sceneCache,
+    GameRenderer& renderer,
+    SkeletalAnimationCache& animationCache) :
+    sceneCache(sceneCache), renderer(renderer), animationCache(animationCache)
 {}
 
 void EntityInitializer::initEntity(entt::handle e) const
@@ -72,15 +74,15 @@ void EntityInitializer::initEntity(entt::handle e) const
             sc.skeleton = scene.skeletons[node.skinId];
             // FIXME: this is bad - we need to have some sort of cache
             // and not copy animations everywhere
-            sc.animations = scene.animations;
+            sc.animations = &animationCache.getAnimations(mc.meshPath);
 
             sc.skinnedMeshes.reserve(mc.meshes.size());
             for (const auto meshId : mc.meshes) {
                 sc.skinnedMeshes.push_back(renderer.createSkinnedMesh(meshId));
             }
 
-            if (sc.animations.contains("Idle")) {
-                sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations.at("Idle"));
+            if (sc.animations->contains("Idle")) {
+                sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations->at("Idle"));
             }
         }
     }

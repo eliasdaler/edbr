@@ -12,6 +12,7 @@ add_executable(mtpgame
 
   src/JoltDebugRenderer.cpp
   src/PhysicsSystem.cpp
+  src/AnimationSoundSystem.cpp
 
   src/main.cpp
 )

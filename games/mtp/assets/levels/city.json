@@ -9,5 +9,6 @@
   "fog": {
     "color": { "rgb": [128, 128, 128] },
     "density": 0.02
-  }
+  },
+  "bgm": "assets/music/forest_birds_ambient.ogg"
 }

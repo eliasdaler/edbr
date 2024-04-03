@@ -144,3 +144,36 @@ add_library(Jolt::Jolt ALIAS Jolt)
 if (MSVC)
   target_compile_definitions(Jolt PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
 endif()
+
+## openal-soft
+option(ALSOFT_UTILS "Build utility programs"  OFF)
+option(ALSOFT_EXAMPLES  "Build example programs"  OFF)
+option(ALSOFT_INSTALL "Install main library" OFF)
+option(ALSOFT_INSTALL_CONFIG "Install alsoft.conf sample configuration file" OFF)
+option(ALSOFT_INSTALL_HRTF_DATA "Install HRTF data files" OFF)
+option(ALSOFT_INSTALL_AMBDEC_PRESETS "Install AmbDec preset files" OFF)
+option(ALSOFT_INSTALL_EXAMPLES "Install example programs (alplay, alstream, ...)" OFF)
+option(ALSOFT_INSTALL_UTILS "Install utility programs (openal-info, alsoft-config, ...)" OFF)
+option(ALSOFT_UPDATE_BUILD_VERSION "Update git build version info" OFF)
+# disabled SNDIO, most Linuxes should have ALSA or PulseAudio
+option(ALSOFT_BACKEND_SNDIO "Enable SndIO backend" OFF)
+# For some reason these checks pass... TODO: investigate!
+set(PTHREAD_SETNAME_NP_ONE_PARAM OFF CACHE BOOL "...")
+set(PTHREAD_SETNAME_NP_THREE_PARAMS OFF CACHE BOOL "...")
+add_subdirectory(openal-soft)
+
+## ogg
+option(INSTALL_DOCS "Install documentation" OFF)
+option(INSTALL_PKG_CONFIG_MODULE "Install ogg.pc file" OFF)
+option(INSTALL_CMAKE_PACKAGE_MODULE "Install CMake package configuration module" OFF)
+add_subdirectory(ogg)
+
+set_target_properties(ogg PROPERTIES
+  PUBLIC_HEADER ""
+)
+
+## libvorbis
+option(INSTALL_CMAKE_PACKAGE_MODULE "Install CMake package configiguration module" OFF)
+add_subdirectory(vorbis)
+add_library(vorbis::vorbis ALIAS vorbis)
+add_library(vorbis::vorbisfile ALIAS vorbisfile)

@@ -1,0 +1,90 @@
+[
+  {
+    "mesh_path": "assets/models/cato.gltf",
+    "animations": {
+      "Walk": {
+        "startFrame": 7,
+        "events": [
+          {
+            "name": "step1",
+            "frame": 3
+          },
+          {
+            "name": "step2",
+            "frame": 15
+          }
+        ]
+      },
+      "Run": {
+        "startFrame": 2,
+        "events": [
+          {
+            "name": "step1",
+            "frame": 2
+          },
+          {
+            "name": "step2",
+            "frame": 10
+          }
+        ]
+      },
+      "PickUp": {
+        "looped": false,
+        "events": [
+          {
+            "name": "pickup_start_sound",
+            "frame": 3
+          },
+          {
+            "name": "pickup_end_sound",
+            "frame": 26
+          }
+        ]
+      },
+      "Jump": {
+        "looped": false
+      },
+      "Fall": {
+        "looped": false
+      },
+      "ThinkStart": {
+        "looped": false
+      },
+      "ThinkEnd": {
+        "looped": false
+      }
+    }
+  },
+  {
+    "mesh_path": "assets/models/human_base.gltf",
+    "animations": {
+      "Walk": {
+        "startFrame": 8,
+        "events": [
+          {
+            "name": "step1",
+            "frame": 4
+          },
+          {
+            "name": "step2",
+            "frame": 20
+          }
+        ]
+      },
+      "Run": {
+        "startFrame": 2,
+        "events": [
+          {
+            "name": "step1",
+            "frame": 3
+          },
+          {
+            "name": "step2",
+            "frame": 15
+          }
+        ]
+      }
+    }
+  }
+]
+

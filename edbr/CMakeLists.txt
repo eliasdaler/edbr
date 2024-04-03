@@ -14,6 +14,11 @@ add_library(edbr
   src/DevTools/Im3dState.cpp
   src/DevTools/ResourcesInspector.cpp
 
+  # Event
+  src/Event/Event.cpp
+  src/Event/EventManager.cpp
+  src/Event/ListenerInfo.cpp
+
   # ECS
   src/ECS/ComponentFactory.cpp
   src/ECS/EntityFactory.cpp
@@ -50,6 +55,8 @@ add_library(edbr
   src/Graphics/Scene.cpp
   src/Graphics/ShadowMapping.cpp
   src/Graphics/SkeletonAnimator.cpp
+  src/Graphics/SkeletalAnimation.cpp
+  src/Graphics/SkeletalAnimationCache.cpp
   src/Graphics/Sprite.cpp
 
   # Graphics/Pipeline
@@ -80,6 +87,16 @@ add_library(edbr
   src/Input/InputStringMap.cpp
   src/Input/KeyboardState.cpp
   src/Input/MouseState.cpp
+
+  # Audio
+  src/Audio/Music.cpp
+  src/Audio/OpenALUtil.cpp
+  src/Audio/Sound.cpp
+  src/Audio/SoundBuffer.cpp
+  src/Audio/SoundDevice.cpp
+  src/Audio/WavLoader.cpp
+
+  src/AudioManager.cpp
 
   src/Application.cpp
   src/FreeCameraController.cpp
@@ -112,11 +129,19 @@ target_link_libraries(edbr
 
     Jolt::Jolt
 
+    # audio
+    OpenAL::OpenAL
+    Ogg::ogg
+    vorbis::vorbis
+    vorbis::vorbisfile
+
   PRIVATE
     tinygltf::tinygltf
     stb::image
     freetype::freetype
 )
+
+target_compile_definitions(edbr PUBLIC AL_ALEXT_PROTOTYPES)
 
 target_compile_definitions(edbr
   PUBLIC
