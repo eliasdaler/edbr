@@ -88,7 +88,7 @@ add_library(tinygltf::tinygltf ALIAS tinygltf)
 
 ## tracy
 option(TRACY_ENABLE "" OFF)
-option(TRACY_ON_DEMAND "" ON)
+option(TRACY_ON_DEMAND "" OFF)
 add_subdirectory(tracy)
 if (MSVC)
   target_compile_definitions(TracyClient PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
@@ -133,8 +133,13 @@ if (MSVC)
 endif()
 
 ## jolt
-## TODO: only enable in Debug
-## option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" OFF)
+if(NOT CMAKE_BUILD_TYPE OR
+  CMAKE_BUILD_TYPE STREQUAL "Debug" OR
+  CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" ON)
+else()
+  option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" OFF)
+endif()
 option(OVERRIDE_CXX_FLAGS "Override CMAKE_CXX_FLAGS_DEBUG/RELEASE" OFF)
 option(ENABLE_ALL_WARNINGS "Enable all warnings and warnings as errors" OFF)
 option(USE_STATIC_MSVC_RUNTIME_LIBRARY "Use the static MSVC runtime library" OFF)
@@ -160,6 +165,11 @@ option(ALSOFT_BACKEND_SNDIO "Enable SndIO backend" OFF)
 # For some reason these checks pass... TODO: investigate!
 set(PTHREAD_SETNAME_NP_ONE_PARAM OFF CACHE BOOL "...")
 set(PTHREAD_SETNAME_NP_THREE_PARAMS OFF CACHE BOOL "...")
+if (NOT BUILD_SHARED_LIBS)
+  # FIXME: for some reason when building static libs, we can't link
+  # to OpenAL-soft dynamically anymore - need to fix this
+  set(LIBTYPE "STATIC")
+endif()
 add_subdirectory(openal-soft)
 
 ## ogg

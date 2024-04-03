@@ -14,6 +14,7 @@ function(target_add_extra_warnings target)
       PRIVATE
         -Wno-missing-braces # sometimes not having braces in if(a && b || c) is not that dangerous
         -Wno-volatile # glm
+        -Wno-inline # openal-soft
         # whatever:
         -Wno-unused-local-typedefs
         -Wno-unused-variable

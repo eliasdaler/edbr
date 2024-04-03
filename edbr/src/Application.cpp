@@ -90,6 +90,10 @@ void Application::run()
         const auto newTime = std::chrono::high_resolution_clock::now();
         frameTime = std::chrono::duration<float>(newTime - prevTime).count();
 
+        if (frameTime > 0.07f) {
+            printf("frame drop, time: %.4f\n", frameTime);
+        }
+
         accumulator += frameTime;
         prevTime = newTime;
 

@@ -221,6 +221,8 @@ void Im3dState::draw(
     VkExtent2D swapchainExtent,
     VkImageView depthImageView)
 {
+    TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "im3d", tracy::Color::WebMaroon);
+
     if (Im3d::GetDrawListCount() == 0) {
         return;
     }

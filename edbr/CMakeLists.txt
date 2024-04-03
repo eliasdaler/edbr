@@ -147,6 +147,7 @@ target_compile_definitions(edbr
   PUBLIC
     VK_NO_PROTOTYPES
     VMA_VULKAN_VERSION=1003000
+    # VOLK_DEFAULT_VISIBILITY # FIXME: doesn't work for some reason
 )
 
 # SDL
@@ -180,15 +181,14 @@ target_compile_definitions(edbr
 )
 
 target_link_libraries(edbr PUBLIC Tracy::TracyClient)
-
 if (MSVC)
-  target_compile_definitions(TracyClient PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
-  target_compile_definitions(edbr PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
+  target_compile_definitions(TracyClient PUBLIC $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
+  target_compile_definitions(edbr PUBLC $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
 else()
   if(NOT CMAKE_BUILD_TYPE OR
     CMAKE_BUILD_TYPE STREQUAL "Debug" OR
     CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    target_compile_definitions(TracyClient PRIVATE TRACY_ENABLE)
-    target_compile_definitions(edbr PRIVATE TRACY_ENABLE)
+    target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE)
+    target_compile_definitions(edbr PUBLIC TRACY_ENABLE)
   endif()
 endif()

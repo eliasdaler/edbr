@@ -42,6 +42,8 @@ void SpriteRenderer::endDrawing()
 
 void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage)
 {
+    TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Sprite renderer", tracy::Color::Purple);
+
     const auto drawImageExtent = drawImage.getExtent2D();
     const auto drawSize = glm::vec2{drawImageExtent.width, drawImageExtent.height};
 

@@ -19,7 +19,6 @@
 
 #include <edbr/Util/Im3dUtil.h>
 #include <im3d.h>
-
 #include <imgui.h>
 
 #include <glm/gtx/easing.hpp>
@@ -537,7 +536,6 @@ void Game::customDraw()
         renderer.draw(cmd, camera, sceneData);
 
         { // UI
-            TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "UI", tracy::Color::Purple);
             vkutil::cmdBeginLabel(cmd, "UI");
             spriteRenderer.draw(cmd, renderer.getDrawImage());
             vkutil::cmdEndLabel(cmd);
@@ -545,7 +543,6 @@ void Game::customDraw()
 
         const auto& drawImage = renderer.getDrawImage();
         { // Im3D
-            TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "im3d", tracy::Color::WebMaroon);
             vkutil::cmdBeginLabel(cmd, "im3d");
             im3d.draw(
                 cmd,

@@ -78,7 +78,7 @@ void GfxDevice::initVulkan(SDL_Window* window, const char* appName)
 
     instance = vkb::InstanceBuilder{}
                    .set_app_name(appName)
-                   .request_validation_layers()
+                   // .request_validation_layers()
                    .use_default_debug_messenger()
                    .require_api_version(1, 3, 0)
                    .build()
@@ -266,6 +266,7 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
         swapchainLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         { // draw Dear ImGui
+            ZoneScopedN("ImGui draw");
             TracyVkZoneC(getTracyVkCtx(), cmd, "ImGui", tracy::Color::VioletRed);
             vkutil::cmdBeginLabel(cmd, "Draw Dear ImGui");
             imGuiBackend.draw(

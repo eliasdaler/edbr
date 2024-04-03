@@ -24,6 +24,8 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
 
+#include <tracy/Tracy.hpp>
+
 #include <cstdarg>
 #include <iostream>
 
@@ -287,7 +289,10 @@ void PhysicsSystem::update(float dt, const glm::quat& characterRotation)
     const auto collisionSteps = (int)std::ceil(defaultStep / dt);
 
     // Step the world
-    physicsSystem.Update(dt, collisionSteps, tempAllocator.get(), &job_system);
+    {
+        ZoneScopedN("Jolt physics system update");
+        physicsSystem.Update(dt, collisionSteps, tempAllocator.get(), &job_system);
+    }
 
     sendCollisionEvents();
 }
@@ -317,6 +322,8 @@ void PhysicsSystem::sendCollisionEvents()
 
 void PhysicsSystem::characterPreUpdate(float dt, const glm::quat& characterRotation)
 {
+    ZoneScopedN("Jolt character update");
+
     JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
 
     if (!characterParams.enableStickToFloor) {

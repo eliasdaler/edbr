@@ -11,6 +11,16 @@
 #include <cassert>
 #include <cstring>
 
+#include <fmt/printf.h>
+
+// #define DEBUG_AUDIO_DEVICE
+
+#ifdef DEBUG_AUDIO_DEVICE
+#define AUDIO_DEBUG_PRINT(...) fmt::println(__VA_ARGS__);
+#else
+#define AUDIO_DEBUG_PRINT(...)
+#endif
+
 namespace
 {
 std::vector<std::string> enumerateOpenALDevices()
@@ -35,17 +45,31 @@ std::vector<std::string> enumerateOpenALDevices()
 
 SoundDevice::SoundDevice()
 {
-    /* auto enumeration = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
-    assert(enumeration);
+    const auto enumerationPresent = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
+    assert(enumerationPresent);
+
     auto devices = enumerateOpenALDevices();
     for (const auto& d : devices) {
-        std::cout << "OpenAL device: " << d << std::endl;
-    } */
+        // std::cout << "Found OpenAL device: " << d << std::endl;
+    }
 
-    device = alcOpenDevice(nullptr);
+    const auto defaultDeviceName = alcGetString(NULL, ALC_DEFAULT_ALL_DEVICES_SPECIFIER);
+    AUDIO_DEBUG_PRINT("Default OpenAL device: {}", defaultDeviceName);
+    device = alcOpenDevice(defaultDeviceName);
+
     if (!device) {
-        std::cerr << "ERROR: Failed to create OpenAL device:" << std::endl;
-        std::exit(1);
+        // failed to open default device, try others...
+        for (const auto& d : devices) {
+            AUDIO_DEBUG_PRINT("Trying to open OpenAL device: {}", d);
+            device = alcOpenDevice(d.c_str());
+            if (device) {
+                break;
+            }
+        }
+    }
+
+    if (!device) {
+        std::cerr << "ERROR: Failed to create OpenAL device" << std::endl;
     }
 
     loadHRTF();
@@ -65,13 +89,13 @@ SoundDevice::SoundDevice()
     }
 
     assert(alGetString(AL_VERSION));
-    printf("OpenAL version: %s\n", alGetString(AL_VERSION));
-    printf("OpenAL vendor: %s\n", alGetString(AL_VENDOR));
-    printf("OpenAL renderer: %s\n", alGetString(AL_RENDERER));
+    AUDIO_DEBUG_PRINT("OpenAL version: {}", alGetString(AL_VERSION));
+    AUDIO_DEBUG_PRINT("OpenAL vendor: {}", alGetString(AL_VENDOR));
+    AUDIO_DEBUG_PRINT("OpenAL renderer: {}", alGetString(AL_RENDERER));
 
     ALCint srate;
     alcGetIntegerv(device, ALC_FREQUENCY, 1, &srate);
-    fprintf(stdout, "Sample rate: %d\n", srate);
+    AUDIO_DEBUG_PRINT("Sample rate: {}", srate);
 
     // loadReverb();
 }
@@ -135,18 +159,18 @@ void SoundDevice::loadReverb()
 void SoundDevice::loadHRTF()
 {
     if (!alcIsExtensionPresent(device, "ALC_SOFT_HRTF")) {
-        fprintf(stdout, "HRTF supported: 0\n");
+        AUDIO_DEBUG_PRINT("HRTF supported: false");
         return;
     }
 
-    fprintf(stdout, "HRTF supported: 1\n");
+    AUDIO_DEBUG_PRINT("HRTF supported: true");
 
     int num_hrtf;
     alcGetIntegerv(device, ALC_NUM_HRTF_SPECIFIERS_SOFT, 1, &num_hrtf);
     if (!num_hrtf) {
-        printf("No HRTFs found\n");
+        AUDIO_DEBUG_PRINT("No HRTFs found");
     } else {
-        fprintf(stdout, "Num HRTFs found: %d\n", num_hrtf);
+        AUDIO_DEBUG_PRINT("Num HRTFs found: {}", num_hrtf);
     }
 
     const char* hrtfname{nullptr};
@@ -155,10 +179,10 @@ void SoundDevice::loadHRTF()
         ALCint index = -1;
         ALCint i;
 
-        printf("Available HRTFs:\n");
+        AUDIO_DEBUG_PRINT("Available HRTFs:");
         for (i = 0; i < num_hrtf; i++) {
             const ALCchar* name = alcGetStringiSOFT(device, ALC_HRTF_SPECIFIER_SOFT, i);
-            printf("    %d: %s\n", i, name);
+            AUDIO_DEBUG_PRINT("    {}: {}", i, name);
 
             /* Check if this is the HRTF the user requested. */
             if (hrtfname && strcmp(name, hrtfname) == 0) index = i;
@@ -168,10 +192,12 @@ void SoundDevice::loadHRTF()
         attr[i++] = ALC_HRTF_SOFT;
         attr[i++] = ALC_TRUE;
         if (index == -1) {
-            if (hrtfname) printf("HRTF \"%s\" not found\n", hrtfname);
-            printf("Using default HRTF...\n");
+            if (hrtfname) {
+                AUDIO_DEBUG_PRINT("HRTF {} not found", hrtfname);
+            }
+            AUDIO_DEBUG_PRINT("Using default HRTF...");
         } else {
-            printf("Selecting HRTF %d...\n", index);
+            AUDIO_DEBUG_PRINT("Selecting HRTF {}...", index);
             attr[i++] = ALC_HRTF_ID_SOFT;
             attr[i++] = index;
         }
