@@ -9,11 +9,11 @@
 #include <edbr/Application.h>
 #include <edbr/ECS/EntityFactory.h>
 
-#include <edbr/Graphics/BaseRenderer.h>
 #include <edbr/Graphics/Camera.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/GameRenderer.h>
 #include <edbr/Graphics/MaterialCache.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 
@@ -80,7 +80,7 @@ private:
     util::SceneLoadContext createSceneLoadContext();
 
 private:
-    BaseRenderer baseRenderer;
+    MeshCache meshCache;
     MaterialCache materialCache;
     GameRenderer renderer;
     SpriteRenderer spriteRenderer;

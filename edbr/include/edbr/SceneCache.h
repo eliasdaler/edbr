@@ -6,9 +6,9 @@
 
 #include <edbr/Graphics/Scene.h>
 
-class BaseRenderer;
 class SkeletalAnimationCache;
 class GfxDevice;
+class MeshCache;
 class MaterialCache;
 
 class SceneCache {
@@ -16,8 +16,8 @@ public:
     SceneCache(SkeletalAnimationCache& animationCache);
 
     [[nodiscard]] const Scene& loadScene(
-        BaseRenderer& renderer,
         GfxDevice& gfxDevice,
+        MeshCache& meshCache,
         MaterialCache& materialCache,
         const std::filesystem::path& path);
 

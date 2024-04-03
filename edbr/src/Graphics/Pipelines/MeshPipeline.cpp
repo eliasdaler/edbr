@@ -1,10 +1,9 @@
 #include <edbr/Graphics/Pipelines/MeshPipeline.h>
 
-#include <edbr/Graphics/GfxDevice.h>
-#include <edbr/Graphics/MeshDrawCommand.h>
-
-#include <edbr/Graphics/BaseRenderer.h>
 #include <edbr/Graphics/FrustumCulling.h>
+#include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MeshCache.h>
+#include <edbr/Graphics/MeshDrawCommand.h>
 #include <edbr/Graphics/Vulkan/Init.h>
 #include <edbr/Graphics/Vulkan/Pipelines.h>
 #include <edbr/Graphics/Vulkan/Util.h>
@@ -55,7 +54,7 @@ void MeshPipeline::draw(
     VkCommandBuffer cmd,
     VkExtent2D renderExtent,
     const GfxDevice& gfxDevice,
-    const BaseRenderer& baseRenderer,
+    const MeshCache& meshCache,
     const Camera& camera,
     const GPUBuffer& sceneDataBuffer,
     const std::vector<MeshDrawCommand>& drawCommands,
@@ -91,7 +90,7 @@ void MeshPipeline::draw(
             continue;
         }
 
-        const auto& mesh = baseRenderer.getMesh(dc.meshId);
+        const auto& mesh = meshCache.getMesh(dc.meshId);
         if (mesh.materialId != prevMaterialIdx) {
             prevMaterialIdx = mesh.materialId;
         }

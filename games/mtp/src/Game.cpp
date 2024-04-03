@@ -11,6 +11,7 @@
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Scene.h>
+#include <edbr/Graphics/Vulkan/Util.h>
 #include <edbr/Math/Util.h>
 #include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
@@ -27,11 +28,10 @@ namespace eu = entityutil;
 
 Game::Game() :
     Application(),
-    baseRenderer(gfxDevice),
-    renderer(gfxDevice, baseRenderer, materialCache),
+    renderer(gfxDevice, meshCache, materialCache),
     spriteRenderer(gfxDevice),
     sceneCache(animationCache),
-    entityInitializer(sceneCache, renderer, materialCache, animationCache),
+    entityInitializer(sceneCache, gfxDevice, meshCache, materialCache, animationCache),
     animationSoundSystem(audioManager)
 {}
 
@@ -59,7 +59,6 @@ void Game::customInit()
     inputManager.loadMapping("assets/data/input_mapping.json");
     animationCache.loadAnimationData("assets/data/animation_data.json");
 
-    baseRenderer.init();
     materialCache.init(gfxDevice);
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
@@ -469,7 +468,7 @@ void Game::customCleanup()
     spriteRenderer.cleanup();
     renderer.cleanup();
     materialCache.cleanup(gfxDevice);
-    baseRenderer.cleanup();
+    meshCache.cleanup(gfxDevice);
 }
 
 void Game::setEntityTag(entt::handle e, const std::string& tag)
@@ -658,7 +657,8 @@ void Game::loadLevel(const std::filesystem::path& path)
 util::SceneLoadContext Game::createSceneLoadContext()
 {
     return util::SceneLoadContext{
-        .renderer = renderer,
+        .gfxDevice = gfxDevice,
+        .meshCache = meshCache,
         .materialCache = materialCache,
         .entityFactory = entityFactory,
         .registry = registry,
@@ -671,7 +671,7 @@ util::SceneLoadContext Game::createSceneLoadContext()
 
 void Game::loadScene(const std::filesystem::path& path, bool createEntities)
 {
-    const auto& scene = sceneCache.loadScene(baseRenderer, gfxDevice, materialCache, path);
+    const auto& scene = sceneCache.loadScene(gfxDevice, meshCache, materialCache, path);
     if (createEntities) {
         util::createEntitiesFromScene(createSceneLoadContext(), scene);
     }

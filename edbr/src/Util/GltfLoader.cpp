@@ -4,12 +4,12 @@
 #include <iostream>
 #include <span>
 
-#include <edbr/Graphics/BaseRenderer.h>
 #include <edbr/Graphics/CPUMesh.h>
 #include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/GPUMesh.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Graphics/MaterialCache.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/Skeleton.h>
 #include <edbr/Math/Util.h>
@@ -329,7 +329,7 @@ CPUMesh loadPrimitive(
 }
 
 Material loadMaterial(
-    BaseRenderer& renderer,
+    GfxDevice& gfxDevice,
     const tinygltf::Model& gltfModel,
     const std::filesystem::path& fileDir,
     const tinygltf::Material& gltfMaterial)
@@ -343,20 +343,20 @@ Material loadMaterial(
 
     if (hasDiffuseTexture(gltfMaterial)) {
         const auto diffusePath = getDiffuseTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.diffuseTexture = renderer.getGfxDevice().loadImageFromFile(
+        material.diffuseTexture = gfxDevice.loadImageFromFile(
             diffusePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
     if (hasNormalMapTexture(gltfMaterial)) {
         const auto normalMapPath = getNormalMapTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.normalMapTexture = renderer.getGfxDevice().loadImageFromFile(
+        material.normalMapTexture = gfxDevice.loadImageFromFile(
             normalMapPath, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
     if (hasMetallicRoughnessTexture(gltfMaterial)) {
         const auto metalRoughnessPath =
             getMetallicRoughnessTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.metallicRoughnessTexture = renderer.getGfxDevice().loadImageFromFile(
+        material.metallicRoughnessTexture = gfxDevice.loadImageFromFile(
             metalRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
@@ -364,7 +364,7 @@ Material loadMaterial(
         material.emissiveFactor = getEmissiveStrength(gltfMaterial);
 
         const auto emissivePath = getEmissiveTexturePath(gltfModel, gltfMaterial, fileDir);
-        material.emissiveTexture = renderer.getGfxDevice().loadImageFromFile(
+        material.emissiveTexture = gfxDevice.loadImageFromFile(
             emissivePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
     }
 
@@ -606,8 +606,8 @@ void loadGltfFile(tinygltf::Model& gltfModel, const std::filesystem::path& path)
 namespace util
 {
 Scene loadGltfFile(
-    BaseRenderer& renderer,
     GfxDevice& gfxDevice,
+    MeshCache& meshCache,
     MaterialCache& materialCache,
     const std::filesystem::path& path)
 {
@@ -625,7 +625,7 @@ Scene loadGltfFile(
         for (std::size_t materialIdx = 0; materialIdx < gltfModel.materials.size(); ++materialIdx) {
             const auto& gltfMaterial = gltfModel.materials[materialIdx];
             const auto materialId = materialCache.addMaterial(
-                gfxDevice, loadMaterial(renderer, gltfModel, fileDir, gltfMaterial));
+                gfxDevice, loadMaterial(gfxDevice, gltfModel, fileDir, gltfMaterial));
             materialMapping.emplace(materialIdx, materialId);
         }
     }
@@ -650,7 +650,7 @@ Scene loadGltfFile(
             if (gltfPrimitive.material != -1) {
                 materialId = materialMapping.at(gltfPrimitive.material);
             }
-            const auto meshId = renderer.addMesh(cpuMesh, materialId);
+            const auto meshId = meshCache.addMesh(gfxDevice, cpuMesh, materialId);
             mesh.primitives[primitiveIdx] = meshId;
             scene.cpuMeshes.emplace(meshId, std::move(cpuMesh));
         }

@@ -4,18 +4,20 @@
 
 #include <entt/entity/fwd.hpp>
 
-class GameRenderer;
 class EntityFactory;
-class SceneCache;
-struct Scene;
-class PhysicsSystem;
+class GfxDevice;
 class MaterialCache;
+class MeshCache;
+class PhysicsSystem;
+class SceneCache;
 class SkeletalAnimationCache;
+struct Scene;
 
 namespace util
 {
 struct SceneLoadContext {
-    GameRenderer& renderer;
+    GfxDevice& gfxDevice;
+    MeshCache& meshCache;
     MaterialCache& materialCache;
     EntityFactory& entityFactory;
     entt::registry& registry;

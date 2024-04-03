@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.h>
 
 class GfxDevice;
-class BaseRenderer;
+class MeshCache;
 class Camera;
 struct GPUImage;
 struct GPUBuffer;
@@ -26,7 +26,7 @@ public:
         VkCommandBuffer cmd,
         VkExtent2D renderExtent,
         const GfxDevice& gfxDevice,
-        const BaseRenderer& baseRenderer,
+        const MeshCache& meshCache,
         const Camera& camera,
         const GPUBuffer& sceneDataBuffer,
         const std::vector<MeshDrawCommand>& drawCommands,

@@ -69,7 +69,6 @@ add_library(edbr
   src/Graphics/Pipelines/SpriteDrawingPipeline.cpp
 
   # Graphics - high level renderers
-  src/Graphics/BaseRenderer.cpp
   src/Graphics/GameRenderer.cpp
   src/Graphics/SpriteRenderer.cpp
 

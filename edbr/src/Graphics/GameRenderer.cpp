@@ -1,13 +1,14 @@
 #include <edbr/Graphics/GameRenderer.h>
 
-#include <edbr/Graphics/BaseRenderer.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/FrustumCulling.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Graphics/MaterialCache.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/Vulkan/Init.h>
 #include <edbr/Graphics/Vulkan/Pipelines.h>
+#include <edbr/Graphics/Vulkan/Util.h>
 
 #include <imgui.h>
 
@@ -17,9 +18,9 @@
 
 GameRenderer::GameRenderer(
     GfxDevice& gfxDevice,
-    BaseRenderer& baseRenderer,
+    MeshCache& meshCache,
     MaterialCache& materialCache) :
-    gfxDevice(gfxDevice), baseRenderer(baseRenderer), materialCache(materialCache)
+    gfxDevice(gfxDevice), meshCache(meshCache), materialCache(materialCache)
 {}
 
 void GameRenderer::init(const glm::ivec2& drawImageSize)
@@ -149,7 +150,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             if (!dc.skinnedMesh) {
                 continue;
             }
-            skinningPipeline.doSkinning(cmd, gfxDevice.getCurrentFrameIndex(), baseRenderer, dc);
+            skinningPipeline.doSkinning(cmd, gfxDevice.getCurrentFrameIndex(), meshCache, dc);
         }
         vkutil::cmdEndLabel(cmd);
 
@@ -179,7 +180,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         csmPipeline.draw(
             cmd,
             gfxDevice,
-            baseRenderer,
+            meshCache,
             camera,
             sunlight.direction,
             meshDrawCommands,
@@ -266,7 +267,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             cmd,
             drawImage.getExtent2D(),
             gfxDevice,
-            baseRenderer,
+            meshCache,
             camera,
             sceneDataBuffer.getBuffer(),
             meshDrawCommands,
@@ -502,7 +503,7 @@ void GameRenderer::addLight(const Light& light, const Transform& transform)
 
 void GameRenderer::drawMesh(MeshId id, const glm::mat4& transform, bool castShadow)
 {
-    const auto& mesh = baseRenderer.getMesh(id);
+    const auto& mesh = meshCache.getMesh(id);
     const auto worldBoundingSphere =
         edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
 
@@ -525,7 +526,7 @@ void GameRenderer::drawSkinnedMesh(
 
     assert(meshes.size() == skinnedMeshes.size());
     for (std::size_t i = 0; i < meshes.size(); ++i) {
-        const auto& mesh = baseRenderer.getMesh(meshes[i]);
+        const auto& mesh = meshCache.getMesh(meshes[i]);
         assert(mesh.hasSkeleton);
 
         const auto worldBoundingSphere =
@@ -554,17 +555,6 @@ void GameRenderer::sortDrawList()
             const auto& dc2 = meshDrawCommands[i2];
             return dc1.meshId < dc2.meshId;
         });
-}
-
-SkinnedMesh GameRenderer::createSkinnedMesh(MeshId id) const
-{
-    const auto& mesh = baseRenderer.getMesh(id);
-    SkinnedMesh sm;
-    sm.skinnedVertexBuffer = gfxDevice.createBuffer(
-        mesh.numVertices * sizeof(CPUMesh::Vertex),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    return sm;
 }
 
 const GPUImage& GameRenderer::getDrawImage() const

@@ -5,15 +5,17 @@
 #include <edbr/Graphics/GPUMesh.h>
 
 class GfxDevice;
+struct CPUMesh;
 
 class MeshCache {
 public:
-    MeshId addMesh(GPUMesh mesh);
-
-    const GPUMesh& getMesh(MeshId id) const;
-
     void cleanup(const GfxDevice& gfxDevice);
 
+    MeshId addMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh, MaterialId materialId);
+    const GPUMesh& getMesh(MeshId id) const;
+
 private:
+    void uploadMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh, GPUMesh& gpuMesh) const;
+
     std::vector<GPUMesh> meshes;
 };

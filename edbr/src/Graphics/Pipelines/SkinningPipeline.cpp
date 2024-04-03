@@ -1,7 +1,7 @@
 #include <edbr/Graphics/Pipelines/SkinningPipeline.h>
 
-#include <edbr/Graphics/BaseRenderer.h>
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/MeshDrawCommand.h>
 #include <edbr/Graphics/Vulkan/Pipelines.h>
 #include <edbr/Graphics/Vulkan/Util.h>
@@ -68,12 +68,12 @@ std::size_t SkinningPipeline::appendJointMatrices(
 void SkinningPipeline::doSkinning(
     VkCommandBuffer cmd,
     std::size_t frameIndex,
-    const BaseRenderer& baseRenderer,
+    const MeshCache& meshCache,
     const MeshDrawCommand& dc)
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, skinningPipeline);
 
-    const auto& mesh = baseRenderer.getMesh(dc.meshId);
+    const auto& mesh = meshCache.getMesh(dc.meshId);
     assert(mesh.hasSkeleton);
     assert(dc.skinnedMesh);
 

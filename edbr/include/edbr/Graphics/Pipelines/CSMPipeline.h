@@ -10,7 +10,7 @@
 #include <edbr/Graphics/IdTypes.h>
 
 class GfxDevice;
-class BaseRenderer;
+class MeshCache;
 struct MeshDrawCommand;
 
 class CSMPipeline {
@@ -24,7 +24,7 @@ public:
     void draw(
         VkCommandBuffer cmd,
         const GfxDevice& gfxDevice,
-        const BaseRenderer& renderer,
+        const MeshCache& meshCache,
         const Camera& camera,
         const glm::vec3& sunlightDirection,
         const std::vector<MeshDrawCommand>& meshDrawCommands,

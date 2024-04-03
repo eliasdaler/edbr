@@ -10,7 +10,7 @@
 #include <edbr/Graphics/Vulkan/AppendableBuffer.h>
 
 struct MeshDrawCommand;
-class BaseRenderer;
+class MeshCache;
 class GfxDevice;
 
 class SkinningPipeline {
@@ -21,7 +21,7 @@ public:
     void doSkinning(
         VkCommandBuffer cmd,
         std::size_t frameIndex,
-        const BaseRenderer& baseRenderer,
+        const MeshCache& meshCache,
         const MeshDrawCommand& dc);
 
     void beginDrawing(std::size_t frameIndex);

@@ -3,15 +3,15 @@
 #include <filesystem>
 
 struct Scene;
-class BaseRenderer;
+class MeshCache;
 class MaterialCache;
 class GfxDevice;
 
 namespace util
 {
 Scene loadGltfFile(
-    BaseRenderer& renderer,
     GfxDevice& gfxDevice,
+    MeshCache& meshCache,
     MaterialCache& materialCache,
     const std::filesystem::path& path);
 }

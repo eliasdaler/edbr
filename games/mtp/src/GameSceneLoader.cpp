@@ -6,6 +6,8 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/EntityFactory.h>
+#include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/SceneCache.h>
 #include <edbr/Util/JoltUtil.h>
@@ -107,7 +109,13 @@ EntityCreateInfo createEntityFromNode(
 
             sc.skinnedMeshes.reserve(mc.meshes.size());
             for (const auto meshId : mc.meshes) {
-                sc.skinnedMeshes.push_back(loadCtx.renderer.createSkinnedMesh(meshId));
+                const auto& mesh = loadCtx.meshCache.getMesh(meshId);
+                SkinnedMesh sm;
+                sm.skinnedVertexBuffer = loadCtx.gfxDevice.createBuffer(
+                    mesh.numVertices * sizeof(CPUMesh::Vertex),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+                sc.skinnedMeshes.push_back(sm);
             }
         }
     }
@@ -200,10 +208,7 @@ void onPlaceEntityOnScene(const util::SceneLoadContext& loadCtx, entt::handle e)
             prefabName == "static_geometry" || prefabName == "ball" || prefabName == "trigger" ||
             prefabName == "ground_tile" || prefabName == "generic_npc") {
             auto& scene = loadCtx.sceneCache.loadScene(
-                loadCtx.renderer.getBaseRenderer(),
-                loadCtx.renderer.getGfxDevice(),
-                loadCtx.materialCache,
-                mc.meshPath);
+                loadCtx.gfxDevice, loadCtx.meshCache, loadCtx.materialCache, mc.meshPath);
             JPH::Ref<JPH::Shape> shape;
             bool staticBody = true;
             if (prefabName == "ball") {

@@ -1,14 +1,13 @@
 #include <edbr/Graphics/Pipelines/CSMPipeline.h>
 
+#include <edbr/Graphics/FrustumCulling.h>
+#include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MeshCache.h>
+#include <edbr/Graphics/MeshDrawCommand.h>
+#include <edbr/Graphics/ShadowMapping.h>
 #include <edbr/Graphics/Vulkan/Init.h>
 #include <edbr/Graphics/Vulkan/Pipelines.h>
 #include <edbr/Graphics/Vulkan/Util.h>
-
-#include <edbr/Graphics/BaseRenderer.h>
-#include <edbr/Graphics/FrustumCulling.h>
-#include <edbr/Graphics/GfxDevice.h>
-#include <edbr/Graphics/MeshDrawCommand.h>
-#include <edbr/Graphics/ShadowMapping.h>
 
 void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_CASCADES>& percents)
 {
@@ -92,7 +91,7 @@ void CSMPipeline::cleanup(GfxDevice& gfxDevice)
 void CSMPipeline::draw(
     VkCommandBuffer cmd,
     const GfxDevice& gfxDevice,
-    const BaseRenderer& renderer,
+    const MeshCache& meshCache,
     const Camera& camera,
     const glm::vec3& sunlightDirection,
     const std::vector<MeshDrawCommand>& meshDrawCommands,
@@ -163,7 +162,7 @@ void CSMPipeline::draw(
                 }
             }
 
-            const auto& mesh = renderer.getMesh(dc.meshId);
+            const auto& mesh = meshCache.getMesh(dc.meshId);
 
             if (dc.meshId != prevMeshId) {
                 prevMeshId = dc.meshId;

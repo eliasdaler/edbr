@@ -3,23 +3,26 @@
 #include <entt/entity/fwd.hpp>
 
 class SceneCache;
-class GameRenderer;
+class GfxDevice;
 class PhysicsSystem;
-struct MaterialCache;
+class MeshCache;
+class MaterialCache;
 class SkeletalAnimationCache;
 
 class EntityInitializer {
 public:
     EntityInitializer(
         SceneCache& sceneCache,
-        GameRenderer& renderer,
+        GfxDevice& gfxDevice,
+        MeshCache& meshCache,
         MaterialCache& materialCache,
         SkeletalAnimationCache& animationCache);
     void initEntity(entt::handle e) const;
 
 private:
     SceneCache& sceneCache;
-    GameRenderer& renderer;
+    GfxDevice& gfxDevice;
+    MeshCache& meshCache;
     MaterialCache& materialCache;
     SkeletalAnimationCache& animationCache;
 };

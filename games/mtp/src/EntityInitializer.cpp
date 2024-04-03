@@ -4,6 +4,8 @@
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/Graphics/GameRenderer.h>
+#include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/SceneCache.h>
 
@@ -29,11 +31,13 @@ std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
 
 EntityInitializer::EntityInitializer(
     SceneCache& sceneCache,
-    GameRenderer& renderer,
+    GfxDevice& gfxDevice,
+    MeshCache& meshCache,
     MaterialCache& materialCache,
     SkeletalAnimationCache& animationCache) :
     sceneCache(sceneCache),
-    renderer(renderer),
+    gfxDevice(gfxDevice),
+    meshCache(meshCache),
     materialCache(materialCache),
     animationCache(animationCache)
 {}
@@ -43,8 +47,7 @@ void EntityInitializer::initEntity(entt::handle e) const
     if (auto mcPtr = e.try_get<MeshComponent>(); mcPtr) {
         auto& mc = *mcPtr;
 
-        const auto& scene = sceneCache.loadScene(
-            renderer.getBaseRenderer(), renderer.getGfxDevice(), materialCache, mc.meshPath);
+        const auto& scene = sceneCache.loadScene(gfxDevice, meshCache, materialCache, mc.meshPath);
         assert(!scene.nodes.empty());
         const auto& node = *scene.nodes[0];
 
@@ -83,7 +86,13 @@ void EntityInitializer::initEntity(entt::handle e) const
 
             sc.skinnedMeshes.reserve(mc.meshes.size());
             for (const auto meshId : mc.meshes) {
-                sc.skinnedMeshes.push_back(renderer.createSkinnedMesh(meshId));
+                const auto& mesh = meshCache.getMesh(meshId);
+                SkinnedMesh sm;
+                sm.skinnedVertexBuffer = gfxDevice.createBuffer(
+                    mesh.numVertices * sizeof(CPUMesh::Vertex),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+                sc.skinnedMeshes.push_back(sm);
             }
 
             if (sc.animations->contains("Idle")) {

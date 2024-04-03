@@ -9,8 +9,8 @@ SceneCache::SceneCache(SkeletalAnimationCache& animationCache) : animationCache(
 {}
 
 const Scene& SceneCache::loadScene(
-    BaseRenderer& renderer,
     GfxDevice& gfxDevice,
+    MeshCache& meshCache,
     MaterialCache& materialCache,
     const std::filesystem::path& path)
 {
@@ -22,7 +22,7 @@ const Scene& SceneCache::loadScene(
 
     fmt::print("Loading gltf scene '{}'\n", path.string());
 
-    auto scene = util::loadGltfFile(renderer, gfxDevice, materialCache, path);
+    auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, path);
     if (!scene.animations.empty()) {
         // NOTE: we don't move here so that the returned/cached scene still
         // has animations inspectable in it

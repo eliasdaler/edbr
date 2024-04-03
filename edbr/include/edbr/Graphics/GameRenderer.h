@@ -23,8 +23,8 @@
 struct SDL_Window;
 
 class Camera;
-class BaseRenderer;
 class GfxDevice;
+class MeshCache;
 class MaterialCache;
 
 class GameRenderer {
@@ -38,7 +38,7 @@ public:
     };
 
 public:
-    GameRenderer(GfxDevice& gfxDevice, BaseRenderer& baseRenderer, MaterialCache& materialCache);
+    GameRenderer(GfxDevice& gfxDevice, MeshCache& meshCache, MaterialCache& materialCache);
 
     void init(const glm::ivec2& drawImageSize);
     void draw(VkCommandBuffer cmd, const Camera& camera, const SceneData& sceneData);
@@ -58,11 +58,7 @@ public:
         const glm::mat4& transform,
         std::span<const glm::mat4> jointMatrices);
 
-    [[nodiscard]] SkinnedMesh createSkinnedMesh(MeshId id) const;
-
     GfxDevice& getGfxDevice() { return gfxDevice; }
-
-    BaseRenderer& getBaseRenderer() { return baseRenderer; }
 
     const GPUImage& getDrawImage() const;
     VkFormat getDrawImageFormat() const;
@@ -79,7 +75,7 @@ private:
     void sortDrawList();
 
     GfxDevice& gfxDevice;
-    BaseRenderer& baseRenderer;
+    MeshCache& meshCache;
     MaterialCache& materialCache;
 
     SkinningPipeline skinningPipeline;
