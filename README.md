@@ -1,6 +1,6 @@
 # EDBR - Elias Daler's Bikeshed Renderer
 
-This project initially started for learning Vulkan but quickly grew into a full-fledged game engine with which I'll write my games with.
+This project initially started for learning Vulkan but quickly grew into a full-fledged game engine with which I write my games with.
 
 This is a monorepo and contains both the engine (in `edbr` directory) and various games/test projects (in `games` directory).
 
@@ -24,6 +24,16 @@ This is a monorepo and contains both the engine (in `edbr` directory) and variou
 * Efficient sprite and rect drawing (using batching)
 * Text drawing with UTF-8 support
 * Custom Dear ImGui backend with sRGB and bindless texture support
+* Sound via OpenAL-soft
+* ogg music playback
+* Jolt Physics integration
+
+## Vulkan usage
+
+* Using Vulkan 1.3.
+* No pipelines used, everything is dynamic rendering
+* Bindless textures (aka descriptor indexing)
+* Using Vulkan Memory Allocator and vk-bootstrap to make the code simpler
 
 ## License
 
