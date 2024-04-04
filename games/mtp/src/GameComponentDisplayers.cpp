@@ -109,6 +109,7 @@ void Game::registerComponentDisplayers()
     eid.registerDisplayer("Mesh", [](entt::const_handle e, const MeshComponent& mc) {
         BeginPropertyTable();
         {
+            DisplayProperty("Cast shadow", mc.castShadow);
             for (const auto& id : mc.meshes) {
                 DisplayProperty("mesh", id);
             }

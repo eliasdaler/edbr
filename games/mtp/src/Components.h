@@ -37,6 +37,7 @@ private:
 struct MeshComponent {
     std::vector<MeshId> meshes;
     std::vector<Transform> meshTransforms;
+    bool castShadow{true};
 };
 
 struct ColliderComponent {};
@@ -85,16 +86,16 @@ struct PhysicsComponent {
         Kinematic,
     };
     Type type{Type::Static};
+    bool sensor{false};
 
     enum class BodyType {
         None,
         Sphere,
         AABB,
+        Capsule,
         Cylinder,
         TriangleMesh,
     };
-
-    bool sensor{false};
 
     BodyType bodyType{BodyType::None};
 
@@ -102,12 +103,23 @@ struct PhysicsComponent {
         float radius{0.f};
     };
 
+    struct AABBParams {
+        glm::vec3 min;
+        glm::vec3 max;
+    };
+
     struct CylinderParams {
         float radius{0.f};
         float halfHeight{0.f};
     };
 
-    std::variant<std::monostate, SphereParams, CylinderParams> bodyParams;
+    struct CapsuleParams {
+        float radius{0.f};
+        float halfHeight{0.f};
+    };
+
+    std::variant<std::monostate, SphereParams, AABBParams, CapsuleParams, CylinderParams>
+        bodyParams;
 
     JPH::BodyID bodyId;
 };

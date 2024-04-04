@@ -120,10 +120,12 @@ void JoltDebugRenderer::DrawGeometry(
         }
     }
 
-    auto layer = drawLinesDepthTest ? Im3dState::WorldWithDepthLayer : Im3dState::WorldNoDepthLayer;
-    if (lodNum != 0 && drawLinesDepthTest) {
+    const auto layer =
+        drawLinesDepthTest ? Im3dState::WorldWithDepthLayer : Im3dState::WorldNoDepthLayer;
+    /* if (lodNum != 0 && drawLinesDepthTest) {
         layer = Im3dState::WorldNoDepthLayer;
-    }
+    } */
+
     Im3d::PushLayerId(layer);
 
     const auto& b =

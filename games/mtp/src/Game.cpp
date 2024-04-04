@@ -617,12 +617,11 @@ void Game::generateDrawList()
         entt::
             exclude<SkeletonComponent, TriggerComponent, ColliderComponent, PlayerSpawnComponent>);
     for (const auto&& [e, tc, mc] : staticMeshes.each()) {
-        bool castShadow = shouldCastShadow({registry, e});
         for (std::size_t i = 0; i < mc.meshes.size(); ++i) {
             const auto meshTransform = mc.meshTransforms[i].isIdentity() ?
                                            tc.worldTransform :
                                            tc.worldTransform * mc.meshTransforms[i].asMatrix();
-            renderer.drawMesh(mc.meshes[i], meshTransform, castShadow);
+            renderer.drawMesh(mc.meshes[i], meshTransform, mc.castShadow);
         }
     }
 
@@ -728,57 +727,8 @@ void Game::entityPostInit(entt::handle e)
     }
 
     // physics
-    if (auto mcPtr = e.try_get<MeshComponent>(); mcPtr) {
-        const auto& mc = *mcPtr;
-        const auto& mic = e.get<MetaInfoComponent>();
-        const auto& prefabName = mic.prefabName;
-        if (prefabName == "ground_tile" || prefabName == "generic_npc") {
-            auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
-            JPH::Ref<JPH::Shape> shape;
-            bool staticBody = true;
-            if (prefabName == "generic_npc") {
-                // FIXME: should be (1.f, 0.5f) but the character has stupid scale!
-                // (0.1f)
-                shape = new JPH::CylinderShape(10.f, 3.f);
-                shape = new JPH::
-                    RotatedTranslatedShape({0.f, 10.f, 0.f}, JPH::Quat().sIdentity(), shape);
-            } else if (prefabName == "ground_tile") {
-                const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
-                auto size = aabb.calculateSize();
-
-                // completely flat tile
-                bool almostZeroHeight = 0.f;
-                if (size.y < 0.001f) {
-                    size.y = 0.1f;
-                    almostZeroHeight = true;
-                }
-
-                // for completely flat tiles, the origin will be at the center of the tile
-                // for tiles with height, it will be at the center of the bottom AABB plane
-                shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
-                const auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
-                shape = new JPH::
-                    RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
-            }
-
-            if (shape) {
-                bool trigger = e.all_of<TriggerComponent>();
-                auto bodyId = physicsSystem->createBody(
-                    e, e.get<TransformComponent>().transform, shape, staticBody, trigger);
-                auto& pc = e.emplace<PhysicsComponent>();
-                pc.bodyId = bodyId;
-
-                auto& tc = e.get<TransformComponent>();
-                physicsSystem->updateTransform(pc.bodyId, tc.transform);
-            }
-        }
-    }
-
     if (auto pcPtr = e.try_get<PhysicsComponent>(); pcPtr) {
         auto& pc = *pcPtr;
-
-        const auto& mic = e.get<MetaInfoComponent>();
-        const auto& prefabName = mic.prefabName;
 
         JPH::Ref<JPH::Shape> shape;
 
@@ -787,16 +737,52 @@ void Game::entityPostInit(entt::handle e)
             const auto& params = std::get<PhysicsComponent::SphereParams>(pc.bodyParams);
             shape = new JPH::SphereShape(params.radius);
         } break;
+        case PhysicsComponent::BodyType::Capsule: {
+            const auto& params = std::get<PhysicsComponent::CapsuleParams>(pc.bodyParams);
+            shape = new JPH::CapsuleShape(params.halfHeight, params.radius);
+            shape = new JPH::RotatedTranslatedShape(
+                {0.f, params.halfHeight + params.radius, 0.f}, JPH::Quat().sIdentity(), shape);
+        } break;
         case PhysicsComponent::BodyType::Cylinder: {
             const auto& params = std::get<PhysicsComponent::CylinderParams>(pc.bodyParams);
             shape = new JPH::CylinderShape(params.halfHeight, params.radius);
             shape = new JPH::RotatedTranslatedShape(
                 {0.f, params.halfHeight, 0.f}, JPH::Quat().sIdentity(), shape);
         } break;
+        case PhysicsComponent::BodyType::AABB: {
+            auto& params = std::get<PhysicsComponent::AABBParams>(pc.bodyParams);
+
+            if (params.min == params.max && params.min == glm::vec3{}) {
+                // need to compute AABB from the mesh if not initialized still
+                const auto& mc = e.get<MeshComponent>();
+                const auto& mic = e.get<MetaInfoComponent>();
+                const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+                const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
+                params.min = aabb.min;
+                params.max = aabb.max;
+            }
+
+            auto size = glm::abs(params.max - params.min);
+
+            // almost flat
+            bool almostZeroHeight = 0.f;
+            if (size.y < 0.001f) {
+                size.y = 0.1f;
+                almostZeroHeight = true;
+            }
+
+            // for completely flat objects, the origin will be at the center of the object
+            // for objects with height, it will be at the center of the bottom AABB plane
+            shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
+            const auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
+            shape = new JPH::
+                RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
+        } break;
         case PhysicsComponent::BodyType::TriangleMesh: {
-            const auto& mc = e.get<MeshComponent>();
+            const auto& mic = e.get<MetaInfoComponent>();
             const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
             std::vector<const CPUMesh*> meshes;
+            const auto& mc = e.get<MeshComponent>();
             for (const auto& meshId : mc.meshes) {
                 meshes.push_back(&scene.cpuMeshes.at(meshId));
             }
@@ -910,7 +896,9 @@ void Game::registerComponents(ComponentFactory& componentFactory)
         });
 
     componentFactory.registerComponentLoader(
-        "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {});
+        "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {
+            loader.getIfExists("castShadow", mc.castShadow);
+        });
 
     componentFactory.registerComponentLoader(
         "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
@@ -919,6 +907,7 @@ void Game::registerComponents(ComponentFactory& componentFactory)
 
     componentFactory.registerComponentLoader(
         "physics", [](entt::handle e, PhysicsComponent& pc, const JsonDataLoader& loader) {
+            // type
             std::string type;
             loader.getIfExists("type", type);
             if (type == "static") {
@@ -931,15 +920,30 @@ void Game::registerComponents(ComponentFactory& componentFactory)
                 fmt::print("[error] unknown physics component type '{}'", type);
             }
 
+            // sensor
+            loader.getIfExists("sensor", pc.sensor);
+
+            // body type + body params
             std::string bodyType;
             loader.getIfExists("bodyType", bodyType);
-            if (bodyType == "mesh") {
+            if (bodyType == "aabb") {
+                pc.bodyType = PhysicsComponent::BodyType::AABB;
+                pc.bodyParams = PhysicsComponent::AABBParams{};
+            } else if (bodyType == "capsule") {
+                pc.bodyType = PhysicsComponent::BodyType::Capsule;
+
+                const auto bodyLoader = loader.getLoader("bodyParams");
+                auto params = PhysicsComponent::CapsuleParams{};
+                bodyLoader.get("halfHeight", params.halfHeight);
+                bodyLoader.get("radius", params.radius);
+
+                pc.bodyParams = params;
+            } else if (bodyType == "mesh") {
                 pc.bodyType = PhysicsComponent::BodyType::TriangleMesh;
             } else {
+                // TODO: load other body types from JSON
                 fmt::print("[error] unknown physics component body type '{}'", bodyType);
             }
-
-            loader.getIfExists("sensor", pc.sensor);
         });
 
     componentFactory.registerComponentLoader(

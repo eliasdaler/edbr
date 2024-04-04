@@ -1,1 +1,9 @@
-{}
+{
+  "mesh": {
+    "castShadow": false
+  },
+  "physics": {
+    "type": "static",
+    "bodyType": "aabb"
+  }
+}

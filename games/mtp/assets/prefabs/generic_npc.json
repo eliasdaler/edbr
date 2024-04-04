@@ -4,5 +4,13 @@
   },
   "movement": {
     "maxSpeed": [4, 4, 4]
+  },
+  "physics": {
+    "type": "static",
+    "bodyType": "capsule",
+    "bodyParams": {
+      "halfHeight": 8.0,
+      "radius": 3.0
+    }
   }
 }
