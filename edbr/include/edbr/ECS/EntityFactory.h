@@ -19,6 +19,8 @@ public:
     void setPostInitEntityFunc(std::function<PostInitEntityFuncType>&& f);
     void registerPrefab(std::string prefabName, const std::filesystem::path& path);
 
+    void addPrefabFile(std::string prefabName, JsonFile file);
+
     entt::handle createDefaultEntity(
         entt::registry& registry,
         const std::string& sceneNodeName = emptyString,

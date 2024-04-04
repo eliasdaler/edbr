@@ -26,31 +26,6 @@
 
 namespace
 {
-// Maps Blender scene node names to game prefab names, e.g.
-// * "SomePrefab" -> "some_prefab"
-// * "SomePrefab.2" -> "some_prefab"
-// * "SomePrefab.2" -> "some_prefab" -> "static_geometry" (if "some_prefab" had custom mapping)
-// Returns an empty string if no mapping is found
-std::string getPrefabNameFromSceneNode(const EntityFactory& ef, const SceneNode& node)
-{
-    const auto nodeName = util::fromCamelCaseToSnakeCase(node.name);
-    const auto dotPos = nodeName.find_first_of(".");
-    if (dotPos == std::string::npos) {
-        // when node name == prefab name (e.g. node name == "TestPrefab" and
-        // "test_prefab" exists)
-        if (const auto& name = ef.getMappedPrefabName(nodeName); !name.empty()) {
-            return name;
-        }
-    } else {
-        // node name == "TestPrefab.001" and "test_prefab" exists
-        const auto substr = nodeName.substr(0, dotPos);
-        if (const auto& name = ef.getMappedPrefabName(substr); !name.empty()) {
-            return name;
-        }
-    }
-    return "";
-}
-
 struct EntityCreateInfo {
     entt::handle entity;
     bool createdFromPrefab{false};
@@ -63,7 +38,7 @@ EntityCreateInfo createEntityFromNode(
     entt::handle parent)
 {
     auto& registry = loadCtx.registry;
-    const auto nodePrefabName = getPrefabNameFromSceneNode(loadCtx.entityFactory, node);
+    const auto nodePrefabName = util::getPrefabNameFromSceneNode(loadCtx.entityFactory, node.name);
     const auto prefabName = !nodePrefabName.empty() ? nodePrefabName : loadCtx.defaultPrefabName;
 
     auto e = prefabName.empty() ?
@@ -261,6 +236,26 @@ void onPlaceEntityOnScene(const util::SceneLoadContext& loadCtx, entt::handle e)
             }
         }
     }
+}
+
+std::string getPrefabNameFromSceneNode(const EntityFactory& ef, const std::string& gltfNodeName)
+{
+    const auto nodeName = util::fromCamelCaseToSnakeCase(gltfNodeName);
+    const auto dotPos = nodeName.find_first_of(".");
+    if (dotPos == std::string::npos) {
+        // when node name == prefab name (e.g. node name == "TestPrefab" and
+        // "test_prefab" exists)
+        if (const auto& name = ef.getMappedPrefabName(nodeName); !name.empty()) {
+            return name;
+        }
+    } else {
+        // node name == "TestPrefab.001" and "test_prefab" exists
+        const auto substr = nodeName.substr(0, dotPos);
+        if (const auto& name = ef.getMappedPrefabName(substr); !name.empty()) {
+            return name;
+        }
+    }
+    return "";
 }
 
 } // end of namespace util

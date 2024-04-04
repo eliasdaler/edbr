@@ -9,6 +9,7 @@
 class JsonFile {
 public:
     JsonFile(const std::filesystem::path& p);
+    JsonFile(nlohmann::json data);
     bool isGood() const { return good; }
 
     JsonDataLoader getLoader() const;

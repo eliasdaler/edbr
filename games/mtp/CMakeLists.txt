@@ -70,3 +70,8 @@ list(TRANSFORM SHADERS PREPEND "${EDBR_SHADERS_DIR}")
 
 target_shaders(edbr ${SHADERS})
 
+include(CTest)
+if(EDBR_BUILD_TESTING)
+  enable_testing()
+  add_subdirectory(test)
+endif()

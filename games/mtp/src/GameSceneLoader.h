@@ -30,4 +30,11 @@ struct SceneLoadContext {
 void createEntitiesFromScene(const SceneLoadContext& loadCtx, const Scene& scene);
 void onPlaceEntityOnScene(const util::SceneLoadContext& loadCtx, entt::handle e);
 
+// Maps Blender scene node names to game prefab names, e.g.
+// * "SomePrefab" -> "some_prefab"
+// * "SomePrefab.2" -> "some_prefab"
+// * "SomePrefab.2" -> "some_prefab" -> "static_geometry" (if "some_prefab" had custom mapping)
+// Returns an empty string if no mapping is found
+std::string getPrefabNameFromSceneNode(const EntityFactory& ef, const std::string& gltfNodeName);
+
 } // end of namespace util

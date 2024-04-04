@@ -14,6 +14,9 @@ JsonFile::JsonFile(const std::filesystem::path& p)
     path = p;
 }
 
+JsonFile::JsonFile(nlohmann::json data) : data(std::move(data))
+{}
+
 JsonDataLoader JsonFile::getLoader() const
 {
     assert(good);

@@ -19,8 +19,9 @@ public:
     {
         const auto [it, inserted] =
             makers.emplace(componentName, [](entt::handle e, const JsonDataLoader& loader) {
-                assert(!e.all_of<ComponentType>());
-                e.emplace<ComponentType>();
+                if (!e.all_of<ComponentType>()) {
+                    e.emplace<ComponentType>();
+                }
             });
         if (!inserted) {
             throw std::runtime_error(
@@ -45,8 +46,7 @@ public:
         using ComponentType = std::remove_cvref_t<entt::nth_argument_t<1u, F>>;
         const auto [it, inserted] =
             makers.emplace(componentName, [f](entt::handle e, const JsonDataLoader& loader) {
-                assert(!e.all_of<ComponentType>());
-                auto& c = e.emplace<ComponentType>();
+                auto& c = e.get_or_emplace<ComponentType>();
                 f(e, c, loader);
             });
         if (!inserted) {

@@ -8,6 +8,23 @@
 SceneCache::SceneCache(SkeletalAnimationCache& animationCache) : animationCache(animationCache)
 {}
 
+const Scene& SceneCache::addScene(const std::string& scenePath, Scene scene)
+{
+    scene.path = scenePath;
+    auto [it, inserted] = sceneCache.emplace(scenePath, std::move(scene));
+    assert(inserted && "Scene was added before");
+    return it->second;
+}
+
+const Scene& SceneCache::getScene(const std::string& scenePath) const
+{
+    auto it = sceneCache.find(scenePath);
+    if (it == sceneCache.end()) {
+        throw std::runtime_error(fmt::format("Scene '{}' was not loaded", scenePath));
+    }
+    return it->second;
+}
+
 const Scene& SceneCache::loadScene(
     GfxDevice& gfxDevice,
     MeshCache& meshCache,

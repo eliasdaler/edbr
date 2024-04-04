@@ -20,6 +20,12 @@ void EntityFactory::registerPrefab(std::string prefabName, const std::filesystem
 {
     JsonFile file(path);
     assert(file.isGood());
+    addPrefabFile(std::move(prefabName), std::move(file));
+}
+
+void EntityFactory::addPrefabFile(std::string prefabName, JsonFile file)
+{
+    assert(file.isGood());
     auto [it, inserted] = loadedPrefabFiles.emplace(std::move(prefabName), std::move(file));
     if (!inserted) {
         throw std::runtime_error(
@@ -49,7 +55,8 @@ entt::handle EntityFactory::createEntity(
     const std::string& prefabName,
     const std::string& sceneNodeName) const
 {
-    const auto& actualPrefabName = getMappedPrefabName(prefabName);
+    const auto& mappedPrefabName = getMappedPrefabName(prefabName);
+    const auto& actualPrefabName = !mappedPrefabName.empty() ? mappedPrefabName : prefabName;
     const auto prefabLoader = getPrefabDataLoader(actualPrefabName);
 
     auto e = createDefaultEntity(registry, sceneNodeName, false);
@@ -88,14 +95,26 @@ bool EntityFactory::prefabExists(const std::string& prefabName) const
 
 void EntityFactory::addMappedPrefabName(const std::string& from, const std::string& to)
 {
+    if (from == to) {
+        assert(false && "huh?");
+        return;
+    }
+
     if (prefabNameMapping.contains(from)) {
         throw std::runtime_error(
             fmt::format("Mapping for prefab '{}' was already added: {}", from, to));
     }
-    if (!prefabExists(to)) {
-        throw std::runtime_error(fmt::format("Prefab with name '{}' was not registered", to));
+    if (prefabExists(to)) {
+        prefabNameMapping.emplace(from, to);
+        return;
     }
-    prefabNameMapping.emplace(from, to);
+
+    auto mapped = getMappedPrefabName(to);
+    if (!mapped.empty()) {
+        prefabNameMapping.emplace(from, mapped);
+        return;
+    }
+    throw std::runtime_error(fmt::format("Prefab with name '{}' was not registered", to));
 }
 
 const std::string& EntityFactory::getMappedPrefabName(const std::string& prefabName) const

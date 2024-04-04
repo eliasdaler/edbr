@@ -6,6 +6,11 @@ project(UnitTest
 add_executable(unit_test)
 add_dependencies(check unit_test)
 
+set_target_properties(unit_test PROPERTIES
+    CXX_STANDARD 20
+    CXX_EXTENSIONS OFF
+)
+
 target_sources(unit_test
   PRIVATE
     TestBasic.cpp

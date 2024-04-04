@@ -15,6 +15,9 @@ class SceneCache {
 public:
     SceneCache(SkeletalAnimationCache& animationCache);
 
+    const Scene& addScene(const std::string& scenePath, Scene scene);
+    const Scene& getScene(const std::string& scenePath) const;
+
     [[nodiscard]] const Scene& loadScene(
         GfxDevice& gfxDevice,
         MeshCache& meshCache,
