@@ -88,7 +88,7 @@ void MeshCache::uploadMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh, GPUMesh
 
         // copy data
         void* data = staging.info.pMappedData;
-        memcpy(data, cpuMesh.skinningData.data(), vertexBufferSize);
+        memcpy(data, cpuMesh.skinningData.data(), skinningDataSize);
 
         gfxDevice.immediateSubmit([&](VkCommandBuffer cmd) {
             const auto vertexCopy = VkBufferCopy{

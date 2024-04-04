@@ -10,9 +10,19 @@
 
 namespace util
 {
-std::string getPrefabNameFromSceneNode(const EntityFactory& ef, const std::string& gltfNodeName)
+std::string getPrefabNameFromSceneNode(
+    const EntityFactory& ef,
+    const SceneNode& node,
+    const std::string& defaultPrefabName)
 {
-    const auto nodeName = util::fromCamelCaseToSnakeCase(gltfNodeName);
+    if (node.lightId != -1) {
+        return "light";
+    }
+    if (node.cameraId != -1) {
+        return "camera";
+    }
+
+    const auto nodeName = util::fromCamelCaseToSnakeCase(node.name);
     const auto dotPos = nodeName.find_first_of(".");
     if (dotPos == std::string::npos) {
         // when node name == prefab name (e.g. node name == "TestPrefab" and
@@ -27,7 +37,7 @@ std::string getPrefabNameFromSceneNode(const EntityFactory& ef, const std::strin
             return name;
         }
     }
-    return "";
+    return defaultPrefabName;
 }
 
 } // end of namespace util
@@ -43,20 +53,10 @@ EntityCreator::EntityCreator(
     sceneCache(sceneCache)
 {}
 
-entt::handle EntityCreator::createFromPrefab(const std::string& prefabName)
+entt::handle EntityCreator::createFromPrefab(const std::string& prefabName, bool callPostInitFunc)
 {
     assert(postInitEntityFunc);
 
-    auto e = createFromPrefab(prefabName, nullptr, nullptr);
-    postInitEntityFunc(e);
-    return e;
-}
-
-entt::handle EntityCreator::createFromPrefab(
-    const std::string& prefabName,
-    const Scene* creationScene,
-    const SceneNode* creationNode)
-{
     auto e = entityFactory.createEntity(registry, prefabName);
 
     // load from external (prefab) scene
@@ -74,23 +74,11 @@ entt::handle EntityCreator::createFromPrefab(
         mic.sceneNodeName = rootNode.name;
     }
 
-    // this is the scene this prefab was created from - process its children too
-    if (creationScene) {
-        if (!mic.sceneName.empty() && creationNode->children.size() == 1 &&
-            creationNode->children[0]->meshIndex != -1) {
-            e.get<TransformComponent>().transform = creationNode->transform;
-            // Only copy transform - this is a hack for Blender's "instanced" prefabs
-            // there's sadly no way to detect them easily. Basically, we have
-            // a node which has the only child - our prefab mesh
-        } else {
-            assert(creationNode);
-            processNode(e, *creationScene, *creationNode);
-            mic.creationSceneName = creationScene->path.string();
-            mic.sceneNodeName = creationNode->name;
-        }
+    if (callPostInitFunc) {
+        postInitEntityFunc(e);
     }
 
-    return {registry, e};
+    return e;
 }
 
 std::vector<entt::handle> EntityCreator::createEntitiesFromScene(const Scene& scene)
@@ -101,7 +89,9 @@ std::vector<entt::handle> EntityCreator::createEntitiesFromScene(const Scene& sc
 
     std::vector<entt::handle> createdEntities;
     for (const auto& rootNode : scene.nodes) {
-        auto e = createFromPrefab(getPrefabName(*rootNode), &scene, rootNode.get());
+        const auto prefabName =
+            util::getPrefabNameFromSceneNode(entityFactory, *rootNode, defaultPrefabName);
+        auto e = createFromNode(prefabName, scene, *rootNode);
         createdEntities.push_back(std::move(e));
     }
     for (const auto& e : createdEntities) {
@@ -110,20 +100,28 @@ std::vector<entt::handle> EntityCreator::createEntitiesFromScene(const Scene& sc
     return createdEntities;
 }
 
-std::string EntityCreator::getPrefabName(const SceneNode& node) const
+entt::handle EntityCreator::createFromNode(
+    const std::string& prefabName,
+    const Scene& creationScene,
+    const SceneNode& creationNode)
 {
-    if (node.lightId != -1) {
-        return "light";
-    }
-    if (node.cameraId != -1) {
-        return "camera";
+    auto e = createFromPrefab(prefabName, false);
+
+    auto& mic = e.get<MetaInfoComponent>();
+    // this is the scene this prefab was created from - process its children too
+    if (!mic.sceneName.empty() && creationNode.children.size() == 1 &&
+        creationNode.children[0]->meshIndex != -1) {
+        e.get<TransformComponent>().transform = creationNode.transform;
+        // Only copy transform - this is a hack for Blender's "instanced" prefabs
+        // there's sadly no way to detect them easily. Basically, we have
+        // a node which has the only child - our prefab mesh
+    } else {
+        processNode(e, creationScene, creationNode);
+        mic.creationSceneName = creationScene.path.string();
+        mic.sceneNodeName = creationNode.name;
     }
 
-    const auto name = util::getPrefabNameFromSceneNode(entityFactory, node.name);
-    if (!name.empty()) {
-        return name;
-    }
-    return defaultPrefabName;
+    return e;
 }
 
 void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneNode& rootNode)
@@ -185,9 +183,10 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
     // handle children
     for (const auto& cNodePtr : rootNode.children) {
         auto& cNode = *cNodePtr;
-        const auto childNodePrefabName = getPrefabName(cNode);
+        const auto childNodePrefabName =
+            util::getPrefabNameFromSceneNode(entityFactory, cNode, defaultPrefabName);
         if (childNodePrefabName != defaultPrefabName) {
-            auto child = createFromPrefab(getPrefabName(cNode), &scene, &cNode);
+            auto child = createFromNode(childNodePrefabName, scene, cNode);
             entityutil::addChild(e, child);
             continue;
         }

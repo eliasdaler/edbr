@@ -182,12 +182,16 @@ TEST_F(SceneInitTest, TestGetPrefabNameFromSceneNode)
         // "froggy" -> "frog" -> "funny_frog"
         {"Froggy.Epic.2", "funny_frog"},
         // name not found
-        {"Unknown", ""},
-        {"Unknown.2", ""},
+        {"Unknown", "default_name"},
+        {"Unknown.2", "default_name"},
     };
     for (const auto& t : tests) {
+        SceneNode node{
+            .name = t.nodeName,
+        };
         EXPECT_EQ(
-            util::getPrefabNameFromSceneNode(entityFactory, t.nodeName), t.expectedPrefabName);
+            util::getPrefabNameFromSceneNode(entityFactory, node, "default_name"),
+            t.expectedPrefabName);
     }
 }
 
