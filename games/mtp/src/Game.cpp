@@ -389,18 +389,18 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
         return;
     }
 
-    glm::vec3 maxSpeed = cameraMaxSpeed;
+    float maxSpeed = cameraMaxSpeed;
     // when the character moves at full speed, rotation can be too much
     // so it's better to slow down the camera to catch up slower
     if (zOffset > 0.5 * maxCameraOffsetFactorRun * cameraZOffset) {
-        maxSpeed.x *= 0.75f;
-        maxSpeed.z *= 0.75f;
+        maxSpeed *= 0.75f;
     }
 
+    // TODO: add this when maxSpeed in smoothDamp can be controlled for each axis
     // to catch up with the falling player
-    if (isPlayer && timeFalling > 0.5f) {
+    /* if (isPlayer && timeFalling > 0.5f) {
         maxSpeed.y *= 2.f;
-    }
+    } */
 
     cameraCurrentTrackPointPos = util::smoothDamp(
         cameraCurrentTrackPointPos, orbitTarget, followCameraVelocity, cameraDelay, dt, maxSpeed);

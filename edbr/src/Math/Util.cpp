@@ -87,7 +87,7 @@ glm::vec3 smoothDamp(
     glm::vec3& currentVelocity,
     float smoothTime,
     float dt,
-    glm::vec3 maxSpeed)
+    float maxSpeed)
 {
     if (glm::length(current - target) < 0.0001f) {
         // really close - just return target and stop moving
@@ -101,14 +101,11 @@ glm::vec3 smoothDamp(
     auto change = current - target;
 
     // limit speed if needed
-    for (int i = 0; i < 3; ++i) {
-        float maxChange = maxSpeed[i] * smoothTime;
-        if (change[i] > maxChange) {
-            change[i] *= maxChange / change[i];
-        }
-        if (maxSpeed[i] == 0.f) {
-            change[i] = 0.f;
-        }
+    float maxChange = maxSpeed * smoothTime;
+    float changeSqMag = glm::length2(change);
+    if (changeSqMag > maxChange * maxChange) {
+        const auto mag = std::sqrt(changeSqMag);
+        change *= maxChange / mag;
     }
 
     const auto originalTarget = target;

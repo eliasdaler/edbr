@@ -110,7 +110,7 @@ private:
     bool smoothSmartCamera{true};
     float cameraDelay{0.3f};
     float orbitDistance{6.5f};
-    glm::vec3 cameraMaxSpeed{6.5f};
+    float cameraMaxSpeed{6.5f};
     float cameraYOffset{1.5f};
     float cameraZOffset{0.25f};
     float testParam{0.4f};
