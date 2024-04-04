@@ -1,3 +1,7 @@
 {
-  "collider": {}
+  "collider": {},
+  "physics": {
+    "type": "static",
+    "bodyType": "mesh"
+  }
 }

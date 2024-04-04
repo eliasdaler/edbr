@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include <glm/mat4x4.hpp>
@@ -78,6 +79,36 @@ struct CameraComponent {};
 struct PlayerComponent {};
 
 struct PhysicsComponent {
+    enum class Type {
+        Static,
+        Dynamic,
+        Kinematic,
+    };
+    Type type{Type::Static};
+
+    enum class BodyType {
+        None,
+        Sphere,
+        AABB,
+        Cylinder,
+        TriangleMesh,
+    };
+
+    bool sensor{false};
+
+    BodyType bodyType{BodyType::None};
+
+    struct SphereParams {
+        float radius{0.f};
+    };
+
+    struct CylinderParams {
+        float radius{0.f};
+        float halfHeight{0.f};
+    };
+
+    std::variant<std::monostate, SphereParams, CylinderParams> bodyParams;
+
     JPH::BodyID bodyId;
 };
 

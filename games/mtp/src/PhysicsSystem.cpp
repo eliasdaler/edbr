@@ -550,7 +550,7 @@ JPH::BodyID PhysicsSystem::createBody(
     const Transform& transform,
     JPH::Ref<JPH::Shape> shape,
     bool staticBody,
-    bool trigger)
+    bool sensor)
 {
     auto& body_interface = physicsSystem.GetBodyInterface();
     auto settings = JPH::BodyCreationSettings(
@@ -559,7 +559,7 @@ JPH::BodyID PhysicsSystem::createBody(
         util::glmToJolt(transform.getHeading()),
         staticBody ? JPH::EMotionType::Static : JPH::EMotionType::Dynamic,
         staticBody ? Layers::NON_MOVING : Layers::MOVING);
-    settings.mIsSensor = trigger;
+    settings.mIsSensor = sensor;
 
     auto bodyID = body_interface.CreateAndAddBody(
         settings, staticBody ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);

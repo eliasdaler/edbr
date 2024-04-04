@@ -1,6 +1,9 @@
 {
+  "trigger": {},
   "physics": {
     "type": "static",
+    "sensor": true,
     "bodyType": "mesh"
   }
 }
+

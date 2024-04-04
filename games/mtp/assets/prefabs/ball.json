@@ -1,5 +1,8 @@
 {
-    "mesh": {
-      "mesh": "assets/models/ball.gltf"
+    "meta": {
+      "scene": "assets/models/ball.gltf"
+    },
+    "physics": {
+      "type": "dynamic"
     }
 }

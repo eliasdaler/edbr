@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.1.62",
+		"generator":"Khronos glTF Blender I/O v3.6.27",
 		"version":"2.0"
 	},
 	"scene":0,
@@ -8,13 +8,20 @@
 		{
 			"name":"Scene",
 			"nodes":[
-				0
+				1
 			]
 		}
 	],
 	"nodes":[
 		{
 			"mesh":0,
+			"name":"Collision.Sphere"
+		},
+		{
+			"children":[
+				0
+			],
+			"mesh":1,
 			"name":"Sphere"
 		}
 	],
@@ -33,7 +40,7 @@
 	],
 	"meshes":[
 		{
-			"name":"Sphere",
+			"name":"Sphere.001",
 			"primitives":[
 				{
 					"attributes":{
@@ -41,6 +48,21 @@
 						"NORMAL":1,
 						"TEXCOORD_0":2,
 						"TANGENT":3
+					},
+					"indices":4,
+					"material":0
+				}
+			]
+		},
+		{
+			"name":"Sphere",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":5,
+						"NORMAL":6,
+						"TEXCOORD_0":7,
+						"TANGENT":8
 					},
 					"indices":4,
 					"material":0
@@ -101,6 +123,40 @@
 			"componentType":5123,
 			"count":2880,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":559,
+			"max":[
+				0.24999992549419403,
+				0.25,
+				0.24999983608722687
+			],
+			"min":[
+				-0.2499997615814209,
+				-0.25,
+				-0.25
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":6,
+			"componentType":5126,
+			"count":559,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":7,
+			"componentType":5126,
+			"count":559,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":8,
+			"componentType":5126,
+			"count":559,
+			"type":"VEC4"
 		}
 	],
 	"bufferViews":[
@@ -133,6 +189,30 @@
 			"byteLength":5760,
 			"byteOffset":26832,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":6708,
+			"byteOffset":32592,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":6708,
+			"byteOffset":39300,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":4472,
+			"byteOffset":46008,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":8944,
+			"byteOffset":50480,
+			"target":34962
 		}
 	],
 	"samplers":[
@@ -143,7 +223,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":32592,
+			"byteLength":59424,
 			"uri":"ball.bin"
 		}
 	]

@@ -193,7 +193,7 @@ public:
         const Transform& transform,
         JPH::Ref<JPH::Shape> shape,
         bool staticBody,
-        bool trigger);
+        bool sensor);
     void updateTransform(JPH::BodyID id, const Transform& transform);
     void setVelocity(JPH::BodyID id, const glm::vec3& velocity);
     void syncVisibleTransform(JPH::BodyID id, Transform& transform);
@@ -263,7 +263,7 @@ private:
 
     // dev
     bool drawCollisionLinesWithDepth{true};
-    bool drawCollisionShapeWireframe{false};
+    bool drawCollisionShapeWireframe{true};
     bool drawCollisionShapeBoundingBox{false};
 
     std::unordered_map<std::uint32_t, entt::handle> bodyIDToEntity;

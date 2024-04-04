@@ -40,6 +40,32 @@ std::string getPrefabNameFromSceneNode(
     return defaultPrefabName;
 }
 
+void loadPhysicsComponent(
+    PhysicsComponent& pc,
+    const Scene& scene,
+    const std::vector<MeshId> meshes,
+    const std::string& nodeName)
+{
+    const auto aabb = edbr::calculateBoundingBoxLocal(scene, meshes);
+    const auto aabbSize = aabb.calculateSize();
+    if (nodeName.ends_with("Sphere")) {
+        pc.bodyType = PhysicsComponent::BodyType::Sphere;
+        float maxExtent = std::max(aabbSize.x, aabbSize.y);
+        maxExtent = std::max(maxExtent, aabbSize.z);
+
+        pc.bodyParams = PhysicsComponent::SphereParams{
+            .radius = maxExtent / 2.f,
+        };
+    }
+    if (nodeName.ends_with("Cylinder")) {
+        pc.bodyType = PhysicsComponent::BodyType::Cylinder;
+        pc.bodyParams = PhysicsComponent::CylinderParams{
+            .radius = std::max(aabbSize.x, aabbSize.z) / 2.f,
+            .halfHeight = aabbSize.y / 2.f,
+        };
+    }
+}
+
 } // end of namespace util
 
 EntityCreator::EntityCreator(
@@ -186,6 +212,15 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
         auto& cNode = *cNodePtr;
         const auto childNodePrefabName =
             util::getPrefabNameFromSceneNode(entityFactory, cNode, defaultPrefabName);
+
+        if (childNodePrefabName == "collision") {
+            assert(cNode.meshIndex != -1);
+            auto& pc = e.get_or_emplace<PhysicsComponent>();
+            util::loadPhysicsComponent(
+                pc, scene, scene.meshes[cNode.meshIndex].primitives, cNode.name);
+            continue;
+        }
+
         if (childNodePrefabName != defaultPrefabName) {
             auto child = createFromNode(childNodePrefabName, scene, cNode);
             entityutil::addChild(e, child);

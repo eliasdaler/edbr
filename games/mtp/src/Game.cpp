@@ -300,10 +300,17 @@ void Game::handleInput(float dt)
     if (kb.wasJustPressed(SDL_SCANCODE_O)) {
         static std::default_random_engine randEngine(1337);
         static std::uniform_real_distribution<float> scaleDist(2.f, 3.f);
-        auto ball = entityFactory.createEntity(registry, "ball");
+        auto ball = entityCreator.createFromPrefab("ball");
         eu::setPosition(ball, camera.getPosition());
+
+        // random scale
         const auto scale = scaleDist(randEngine);
-        ball.get<TransformComponent>().transform.setScale(glm::vec3{scale});
+        auto& transform = ball.get<TransformComponent>().transform;
+        transform.setScale(glm::vec3{scale});
+
+        // sync physics
+        physicsSystem->updateTransform(ball.get<PhysicsComponent>().bodyId, transform);
+        // set velocity
         physicsSystem->setVelocity(
             ball.get<PhysicsComponent>().bodyId, camera.getTransform().getLocalFront() * 20.f);
     }
@@ -725,20 +732,11 @@ void Game::entityPostInit(entt::handle e)
         const auto& mc = *mcPtr;
         const auto& mic = e.get<MetaInfoComponent>();
         const auto& prefabName = mic.prefabName;
-        if (prefabName == "pine_tree" || prefabName == "collision" ||
-            prefabName == "static_geometry" || prefabName == "ball" || prefabName == "trigger" ||
-            prefabName == "ground_tile" || prefabName == "generic_npc") {
+        if (prefabName == "ground_tile" || prefabName == "generic_npc") {
             auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
             JPH::Ref<JPH::Shape> shape;
             bool staticBody = true;
-            if (prefabName == "ball") {
-                shape = new JPH::SphereShape(0.25f);
-                staticBody = false;
-            } else if (prefabName == "pine_tree") {
-                shape = new JPH::CylinderShape(2.6f, 1.8f);
-                shape = new JPH::
-                    RotatedTranslatedShape({0.f, 2.6f, 0.f}, JPH::Quat().sIdentity(), shape);
-            } else if (prefabName == "generic_npc") {
+            if (prefabName == "generic_npc") {
                 // FIXME: should be (1.f, 0.5f) but the character has stupid scale!
                 // (0.1f)
                 shape = new JPH::CylinderShape(10.f, 3.f);
@@ -761,16 +759,10 @@ void Game::entityPostInit(entt::handle e)
                 const auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
                 shape = new JPH::
                     RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
-            } else {
-                std::vector<const CPUMesh*> meshes;
-                for (const auto& meshId : mc.meshes) {
-                    meshes.push_back(&scene.cpuMeshes.at(meshId));
-                }
-                shape = physicsSystem->cacheMeshShape(meshes, mc.meshes, mc.meshTransforms);
             }
 
             if (shape) {
-                bool trigger = (prefabName == "trigger");
+                bool trigger = e.all_of<TriggerComponent>();
                 auto bodyId = physicsSystem->createBody(
                     e, e.get<TransformComponent>().transform, shape, staticBody, trigger);
                 auto& pc = e.emplace<PhysicsComponent>();
@@ -779,6 +771,50 @@ void Game::entityPostInit(entt::handle e)
                 auto& tc = e.get<TransformComponent>();
                 physicsSystem->updateTransform(pc.bodyId, tc.transform);
             }
+        }
+    }
+
+    if (auto pcPtr = e.try_get<PhysicsComponent>(); pcPtr) {
+        auto& pc = *pcPtr;
+
+        const auto& mic = e.get<MetaInfoComponent>();
+        const auto& prefabName = mic.prefabName;
+
+        JPH::Ref<JPH::Shape> shape;
+
+        switch (pc.bodyType) {
+        case PhysicsComponent::BodyType::Sphere: {
+            const auto& params = std::get<PhysicsComponent::SphereParams>(pc.bodyParams);
+            shape = new JPH::SphereShape(params.radius);
+        } break;
+        case PhysicsComponent::BodyType::Cylinder: {
+            const auto& params = std::get<PhysicsComponent::CylinderParams>(pc.bodyParams);
+            shape = new JPH::CylinderShape(params.halfHeight, params.radius);
+            shape = new JPH::RotatedTranslatedShape(
+                {0.f, params.halfHeight, 0.f}, JPH::Quat().sIdentity(), shape);
+        } break;
+        case PhysicsComponent::BodyType::TriangleMesh: {
+            const auto& mc = e.get<MeshComponent>();
+            const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+            std::vector<const CPUMesh*> meshes;
+            for (const auto& meshId : mc.meshes) {
+                meshes.push_back(&scene.cpuMeshes.at(meshId));
+            }
+            shape = physicsSystem->cacheMeshShape(meshes, mc.meshes, mc.meshTransforms);
+        } break;
+        default:
+            break;
+        }
+
+        if (shape) {
+            bool staticBody = pc.type == PhysicsComponent::Type::Static;
+            assert(pc.type != PhysicsComponent::Type::Kinematic && "TODO");
+            auto bodyId = physicsSystem->createBody(
+                e, e.get<TransformComponent>().transform, shape, staticBody, pc.sensor);
+            pc.bodyId = bodyId;
+
+            auto& tc = e.get<TransformComponent>();
+            physicsSystem->updateTransform(pc.bodyId, tc.transform);
         }
     }
 
@@ -841,7 +877,6 @@ void Game::initEntityFactory()
     const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
     loadPrefabs(prefabsDir);
 
-    entityFactory.addMappedPrefabName("interact", "trigger");
     entityFactory.addMappedPrefabName("guardrail", "static_geometry_no_coll");
     entityFactory.addMappedPrefabName("stairs", "static_geometry_no_coll");
     entityFactory.addMappedPrefabName("railing", "static_geometry_no_coll");
@@ -880,6 +915,31 @@ void Game::registerComponents(ComponentFactory& componentFactory)
     componentFactory.registerComponentLoader(
         "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
             loader.get("maxSpeed", mc.maxSpeed);
+        });
+
+    componentFactory.registerComponentLoader(
+        "physics", [](entt::handle e, PhysicsComponent& pc, const JsonDataLoader& loader) {
+            std::string type;
+            loader.getIfExists("type", type);
+            if (type == "static") {
+                pc.type = PhysicsComponent::Type::Static;
+            } else if (type == "dynamic") {
+                pc.type = PhysicsComponent::Type::Dynamic;
+            } else if (type == "kinematic") {
+                pc.type = PhysicsComponent::Type::Kinematic;
+            } else {
+                fmt::print("[error] unknown physics component type '{}'", type);
+            }
+
+            std::string bodyType;
+            loader.getIfExists("bodyType", bodyType);
+            if (bodyType == "mesh") {
+                pc.bodyType = PhysicsComponent::BodyType::TriangleMesh;
+            } else {
+                fmt::print("[error] unknown physics component body type '{}'", bodyType);
+            }
+
+            loader.getIfExists("sensor", pc.sensor);
         });
 
     componentFactory.registerComponentLoader(
