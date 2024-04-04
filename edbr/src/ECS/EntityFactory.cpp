@@ -33,33 +33,27 @@ void EntityFactory::addPrefabFile(std::string prefabName, JsonFile file)
     }
 }
 
-entt::handle EntityFactory::createDefaultEntity(
-    entt::registry& registry,
-    const std::string& sceneNodeName,
-    bool postInit) const
+entt::handle EntityFactory::createDefaultEntity(entt::registry& registry, bool postInit) const
 {
     auto e = createDefaultEntityFunc ? createDefaultEntityFunc(registry) :
                                        entt::handle{registry, registry.create()};
-
-    auto& mic = e.emplace<MetaInfoComponent>();
-    mic.sceneNodeName = sceneNodeName;
-
+    if (!e.all_of<MetaInfoComponent>()) {
+        e.emplace<MetaInfoComponent>();
+    }
     if (postInit && postInitEntityFunc) {
         postInitEntityFunc(e);
     }
     return e;
 }
 
-entt::handle EntityFactory::createEntity(
-    entt::registry& registry,
-    const std::string& prefabName,
-    const std::string& sceneNodeName) const
+entt::handle EntityFactory::createEntity(entt::registry& registry, const std::string& prefabName)
+    const
 {
     const auto& mappedPrefabName = getMappedPrefabName(prefabName);
     const auto& actualPrefabName = !mappedPrefabName.empty() ? mappedPrefabName : prefabName;
     const auto prefabLoader = getPrefabDataLoader(actualPrefabName);
 
-    auto e = createDefaultEntity(registry, sceneNodeName, false);
+    auto e = createDefaultEntity(registry, false);
     for (const auto& [componentName, loader] : prefabLoader.getKeyValueMap()) {
         if (!componentFactory.componentRegistered(componentName)) {
             std::cout << "prefabName=" << actualPrefabName << ": component '" << componentName

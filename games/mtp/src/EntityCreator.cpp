@@ -45,8 +45,9 @@ EntityCreator::EntityCreator(
 
 entt::handle EntityCreator::createFromPrefab(const std::string& prefabName)
 {
-    auto e = createFromPrefab(prefabName, nullptr, nullptr);
     assert(postInitEntityFunc);
+
+    auto e = createFromPrefab(prefabName, nullptr, nullptr);
     postInitEntityFunc(e);
     return e;
 }
@@ -56,9 +57,7 @@ entt::handle EntityCreator::createFromPrefab(
     const Scene* creationScene,
     const SceneNode* creationNode)
 {
-    const std::string emptyString{};
-    const auto& nodeName = creationNode ? creationNode->name : emptyString;
-    auto e = entityFactory.createEntity(registry, prefabName, nodeName);
+    auto e = entityFactory.createEntity(registry, prefabName);
 
     // load from external (prefab) scene
     auto& mic = e.get<MetaInfoComponent>();
@@ -69,8 +68,10 @@ entt::handle EntityCreator::createFromPrefab(
         // TODO: support multiple root nodes here?
         // Can find node with mic.sceneNodeName on the scene and use it as a
         // root, for example.
-        processNode(e, scene, *scene.nodes[0]);
+        auto& rootNode = *scene.nodes[0];
+        processNode(e, scene, rootNode);
         mic.creationSceneName = mic.sceneName;
+        mic.sceneNodeName = rootNode.name;
     }
 
     // this is the scene this prefab was created from - process its children too
@@ -85,6 +86,7 @@ entt::handle EntityCreator::createFromPrefab(
             assert(creationNode);
             processNode(e, *creationScene, *creationNode);
             mic.creationSceneName = creationScene->path.string();
+            mic.sceneNodeName = creationNode->name;
         }
     }
 
