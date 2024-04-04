@@ -572,7 +572,7 @@ JPH::BodyID PhysicsSystem::createBody(
     return bodyID;
 }
 
-void PhysicsSystem::updateTransform(JPH::BodyID id, const Transform& transform)
+void PhysicsSystem::updateTransform(JPH::BodyID id, const Transform& transform, bool updateScale)
 {
     auto& body_interface = physicsSystem.GetBodyInterface();
     auto mt = body_interface.GetMotionType(id);
@@ -583,7 +583,7 @@ void PhysicsSystem::updateTransform(JPH::BodyID id, const Transform& transform)
         mt == JPH::EMotionType::Dynamic ? JPH::EActivation::Activate :
                                           JPH::EActivation::DontActivate);
 
-    if (transform.getScale() != glm::vec3{1.f}) {
+    if (updateScale && transform.getScale() != glm::vec3{1.f}) {
         auto shape = body_interface.GetShape(id);
         body_interface.SetShape(
             id,

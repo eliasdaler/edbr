@@ -309,7 +309,7 @@ void Game::handleInput(float dt)
         transform.setScale(glm::vec3{scale});
 
         // sync physics
-        physicsSystem->updateTransform(ball.get<PhysicsComponent>().bodyId, transform);
+        physicsSystem->updateTransform(ball.get<PhysicsComponent>().bodyId, transform, true);
         // set velocity
         physicsSystem->setVelocity(
             ball.get<PhysicsComponent>().bodyId, camera.getTransform().getLocalFront() * 20.f);
@@ -895,8 +895,8 @@ void Game::registerComponents(ComponentFactory& componentFactory)
                 pc.type = PhysicsComponent::Type::Dynamic;
             } else if (type == "kinematic") {
                 pc.type = PhysicsComponent::Type::Kinematic;
-            } else {
-                fmt::print("[error] unknown physics component type '{}'", type);
+            } else if (!type.empty()) {
+                fmt::println("[error] unknown physics component type '{}'", type);
             }
 
             // sensor
@@ -919,9 +919,9 @@ void Game::registerComponents(ComponentFactory& componentFactory)
                 pc.bodyParams = params;
             } else if (bodyType == "mesh") {
                 pc.bodyType = PhysicsComponent::BodyType::TriangleMesh;
-            } else {
+            } else if (!bodyType.empty()) {
                 // TODO: load other body types from JSON
-                fmt::print("[error] unknown physics component body type '{}'", bodyType);
+                fmt::println("[error] unknown physics component body type '{}'", bodyType);
             }
         });
 

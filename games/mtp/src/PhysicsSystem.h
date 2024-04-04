@@ -194,7 +194,7 @@ public:
         JPH::Ref<JPH::Shape> shape,
         bool staticBody,
         bool sensor);
-    void updateTransform(JPH::BodyID id, const Transform& transform);
+    void updateTransform(JPH::BodyID id, const Transform& transform, bool updateScale = false);
     void setVelocity(JPH::BodyID id, const glm::vec3& velocity);
     void syncVisibleTransform(JPH::BodyID id, Transform& transform);
 
