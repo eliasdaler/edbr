@@ -804,26 +804,8 @@ void Game::entityPostInit(entt::handle e)
         }
     }
 
-    // extract player spawn name from scene node name
-    if (e.all_of<PlayerSpawnComponent>()) {
-        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
-        if (sceneNodeName.empty()) { // created manually
-            return;
-        }
-        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
-    }
-
-    // extract camera name from scene node name
-    if (e.all_of<CameraComponent>()) {
-        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
-        if (sceneNodeName.empty()) { // created manually
-            return;
-        }
-        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
-    }
-
-    // extract trigger name from scene node name
-    if (e.all_of<TriggerComponent>()) {
+    // extract name from scene node
+    if (e.any_of<PlayerSpawnComponent, CameraComponent, TriggerComponent>()) {
         const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
         if (sceneNodeName.empty()) { // created manually
             return;
