@@ -19,7 +19,7 @@ namespace util
 // * "SomePrefab.2" -> "some_prefab" -> "static_geometry" (if "some_prefab" had custom mapping)
 // If node has lightId -> "light"
 // If node has cameraId -> "camera"
-// Returns an defaultPrefabName if no mapping is found
+// Returns defaultPrefabName if no mapping is found
 std::string getPrefabNameFromSceneNode(
     const EntityFactory& ef,
     const SceneNode& node,

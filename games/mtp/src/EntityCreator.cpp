@@ -172,11 +172,12 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
                 mc.meshTransforms.push_back(I);
             }
         } else {
-            // throw std::runtime_error(
-            //    "TODO: handle replacing meshes when processing scene node");
             // TODO: what to do here?
             // Prefab can have a mesh, but would also have it in a level
             // for visualization yet we don't want to copy this mesh...
+
+            // throw std::runtime_error(
+            //    "TODO: handle replacing meshes when processing scene node");
         }
     }
 
