@@ -13,18 +13,21 @@ class MaterialCache;
 
 class SceneCache {
 public:
-    SceneCache(SkeletalAnimationCache& animationCache);
+    SceneCache(
+        GfxDevice& gfxDevice,
+        MeshCache& meshCache,
+        MaterialCache& materialCache,
+        SkeletalAnimationCache& animationCache);
 
     const Scene& addScene(const std::string& scenePath, Scene scene);
     const Scene& getScene(const std::string& scenePath) const;
 
-    [[nodiscard]] const Scene& loadScene(
-        GfxDevice& gfxDevice,
-        MeshCache& meshCache,
-        MaterialCache& materialCache,
-        const std::filesystem::path& path);
+    [[nodiscard]] const Scene& loadOrGetScene(const std::filesystem::path& path);
 
 private:
     std::unordered_map<std::string, Scene> sceneCache;
+    GfxDevice& gfxDevice;
+    MeshCache& meshCache;
+    MaterialCache& materialCache;
     SkeletalAnimationCache& animationCache;
 };

@@ -1,12 +1,11 @@
 add_executable(mtpgame
   src/DevTools/CustomEntityTreeView.cpp
 
-  src/EntityInitializer.cpp
   src/EntityUtil.cpp
+  src/EntityCreator.cpp
   src/Game.cpp
   src/GameComponentDisplayers.cpp
   src/GameDevTools.cpp
-  src/GameSceneLoader.cpp
   src/GameUI.cpp
   src/Level.cpp
 

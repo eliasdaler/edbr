@@ -2,7 +2,6 @@
 
 #include "Components.h"
 #include "EntityUtil.h"
-#include "GameSceneLoader.h"
 #include "Systems.h"
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
@@ -24,14 +23,23 @@
 
 #include <glm/gtx/easing.hpp>
 
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+
+#include <edbr/Util/JoltUtil.h>
+
 namespace eu = entityutil;
 
 Game::Game() :
     Application(),
     renderer(gfxDevice, meshCache, materialCache),
     spriteRenderer(gfxDevice),
-    sceneCache(animationCache),
-    entityInitializer(sceneCache, gfxDevice, meshCache, materialCache, animationCache),
+    sceneCache(gfxDevice, meshCache, materialCache, animationCache),
+    entityCreator(registry, "static_geometry", entityFactory, sceneCache),
     animationSoundSystem(audioManager)
 {}
 
@@ -62,6 +70,8 @@ void Game::customInit()
     materialCache.init(gfxDevice);
     renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
     spriteRenderer.init(renderer.getDrawImageFormat());
+
+    entityCreator.setPostInitEntityFunc([this](entt::handle e) { entityPostInit(e); });
 
     // important: need to do this before creating any Jolt objects
     PhysicsSystem::InitStaticObjects();
@@ -99,7 +109,7 @@ void Game::customInit()
     }
 
     { // create player
-        auto e = entityFactory.createEntity(registry, "cato");
+        auto e = entityCreator.createFromPrefab("cato");
         e.emplace<PlayerComponent>();
     }
 
@@ -110,7 +120,6 @@ void Game::customInit()
     const auto& spawnName = level.getDefaultPlayerSpawnerName();
     if (!spawnName.empty()) {
         eu::spawnPlayer(registry, level.getDefaultPlayerSpawnerName());
-        util::onPlaceEntityOnScene(createSceneLoadContext(), eu::getPlayerEntity(registry));
         // FIXME: physics system should catch position change event
         physicsSystem->setCharacterPosition(eu::getWorldPosition(eu::getPlayerEntity(registry)));
     }
@@ -295,7 +304,6 @@ void Game::handleInput(float dt)
         eu::setPosition(ball, camera.getPosition());
         const auto scale = scaleDist(randEngine);
         ball.get<TransformComponent>().transform.setScale(glm::vec3{scale});
-        util::onPlaceEntityOnScene(createSceneLoadContext(), ball);
         physicsSystem->setVelocity(
             ball.get<PhysicsComponent>().bodyId, camera.getTransform().getLocalFront() * 20.f);
     }
@@ -599,7 +607,8 @@ void Game::generateDrawList()
 
     // render static meshes
     const auto staticMeshes = registry.view<TransformComponent, MeshComponent>(
-        entt::exclude<SkeletonComponent, TriggerComponent, ColliderComponent>);
+        entt::
+            exclude<SkeletonComponent, TriggerComponent, ColliderComponent, PlayerSpawnComponent>);
     for (const auto&& [e, tc, mc] : staticMeshes.each()) {
         bool castShadow = shouldCastShadow({registry, e});
         for (std::size_t i = 0; i < mc.meshes.size(); ++i) {
@@ -655,26 +664,154 @@ void Game::loadLevel(const std::filesystem::path& path)
     loadScene(level.getSceneModelPath(), true);
 }
 
-util::SceneLoadContext Game::createSceneLoadContext()
-{
-    return util::SceneLoadContext{
-        .gfxDevice = gfxDevice,
-        .meshCache = meshCache,
-        .materialCache = materialCache,
-        .entityFactory = entityFactory,
-        .registry = registry,
-        .sceneCache = sceneCache,
-        .defaultPrefabName = "static_geometry",
-        .physicsSystem = *physicsSystem,
-        .animationCache = animationCache,
-    };
-}
-
 void Game::loadScene(const std::filesystem::path& path, bool createEntities)
 {
-    const auto& scene = sceneCache.loadScene(gfxDevice, meshCache, materialCache, path);
+    const auto& scene = sceneCache.loadOrGetScene(path);
     if (createEntities) {
-        util::createEntitiesFromScene(createSceneLoadContext(), scene);
+        auto createdEntities = entityCreator.createEntitiesFromScene(scene);
+        // might need do do if children have physics too!
+        // transformSystemUpdate(registry, 0.f);
+    }
+}
+
+namespace
+{
+std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
+{
+    if (sceneNodeName.empty()) {
+        return {};
+    }
+    const auto dotPos = sceneNodeName.find_first_of(".");
+    if (dotPos == std::string::npos || dotPos == sceneNodeName.length() - 1) {
+        fmt::println(
+            "ERROR: cannot extract name {}: should have format <prefab>.<name>", sceneNodeName);
+    }
+    return sceneNodeName.substr(dotPos + 1, sceneNodeName.size());
+}
+}
+
+void Game::entityPostInit(entt::handle e)
+{
+    // handle skeleton and animation
+    if (auto scPtr = e.try_get<SkeletonComponent>(); scPtr) {
+        auto& sc = *scPtr;
+        assert(sc.skinId != -1);
+
+        auto& mic = e.get<MetaInfoComponent>();
+        const auto& scene = sceneCache.loadOrGetScene(mic.sceneName);
+
+        sc.skeleton = scene.skeletons[sc.skinId];
+        sc.animations = &animationCache.getAnimations(mic.sceneName);
+
+        auto& mc = e.get<MeshComponent>();
+        sc.skinnedMeshes.reserve(mc.meshes.size());
+        for (const auto meshId : mc.meshes) {
+            const auto& mesh = meshCache.getMesh(meshId);
+            SkinnedMesh sm;
+            sm.skinnedVertexBuffer = gfxDevice.createBuffer(
+                mesh.numVertices * sizeof(CPUMesh::Vertex),
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+            sc.skinnedMeshes.push_back(sm);
+        }
+
+        if (sc.animations->contains("Idle")) {
+            sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations->at("Idle"));
+        }
+    }
+
+    // physics
+    if (auto mcPtr = e.try_get<MeshComponent>(); mcPtr) {
+        const auto& mc = *mcPtr;
+        const auto& mic = e.get<MetaInfoComponent>();
+        const auto& prefabName = mic.prefabName;
+        if (prefabName == "pine_tree" || prefabName == "collision" ||
+            prefabName == "static_geometry" || prefabName == "ball" || prefabName == "trigger" ||
+            prefabName == "ground_tile" || prefabName == "generic_npc") {
+            auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+            JPH::Ref<JPH::Shape> shape;
+            bool staticBody = true;
+            if (prefabName == "ball") {
+                shape = new JPH::SphereShape(0.25f);
+                staticBody = false;
+            } else if (prefabName == "pine_tree") {
+                shape = new JPH::CylinderShape(2.6f, 1.8f);
+                shape = new JPH::
+                    RotatedTranslatedShape({0.f, 2.6f, 0.f}, JPH::Quat().sIdentity(), shape);
+            } else if (prefabName == "generic_npc") {
+                // FIXME: should be (1.f, 0.5f) but the character has stupid scale!
+                // (0.1f)
+                shape = new JPH::CylinderShape(10.f, 3.f);
+                shape = new JPH::
+                    RotatedTranslatedShape({0.f, 10.f, 0.f}, JPH::Quat().sIdentity(), shape);
+            } else if (prefabName == "ground_tile") {
+                const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
+                auto size = aabb.calculateSize();
+
+                // completely flat tile
+                bool almostZeroHeight = 0.f;
+                if (size.y < 0.001f) {
+                    size.y = 0.1f;
+                    almostZeroHeight = true;
+                }
+
+                // for completely flat tiles, the origin will be at the center of the tile
+                // for tiles with height, it will be at the center of the bottom AABB plane
+                shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
+                const auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
+                shape = new JPH::
+                    RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
+            } else {
+                std::vector<const CPUMesh*> meshes;
+                for (const auto& meshId : mc.meshes) {
+                    meshes.push_back(&scene.cpuMeshes.at(meshId));
+                }
+                shape = physicsSystem->cacheMeshShape(meshes, mc.meshes, mc.meshTransforms);
+            }
+
+            if (shape) {
+                bool trigger = (prefabName == "trigger");
+                auto bodyId = physicsSystem->createBody(
+                    e, e.get<TransformComponent>().transform, shape, staticBody, trigger);
+                auto& pc = e.emplace<PhysicsComponent>();
+                pc.bodyId = bodyId;
+
+                auto& tc = e.get<TransformComponent>();
+                physicsSystem->updateTransform(pc.bodyId, tc.transform);
+            }
+        }
+    }
+
+    // extract player spawn name from scene node name
+    if (e.all_of<PlayerSpawnComponent>()) {
+        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        if (sceneNodeName.empty()) { // created manually
+            return;
+        }
+        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
+
+    // extract camera name from scene node name
+    if (e.all_of<CameraComponent>()) {
+        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        if (sceneNodeName.empty()) { // created manually
+            return;
+        }
+        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
+
+    // extract trigger name from scene node name
+    if (e.all_of<TriggerComponent>()) {
+        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        if (sceneNodeName.empty()) { // created manually
+            return;
+        }
+        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
+
+    // init children
+    for (const auto& c : e.get<HierarchyComponent>().children) {
+        entityPostInit(c);
     }
 }
 
@@ -700,9 +837,6 @@ void Game::initEntityFactory()
         registry.emplace<HierarchyComponent>(e);
         return entt::handle(registry, e);
     });
-
-    entityFactory.setPostInitEntityFunc(
-        [this](entt::handle e) { entityInitializer.initEntity(e); });
 
     const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
     loadPrefabs(prefabsDir);
@@ -735,9 +869,13 @@ void Game::registerComponents(ComponentFactory& componentFactory)
     componentFactory.registerComponent<ColliderComponent>("collider");
 
     componentFactory.registerComponentLoader(
-        "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {
-            loader.get("mesh", mc.meshPath);
+        "meta", [](entt::handle e, MetaInfoComponent& mic, const JsonDataLoader& loader) {
+            loader.getIfExists("scene", mic.sceneName);
+            loader.getIfExists("node", mic.sceneNodeName);
         });
+
+    componentFactory.registerComponentLoader(
+        "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {});
 
     componentFactory.registerComponentLoader(
         "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {

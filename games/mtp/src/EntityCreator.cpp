@@ -1,13 +1,55 @@
 #include "EntityCreator.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
-
 #include <edbr/ECS/EntityFactory.h>
 #include <edbr/SceneCache.h>
+#include <edbr/Util/StringUtil.h>
 
 #include "Components.h"
 #include "EntityUtil.h"
-#include "GameSceneLoader.h"
+
+namespace util
+{
+std::string getPrefabNameFromSceneNode(const EntityFactory& ef, const std::string& gltfNodeName)
+{
+    const auto nodeName = util::fromCamelCaseToSnakeCase(gltfNodeName);
+    const auto dotPos = nodeName.find_first_of(".");
+    if (dotPos == std::string::npos) {
+        // when node name == prefab name (e.g. node name == "TestPrefab" and
+        // "test_prefab" exists)
+        if (const auto& name = ef.getMappedPrefabName(nodeName); !name.empty()) {
+            return name;
+        }
+    } else {
+        // node name == "TestPrefab.001" and "test_prefab" exists
+        const auto substr = nodeName.substr(0, dotPos);
+        if (const auto& name = ef.getMappedPrefabName(substr); !name.empty()) {
+            return name;
+        }
+    }
+    return "";
+}
+
+} // end of namespace util
+
+EntityCreator::EntityCreator(
+    entt::registry& registry,
+    std::string defaultPrefabName,
+    EntityFactory& entityFactory,
+    SceneCache& sceneCache) :
+    registry(registry),
+    defaultPrefabName(defaultPrefabName),
+    entityFactory(entityFactory),
+    sceneCache(sceneCache)
+{}
+
+entt::handle EntityCreator::createFromPrefab(const std::string& prefabName)
+{
+    auto e = createFromPrefab(prefabName, nullptr, nullptr);
+    assert(postInitEntityFunc);
+    postInitEntityFunc(e);
+    return e;
+}
 
 entt::handle EntityCreator::createFromPrefab(
     const std::string& prefabName,
@@ -21,7 +63,8 @@ entt::handle EntityCreator::createFromPrefab(
     // load from external (prefab) scene
     auto& mic = e.get<MetaInfoComponent>();
     if (!mic.sceneName.empty()) {
-        auto& scene = sceneCache.getScene(mic.sceneName);
+        // load or get scene
+        auto& scene = sceneCache.loadOrGetScene(mic.sceneName);
         assert(scene.nodes.size() == 1);
         // TODO: support multiple root nodes here?
         // Can find node with mic.sceneNodeName on the scene and use it as a
@@ -32,12 +75,37 @@ entt::handle EntityCreator::createFromPrefab(
 
     // this is the scene this prefab was created from - process its children too
     if (creationScene) {
-        assert(creationNode);
-        processNode(e, *creationScene, *creationNode);
-        mic.creationSceneName = creationScene->path.string();
+        if (!mic.sceneName.empty() && creationNode->children.size() == 1 &&
+            creationNode->children[0]->meshIndex != -1) {
+            e.get<TransformComponent>().transform = creationNode->transform;
+            // Only copy transform - this is a hack for Blender's "instanced" prefabs
+            // there's sadly no way to detect them easily. Basically, we have
+            // a node which has the only child - our prefab mesh
+        } else {
+            assert(creationNode);
+            processNode(e, *creationScene, *creationNode);
+            mic.creationSceneName = creationScene->path.string();
+        }
     }
 
     return {registry, e};
+}
+
+std::vector<entt::handle> EntityCreator::createEntitiesFromScene(const Scene& scene)
+{
+    assert(postInitEntityFunc);
+    assert(entityFactory.prefabExists("camera"));
+    assert(entityFactory.prefabExists("light"));
+
+    std::vector<entt::handle> createdEntities;
+    for (const auto& rootNode : scene.nodes) {
+        auto e = createFromPrefab(getPrefabName(*rootNode), &scene, rootNode.get());
+        createdEntities.push_back(std::move(e));
+    }
+    for (const auto& e : createdEntities) {
+        postInitEntityFunc(e);
+    }
+    return createdEntities;
 }
 
 std::string EntityCreator::getPrefabName(const SceneNode& node) const
@@ -56,24 +124,26 @@ std::string EntityCreator::getPrefabName(const SceneNode& node) const
     return defaultPrefabName;
 }
 
-std::vector<entt::handle> EntityCreator::createEntitiesFromScene(const Scene& scene)
-{
-    assert(entityFactory.prefabExists("camera"));
-    assert(entityFactory.prefabExists("light"));
-
-    std::vector<entt::handle> createdEntities;
-    for (const auto& rootNode : scene.nodes) {
-        auto e = createFromPrefab(getPrefabName(*rootNode), &scene, rootNode.get());
-        createdEntities.push_back(std::move(e));
-    }
-    return createdEntities;
-}
-
 void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneNode& rootNode)
 {
+    static const glm::mat4 I{1.f};
+
     // copy transform
     auto& tc = e.get<TransformComponent>();
+
+    const auto prevTransform = tc.transform;
     tc.transform = rootNode.transform;
+    if (!prevTransform.isIdentity()) {
+        // sometimes the root node of prefab scene can have a non-identity transform
+        // this is generally bad, but we can handle it (watch out, though)
+        tc.transform = Transform(tc.transform.asMatrix() * prevTransform.asMatrix());
+    }
+
+    if (rootNode.skinId != -1) {
+        auto& sc = e.get_or_emplace<SkeletonComponent>();
+        assert(sc.skinId == -1);
+        sc.skinId = rootNode.skinId;
+    }
 
     // camera
     if (rootNode.cameraId != -1) {
@@ -99,6 +169,7 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
         if (mc.meshes.empty()) {
             for (const auto& id : scene.meshes[rootNode.meshIndex].primitives) {
                 mc.meshes.push_back(id);
+                mc.meshTransforms.push_back(I);
             }
         } else {
             // throw std::runtime_error(
@@ -126,6 +197,7 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
             auto& mc = e.get_or_emplace<MeshComponent>();
             for (const auto& id : scene.meshes[cNode.meshIndex].primitives) {
                 mc.meshes.push_back(id);
+                mc.meshTransforms.push_back(cNode.transform.asMatrix());
             }
         }
     }

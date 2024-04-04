@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -37,7 +36,6 @@ private:
 struct MeshComponent {
     std::vector<MeshId> meshes;
     std::vector<Transform> meshTransforms;
-    std::filesystem::path meshPath; // path to gltf scene from which model is loaded
 };
 
 struct ColliderComponent {};
@@ -63,6 +61,8 @@ struct SkeletonComponent {
 
     // pointer to the animations stored in SkeletalAnimationCache
     const std::unordered_map<std::string, SkeletalAnimation>* animations{nullptr};
+
+    int skinId{-1}; // reference to skin id from the glTF scene
 };
 
 struct LightComponent {

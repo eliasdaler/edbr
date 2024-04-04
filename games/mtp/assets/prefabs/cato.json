@@ -1,6 +1,6 @@
 {
-  "mesh": {
-    "mesh": "assets/models/cato.gltf"
+  "meta": {
+    "scene": "assets/models/cato.gltf"
   },
   "movement": {
     "maxSpeed": [4, 4, 4]

@@ -22,9 +22,9 @@ void Game::registerComponentDisplayers()
         BeginPropertyTable();
         {
             DisplayProperty("Prefab", tc.prefabName);
-            if (!tc.sceneNodeName.empty()) {
-                DisplayProperty("glTF node name", tc.sceneNodeName);
-            }
+            DisplayProperty("Prefab scene name", tc.sceneName);
+            DisplayProperty("Creation scene name", tc.creationSceneName);
+            DisplayProperty("glTF node name", tc.sceneNodeName);
         }
         EndPropertyTable();
     });
@@ -109,7 +109,6 @@ void Game::registerComponentDisplayers()
     eid.registerDisplayer("Mesh", [](entt::const_handle e, const MeshComponent& mc) {
         BeginPropertyTable();
         {
-            DisplayProperty("meshPath", mc.meshPath.string());
             for (const auto& id : mc.meshes) {
                 DisplayProperty("mesh", id);
             }

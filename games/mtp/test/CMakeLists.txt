@@ -22,7 +22,6 @@ target_sources(mtp_unit_test
     # FIXME: make object lib?
     "../src/JoltDebugRenderer.cpp"
     "../src/PhysicsSystem.cpp"
-    "../src/GameSceneLoader.cpp"
     "../src/EntityUtil.cpp"
     "../src/EntityCreator.cpp"
 )

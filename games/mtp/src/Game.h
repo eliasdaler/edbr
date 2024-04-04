@@ -27,8 +27,7 @@
 
 #include "DevTools/CustomEntityTreeView.h"
 
-#include "EntityInitializer.h"
-#include "GameSceneLoader.h"
+#include "EntityCreator.h"
 #include "GameUI.h"
 #include "Level.h"
 
@@ -77,7 +76,7 @@ private:
     void onTagComponentDestroy(entt::registry& registry, entt::entity entity);
     void onSkeletonComponentDestroy(entt::registry& registry, entt::entity entity);
 
-    util::SceneLoadContext createSceneLoadContext();
+    void entityPostInit(entt::handle e);
 
 private:
     MeshCache meshCache;
@@ -91,7 +90,8 @@ private:
     entt::registry registry;
     std::unordered_map<std::string, entt::entity> taggedEntities;
     EntityFactory entityFactory;
-    EntityInitializer entityInitializer;
+
+    EntityCreator entityCreator;
 
     std::unique_ptr<PhysicsSystem> physicsSystem;
     AnimationSoundSystem animationSoundSystem;

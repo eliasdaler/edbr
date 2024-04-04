@@ -5,7 +5,15 @@
 #include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/Util/GltfLoader.h>
 
-SceneCache::SceneCache(SkeletalAnimationCache& animationCache) : animationCache(animationCache)
+SceneCache::SceneCache(
+    GfxDevice& gfxDevice,
+    MeshCache& meshCache,
+    MaterialCache& materialCache,
+    SkeletalAnimationCache& animationCache) :
+    gfxDevice(gfxDevice),
+    meshCache(meshCache),
+    materialCache(materialCache),
+    animationCache(animationCache)
 {}
 
 const Scene& SceneCache::addScene(const std::string& scenePath, Scene scene)
@@ -25,11 +33,7 @@ const Scene& SceneCache::getScene(const std::string& scenePath) const
     return it->second;
 }
 
-const Scene& SceneCache::loadScene(
-    GfxDevice& gfxDevice,
-    MeshCache& meshCache,
-    MaterialCache& materialCache,
-    const std::filesystem::path& path)
+const Scene& SceneCache::loadOrGetScene(const std::filesystem::path& path)
 {
     const auto it = sceneCache.find(path.string());
     if (it != sceneCache.end()) {

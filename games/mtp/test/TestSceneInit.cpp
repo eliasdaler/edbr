@@ -4,18 +4,20 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/EntityFactory.h>
+#include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MaterialCache.h>
+#include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/SkeletalAnimationCache.h>
 #include <edbr/SceneCache.h>
 
 #include "Components.h"
 #include "EntityCreator.h"
-#include "GameSceneLoader.h"
 
 namespace
 {
 class SceneInitTest : public ::testing::Test {
 protected:
-    SceneInitTest() : sceneCache(animationCache) {}
+    SceneInitTest() : sceneCache(gfxDevice, meshCache, materialCache, animationCache) {}
 
     void registerEmptyPrefab(const std::string& prefabName)
     {
@@ -121,10 +123,12 @@ protected:
                     .name = "Mesh.Test",
                     .meshIndex = 1,
                 });
+                meshNode->transform.setPosition(glm::vec3{1.f, 1.f, 1.f});
                 auto meshChildNode = std::make_unique<SceneNode>(SceneNode{
                     .name = "Mesh.Test.Child",
                     .meshIndex = 2,
                 });
+                meshChildNode->transform.setPosition(glm::vec3{0.5f, 0.5f, 0.5f});
                 meshNode->children.push_back(std::move(meshChildNode));
                 scene.nodes.push_back(std::move(meshNode));
             }
@@ -144,7 +148,11 @@ protected:
 
     void TearDown() override {}
 
+    GfxDevice gfxDevice;
+    MeshCache meshCache;
+    MaterialCache materialCache;
     SkeletalAnimationCache animationCache;
+
     SceneCache sceneCache;
     EntityFactory entityFactory;
 };
@@ -188,12 +196,8 @@ TEST_F(SceneInitTest, TestCreateEntitiesBasic)
     using namespace testing;
 
     entt::registry registry;
-    EntityCreator loader{
-        .registry = registry,
-        .defaultPrefabName = "static_geometry",
-        .entityFactory = entityFactory,
-        .sceneCache = sceneCache,
-    };
+    EntityCreator loader{registry, "static_geometry", entityFactory, sceneCache};
+    loader.setPostInitEntityFunc([](entt::handle) {});
 
     auto& scene = sceneCache.getScene("scene.gltf");
     auto entities = loader.createEntitiesFromScene(scene);
@@ -268,9 +272,24 @@ TEST_F(SceneInitTest, TestCreateEntitiesBasic)
         EXPECT_EQ(mic.sceneNodeName, "Mesh.Test");
         EXPECT_EQ(mic.prefabName, "static_geometry");
 
+        const auto& tc = mesh.get<TransformComponent>();
+        glm::vec3 pos{1.f, 1.f, 1.f};
+
         const auto& mc = mesh.get<MeshComponent>();
         // Merged meshes {7, 8} FROM Mesh.Test.Child
         ASSERT_THAT(mc.meshes, ElementsAre(5, 6, 7, 8));
+
+        EXPECT_EQ(mc.meshTransforms.size(), 4);
+
+        // root node meshes
+        EXPECT_EQ(mc.meshTransforms[0], glm::mat4{1.f});
+        EXPECT_EQ(mc.meshTransforms[1], glm::mat4{1.f});
+
+        // child meshes
+        Transform childMeshTransform;
+        childMeshTransform.setPosition(glm::vec3{0.5f, 0.5f, 0.5f});
+        EXPECT_EQ(mc.meshTransforms[2], childMeshTransform);
+        EXPECT_EQ(mc.meshTransforms[3], childMeshTransform);
     }
 
     { // light
