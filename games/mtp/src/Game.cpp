@@ -798,9 +798,6 @@ void Game::entityPostInit(entt::handle e)
             auto bodyId = physicsSystem->createBody(
                 e, e.get<TransformComponent>().transform, shape, staticBody, pc.sensor);
             pc.bodyId = bodyId;
-
-            auto& tc = e.get<TransformComponent>();
-            physicsSystem->updateTransform(pc.bodyId, tc.transform);
         }
     }
 

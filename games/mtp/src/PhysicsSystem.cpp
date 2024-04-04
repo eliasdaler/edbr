@@ -552,7 +552,10 @@ JPH::BodyID PhysicsSystem::createBody(
     bool staticBody,
     bool sensor)
 {
-    auto& body_interface = physicsSystem.GetBodyInterface();
+    if (transform.getScale() != glm::vec3{1.f}) {
+        shape = shape->ScaleShape(util::glmToJolt(transform.getScale())).Get();
+    }
+
     auto settings = JPH::BodyCreationSettings(
         shape,
         util::glmToJolt(transform.getPosition()),
@@ -561,6 +564,7 @@ JPH::BodyID PhysicsSystem::createBody(
         staticBody ? Layers::NON_MOVING : Layers::MOVING);
     settings.mIsSensor = sensor;
 
+    auto& body_interface = physicsSystem.GetBodyInterface();
     auto bodyID = body_interface.CreateAndAddBody(
         settings, staticBody ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
     auto [it, inserted] = bodyIDToEntity.emplace(bodyID.GetIndex(), e);
