@@ -181,13 +181,29 @@ target_compile_definitions(edbr
 
 target_link_libraries(edbr PUBLIC Tracy::TracyClient)
 if (MSVC)
-  target_compile_definitions(TracyClient PUBLIC $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
-  target_compile_definitions(edbr PUBLC $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>)
+  target_compile_definitions(TracyClient PUBLIC
+    $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_ENABLE>
+    $<$<CONFIG:Debug,RelWithDebInfo>:TRACY_DELAYED_INIT> # for unit tests to work
+  )
 else()
   if(NOT CMAKE_BUILD_TYPE OR
     CMAKE_BUILD_TYPE STREQUAL "Debug" OR
     CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE)
-    target_compile_definitions(edbr PUBLIC TRACY_ENABLE)
+    target_compile_definitions(TracyClient PUBLIC
+        TRACY_ENABLE
+        TRACY_DELAYED_INIT # needed for unit tests to work
+    )
   endif()
+endif()
+
+## testing
+include(CTest)
+if(EDBR_BUILD_TESTING)
+  enable_testing()
+  if(NOT MSVC)
+	add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
+  else()
+    add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C Debug --output-on-failure)
+  endif()
+  add_subdirectory(test)
 endif()

@@ -55,3 +55,6 @@
 [submodule "edbr/third_party/ogg"]
 	path = edbr/third_party/ogg
 	url = https://github.com/xiph/ogg
+[submodule "edbr/third_party/googletest"]
+	path = edbr/third_party/googletest
+	url = https://github.com/google/googletest

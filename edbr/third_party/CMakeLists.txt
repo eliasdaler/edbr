@@ -187,3 +187,13 @@ option(INSTALL_CMAKE_PACKAGE_MODULE "Install CMake package configiguration modul
 add_subdirectory(vorbis)
 add_library(vorbis::vorbis ALIAS vorbis)
 add_library(vorbis::vorbisfile ALIAS vorbisfile)
+
+## Google test
+if(EDBR_BUILD_TESTING)
+  if (MSVC AND NOT USE_STATIC_RUNTIME)
+    set(gtest_force_shared_crt ON CACHE BOOL "Use shared CRT")
+  endif()
+
+  add_subdirectory(googletest)
+endif()
+

@@ -389,6 +389,7 @@ void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
         maxSpeed.z *= 0.75f;
     }
 
+    // to catch up with the falling player
     if (isPlayer && timeFalling > 0.5f) {
         maxSpeed.y *= 2.f;
     }

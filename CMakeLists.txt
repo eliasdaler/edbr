@@ -29,5 +29,7 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/edbr/third_party/SDL/CMakeLists.txt")
   fetch_submodules()
 endif()
 
+option(EDBR_BUILD_TESTING "Build tests" ON)
+
 add_subdirectory(edbr)
 add_subdirectory(games)

@@ -24,6 +24,8 @@
 #include <edbr/Graphics/ImageLoader.h>
 #include <edbr/Graphics/MipMapGeneration.h>
 
+#include <tracy/Tracy.hpp>
+
 namespace
 {
 static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
