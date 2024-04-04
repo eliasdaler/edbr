@@ -193,6 +193,22 @@ TEST_F(SceneInitTest, TestGetPrefabNameFromSceneNode)
             util::getPrefabNameFromSceneNode(entityFactory, node, "default_name"),
             t.expectedPrefabName);
     }
+
+    { // light
+        SceneNode node{
+            .name = "Something.test",
+            .lightId = 0,
+        };
+        EXPECT_EQ(util::getPrefabNameFromSceneNode(entityFactory, node, "default_name"), "light");
+    }
+
+    { // camera
+        SceneNode node{
+            .name = "Something.test",
+            .cameraId = 0,
+        };
+        EXPECT_EQ(util::getPrefabNameFromSceneNode(entityFactory, node, "default_name"), "camera");
+    }
 }
 
 TEST_F(SceneInitTest, TestCreateEntitiesBasic)
