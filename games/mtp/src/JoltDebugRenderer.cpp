@@ -53,7 +53,9 @@ void JoltDebugRenderer::DrawTriangle(
     JPH::RVec3Arg inV3,
     JPH::ColorArg inColor,
     ECastShadow inCastShadow)
-{}
+{
+    assert(false);
+}
 
 JPH::DebugRenderer::Batch JoltDebugRenderer::CreateTriangleBatch(
     const Triangle* inTriangles,
@@ -99,14 +101,6 @@ void JoltDebugRenderer::DrawGeometry(
     };
     bool inFrustum = edge::isInFrustum(frustum, aabb);
 
-    /*
-    Im3d::PushLayerId(Im3dState::WorldWithDepthLayer);
-    Im3d::PushColor(inFrustum ? Im3d::Color_Green : Im3d::Color_Red);
-    Im3d::DrawAlignedBox(joltToIm3d(inWorldSpaceBounds.mMin), joltToIm3d(inWorldSpaceBounds.mMax));
-    Im3d::PopColor();
-    Im3d::PopLayerId();
-    */
-
     if (!inFrustum) {
         return;
     }
@@ -137,10 +131,23 @@ void JoltDebugRenderer::DrawGeometry(
         (inModelMatrix * JPH::Vec3(b.vtx[b.idx[fi + 2]].mPosition)).StoreFloat3(&v2);
 
         using namespace util;
-        float lineWidth = lodNum != 0 ? 1.f : 3.f;
-        Im3d::DrawLine(joltToIm3d(v0), joltToIm3d(v1), lineWidth, joltToIm3d(inModelColor));
-        Im3d::DrawLine(joltToIm3d(v1), joltToIm3d(v2), lineWidth, joltToIm3d(inModelColor));
-        Im3d::DrawLine(joltToIm3d(v2), joltToIm3d(v0), lineWidth, joltToIm3d(inModelColor));
+        if (inDrawMode == JPH::DebugRenderer::EDrawMode::Solid) {
+            auto col = joltToIm3d(inModelColor);
+            col.setA(solidShapeAlpha);
+            Im3d::PushColor(col);
+            auto& ctx = Im3d::GetContext();
+            ctx.begin(Im3d::PrimitiveMode_Triangles);
+            ctx.vertex(joltToIm3d(v0));
+            ctx.vertex(joltToIm3d(v1));
+            ctx.vertex(joltToIm3d(v2));
+            ctx.end();
+            Im3d::PopColor();
+        } else {
+            float lineWidth = lodNum != 0 ? 1.f : 3.f;
+            Im3d::DrawLine(joltToIm3d(v0), joltToIm3d(v1), lineWidth, joltToIm3d(inModelColor));
+            Im3d::DrawLine(joltToIm3d(v1), joltToIm3d(v2), lineWidth, joltToIm3d(inModelColor));
+            Im3d::DrawLine(joltToIm3d(v2), joltToIm3d(v0), lineWidth, joltToIm3d(inModelColor));
+        }
     }
 
     Im3d::PopLayerId();
@@ -157,19 +164,4 @@ void JoltDebugRenderer::setCamera(const Camera& camera)
 {
     frustum = edge::createFrustumFromCamera(camera);
     cameraPos = util::glmToJolt(camera.getPosition());
-}
-
-void JoltDebugRenderer::setDrawLinesDepthTest(bool b)
-{
-    drawLinesDepthTest = b;
-}
-
-void JoltDebugRenderer::setDrawShapeWireFrame(bool b)
-{
-    bodyDrawSettings.mDrawShape = b;
-}
-
-void JoltDebugRenderer::setDrawBoundingBox(bool b)
-{
-    bodyDrawSettings.mDrawBoundingBox = b;
 }

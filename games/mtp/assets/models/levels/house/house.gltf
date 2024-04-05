@@ -779,7 +779,7 @@
 		},
 		{
 			"mesh":49,
-			"name":"Interact.TV",
+			"name":"Interact.Sphere.TV",
 			"scale":[
 				0.5401621460914612,
 				0.5401621460914612,
@@ -793,7 +793,7 @@
 		},
 		{
 			"mesh":50,
-			"name":"Interact.Bed",
+			"name":"Interact.Sphere.Bed",
 			"translation":[
 				0.26291948556900024,
 				0.9110896587371826,

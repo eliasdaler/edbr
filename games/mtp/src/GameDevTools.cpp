@@ -4,6 +4,7 @@
 #include "EntityUtil.h"
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
+#include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Util/Im3dUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
@@ -24,10 +25,8 @@ void drawFrustum(const Camera& camera)
         glm2im3d(glm::vec3{corners[1]}),
         glm2im3d(glm::vec3{corners[2]}),
         glm2im3d(glm::vec3{corners[3]}));
-    Im3d::PopColor();
 
     // far plane
-    Im3d::PushColor(Im3d::Color_Orange);
     Im3d::DrawQuad(
         glm2im3d(glm::vec3{corners[4]}),
         glm2im3d(glm::vec3{corners[5]}),
@@ -36,6 +35,7 @@ void drawFrustum(const Camera& camera)
     Im3d::PopColor();
 
     // left plane
+    Im3d::PushColor(Im3d::Color_Orange);
     Im3d::DrawQuad(
         glm2im3d(glm::vec3{corners[4]}),
         glm2im3d(glm::vec3{corners[5]}),
@@ -48,10 +48,11 @@ void drawFrustum(const Camera& camera)
         glm2im3d(glm::vec3{corners[6]}),
         glm2im3d(glm::vec3{corners[2]}),
         glm2im3d(glm::vec3{corners[3]}));
+    Im3d::PopColor();
 
-    for (std::size_t i = 0; i < corners.size(); ++i) {
+    /* for (std::size_t i = 0; i < corners.size(); ++i) {
         Im3dText(corners[i], 8.f, RGBColor{255, 255, 255, 255}, std::to_string(i).c_str());
-    }
+    } */
 }
 }
 
@@ -146,7 +147,6 @@ void Game::updateDevTools(float dt)
         if (ImGui::CollapsingHeader("Renderer settings")) {
             renderer.updateDevTools(dt);
         }
-        ui.updateDevTools(dt);
     }
     ImGui::End();
 
@@ -243,6 +243,56 @@ void Game::updateDevTools(float dt)
     }
 
     physicsSystem->updateDevUI(inputManager, dt);
+
+    // automatically draw scene node names of triggers, interacts etc. when wireframes
+    // for these shapes are drawn
+    if (physicsSystem->wireframesDrawn()) {
+        for (const auto& [e, tc, nameC] :
+             registry.view<TransformComponent, NameComponent>().each()) {
+            auto& mic = registry.get<MetaInfoComponent>(e);
+            Im3dText(
+                tc.transform.getPosition(),
+                1.f,
+                RGBColor{255, 255, 255},
+                mic.sceneNodeName.c_str());
+        }
+
+        Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
+        for (const auto& [e, tc, nc] : registry.view<TransformComponent, NameComponent>().each()) {
+            if (!registry.any_of<CameraComponent, PlayerSpawnComponent>(e)) {
+                continue;
+            }
+            const auto& transform = tc.transform;
+
+            if (registry.all_of<PlayerSpawnComponent>(e)) {
+                static float arrowLength = 0.5f;
+                Im3dDrawArrow(
+                    RGBColor{255, 0, 0},
+                    transform.getPosition(),
+                    transform.getPosition() + transform.getLocalRight() * arrowLength);
+                Im3dDrawArrow(
+                    RGBColor{0, 255, 0},
+                    transform.getPosition(),
+                    transform.getPosition() + transform.getLocalUp() * arrowLength);
+                Im3dDrawArrow(
+                    RGBColor{0, 0, 255},
+                    transform.getPosition(),
+                    transform.getPosition() + transform.getLocalFront() * arrowLength);
+            }
+
+            if (registry.all_of<CameraComponent>(e)) {
+                Camera camera;
+                camera.setPosition(transform.getPosition());
+                camera.setHeading(transform.getHeading());
+                static const float aspectRatio =
+                    (float)params.renderWidth / (float)params.renderHeight;
+
+                camera.init(cameraFovX, 0.001f, 1.f, aspectRatio);
+                drawFrustum(camera);
+            }
+        }
+        Im3d::PopLayerId();
+    }
 
     ImGui::ShowDemoWindow();
 }

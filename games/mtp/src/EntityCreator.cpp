@@ -48,7 +48,14 @@ void loadPhysicsComponent(
 {
     const auto aabb = edbr::calculateBoundingBoxLocal(scene, meshes);
     const auto aabbSize = aabb.calculateSize();
-    if (nodeName.ends_with("Sphere")) {
+    if (util::stringContains(nodeName, ".Box")) {
+        pc.bodyType = PhysicsComponent::BodyType::AABB;
+        pc.bodyParams = PhysicsComponent::AABBParams{
+            .min = aabb.min,
+            .max = aabb.max,
+        };
+    }
+    if (util::stringContains(nodeName, ".Sphere")) {
         pc.bodyType = PhysicsComponent::BodyType::Sphere;
         float maxExtent = std::max(aabbSize.x, aabbSize.y);
         maxExtent = std::max(maxExtent, aabbSize.z);
@@ -57,7 +64,7 @@ void loadPhysicsComponent(
             .radius = maxExtent / 2.f,
         };
     }
-    if (nodeName.ends_with("Cylinder")) {
+    if (util::stringContains(nodeName, ".Cylinder")) {
         pc.bodyType = PhysicsComponent::BodyType::Cylinder;
         pc.bodyParams = PhysicsComponent::CylinderParams{
             .radius = std::max(aabbSize.x, aabbSize.z) / 2.f,
@@ -205,6 +212,12 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
             // throw std::runtime_error(
             //    "TODO: handle replacing meshes when processing scene node");
         }
+    }
+
+    // hack for triggers and colliders - determine shape base on node name
+    if (e.any_of<TriggerComponent, ColliderComponent>()) {
+        util::loadPhysicsComponent(
+            e.get<PhysicsComponent>(), scene, e.get<MeshComponent>().meshes, rootNode.name);
     }
 
     // handle children

@@ -118,7 +118,7 @@ void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat, VkFormat de
                                 .enableBlending()
                                 .setColorAttachmentFormat(drawImageFormat)
                                 .setDepthFormat(depthImageFormat)
-                                .enableDepthTest(false, VK_COMPARE_OP_GREATER_OR_EQUAL)
+                                .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
                                 .enableDynamicDepth()
                                 .build(device);
         vkutil::addDebugLabel(device, trianglesPipeline, "im3d triangles pipeline");

@@ -33,7 +33,7 @@ void GameRenderer::init(const glm::ivec2& drawImageSize)
 
     skinningPipeline.init(gfxDevice);
 
-    const auto cascadePercents = std::array{0.02f, 0.35f, 1.f};
+    const auto cascadePercents = std::array{0.138f, 0.35f, 1.f};
     // const auto cascadePercents = std::array{0.04f, 0.1f, 1.f}; // good for far = 500.f
     csmPipeline.init(gfxDevice, cascadePercents);
 

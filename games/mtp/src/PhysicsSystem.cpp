@@ -41,6 +41,8 @@
 
 #include <set>
 
+#include "Components.h"
+
 namespace
 {
 
@@ -167,7 +169,7 @@ void PhysicsSystem::init()
         JPH::ShapeRefC floorShape = floorShapeSettings.Create().Get();
         JPH::BodyCreationSettings floorSettings(
             floorShape,
-            JPH::RVec3(0.0, -1.0, 0.0),
+            JPH::RVec3(0.0, -2.0, 0.0),
             JPH::Quat::sIdentity(),
             JPH::EMotionType::Static,
             Layers::NON_MOVING);
@@ -178,10 +180,20 @@ void PhysicsSystem::init()
     createCharacter(characterParams);
 }
 
+namespace
+{
+struct DrawOnlySensorsFilter : JPH::BodyDrawFilter {
+    bool ShouldDraw(const JPH::Body& inBody) const { return inBody.IsSensor(); };
+};
+static DrawOnlySensorsFilter drawOnlySensorsFilter;
+}
+
 void PhysicsSystem::drawDebugShapes(const Camera& camera)
 {
     debugRenderer.setCamera(camera);
-    physicsSystem.DrawBodies(debugRenderer.bodyDrawSettings, &debugRenderer);
+
+    const auto filter = drawSensorsOnly ? &drawOnlySensorsFilter : nullptr;
+    physicsSystem.DrawBodies(debugRenderer.bodyDrawSettings, &debugRenderer, filter);
 
     if (debugRenderer.bodyDrawSettings.mDrawShape) {
         // draw character
@@ -294,7 +306,83 @@ void PhysicsSystem::update(float dt, const glm::quat& characterRotation)
         physicsSystem.Update(dt, collisionSteps, tempAllocator.get(), &job_system);
     }
 
+    collectInteractableEntities(characterRotation);
+
     sendCollisionEvents();
+}
+
+void PhysicsSystem::collectInteractableEntities(const glm::quat& characterRotation)
+{
+    /*
+    JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
+    physicsSystem.GetBroadPhaseQuery().CollideSphere(util::glmToJolt(pos), 0.5f, collector);
+    */
+
+    /*
+    auto startPos = util::glmToJolt(getCharacterPosition() + glm::vec3{0.f, 1.f, 0.f});
+    auto direction = util::glmToJolt(characterRotation * glm::vec3{0.f, 0.f, 1.f} * 1.5f);
+    JPH::RRayCast ray{startPos, direction};
+    debugRenderer.DrawLine(startPos, startPos + direction, JPH::Color::sGreen);
+    */
+
+    /*
+    JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
+    JPH::RayCastSettings settings;
+    settings.mBackFaceMode = JPH::EBackFaceMode::CollideWithBackFaces;
+    physicsSystem.GetNarrowPhaseQuery().CastRay(ray, settings, collector);
+    */
+
+    interactableEntities.clear();
+
+    JPH::CollideShapeSettings settings;
+    settings.mBackFaceMode = JPH::EBackFaceMode::CollideWithBackFaces;
+
+    // sync interaction sphere
+    const auto sphereCenterPos = util::glmToJolt(
+        getCharacterPosition() + math::GlobalUpAxis * interactionSphereOffset.y +
+        characterRotation * math::GlobalFrontAxis * interactionSphereOffset.z);
+
+    JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
+    physicsSystem.GetNarrowPhaseQuery().CollideShape(
+        characterInteractionShape,
+        JPH::Vec3::sReplicate(1.0f),
+        JPH::RMat44::sTranslation(sphereCenterPos),
+        settings,
+        JPH::RVec3(),
+        collector);
+
+    if (drawCollisionShapes) {
+        debugRenderer.DrawSphere(sphereCenterPos, interactionSphereRadius, JPH::Color::sBlue);
+    }
+
+    bool had_hit = !collector.mHits.empty();
+    if (had_hit) {
+        // Draw results
+        for (const auto& hit : collector.mHits) {
+            JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), hit.mBodyID2);
+            if (lock.Succeeded()) {
+                const JPH::Body& hit_body = lock.GetBody();
+
+                auto it = bodyIDToEntity.find(hit_body.GetID().GetIndex());
+                if (it != bodyIDToEntity.end()) {
+                    const auto& e = it->second;
+                    if (e.all_of<InteractComponent>()) {
+                        interactableEntities.push_back(e);
+
+                        // Draw bounding box
+                        if (drawCollisionShapes) {
+                            JPH::Color color =
+                                hit_body.IsDynamic() ? JPH::Color::sRed : JPH::Color::sGreen;
+                            debugRenderer.DrawWireBox(
+                                hit_body.GetCenterOfMassTransform(),
+                                hit_body.GetShape()->GetLocalBounds(),
+                                color);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void PhysicsSystem::sendCollisionEvents()
@@ -352,67 +440,6 @@ void PhysicsSystem::characterPreUpdate(float dt, const glm::quat& characterRotat
         {},
         {},
         *tempAllocator);
-
-    /*
-    JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
-    physicsSystem.GetBroadPhaseQuery().CollideSphere(util::glmToJolt(pos), 0.5f, collector);
-    */
-
-    /*
-    auto startPos = util::glmToJolt(getCharacterPosition() + glm::vec3{0.f, 1.f, 0.f});
-    auto direction = util::glmToJolt(characterRotation * glm::vec3{0.f, 0.f, 1.f} * 1.5f);
-    JPH::RRayCast ray{startPos, direction};
-    debugRenderer.DrawLine(startPos, startPos + direction, JPH::Color::sGreen);
-    */
-
-    /*
-    JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
-    JPH::RayCastSettings settings;
-    settings.mBackFaceMode = JPH::EBackFaceMode::CollideWithBackFaces;
-    physicsSystem.GetNarrowPhaseQuery().CastRay(ray, settings, collector);
-    */
-
-    JPH::CollideShapeSettings settings;
-
-    // sync interaction sphere
-    const auto sphereCenterPos = util::glmToJolt(
-        getCharacterPosition() + math::GlobalUpAxis * interactionSphereOffset.y +
-        characterRotation * math::GlobalFrontAxis * interactionSphereOffset.z);
-    JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
-    physicsSystem.GetNarrowPhaseQuery().CollideShape(
-        characterInteractionShape,
-        JPH::Vec3::sReplicate(1.0f),
-        JPH::RMat44::sTranslation(sphereCenterPos),
-        settings,
-        JPH::RVec3(),
-        collector);
-
-    if (drawCollisionShapeWireframe) {
-        debugRenderer.DrawSphere(sphereCenterPos, interactionSphereRadius, JPH::Color::sBlue);
-    }
-
-    {
-        bool had_hit = !collector.mHits.empty();
-        if (had_hit) {
-            // Draw results
-            for (const auto& hit : collector.mHits) {
-                JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), hit.mBodyID2);
-                if (lock.Succeeded()) {
-                    const JPH::Body& hit_body = lock.GetBody();
-
-                    if (drawCollisionShapeWireframe) {
-                        // Draw bounding box
-                        JPH::Color color =
-                            hit_body.IsDynamic() ? JPH::Color::sRed : JPH::Color::sCyan;
-                        debugRenderer.DrawWireBox(
-                            hit_body.GetCenterOfMassTransform(),
-                            hit_body.GetShape()->GetLocalBounds(),
-                            color);
-                    }
-                }
-            }
-        }
-    }
 }
 
 namespace
@@ -634,13 +661,15 @@ void PhysicsSystem::doForBody(JPH::BodyID id, std::function<void(const JPH::Body
 void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
 {
     if (im.getKeyboard().wasJustPressed(SDL_SCANCODE_B)) {
-        drawCollisionShapeWireframe = !drawCollisionShapeWireframe;
+        drawCollisionShapes = !drawCollisionShapes;
     }
 
     if (ImGui::Begin("Physics")) {
         ImGui::Checkbox("Draw collision lines with depth", &drawCollisionLinesWithDepth);
-        ImGui::Checkbox("Draw collision wireframe", &drawCollisionShapeWireframe);
+        ImGui::Checkbox("Draw collision shapes", &drawCollisionShapes);
+        ImGui::Checkbox("Draw collision wireframe", &drawCollisionShapesWireframe);
         ImGui::Checkbox("Draw collision BB", &drawCollisionShapeBoundingBox);
+        ImGui::Checkbox("Draw sensors only", &drawSensorsOnly);
 
         if (ImGui::CollapsingHeader("Character")) {
             bool creationParamChanged = false;
@@ -697,9 +726,10 @@ void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
     }
     ImGui::End();
 
-    debugRenderer.setDrawLinesDepthTest(drawCollisionLinesWithDepth);
-    debugRenderer.setDrawShapeWireFrame(drawCollisionShapeWireframe);
-    debugRenderer.setDrawBoundingBox(drawCollisionShapeBoundingBox);
+    debugRenderer.drawLinesDepthTest = drawCollisionLinesWithDepth;
+    debugRenderer.bodyDrawSettings.mDrawShape = drawCollisionShapes;
+    debugRenderer.bodyDrawSettings.mDrawShapeWireframe = drawCollisionShapesWireframe;
+    debugRenderer.bodyDrawSettings.mDrawBoundingBox = drawCollisionShapeBoundingBox;
 }
 
 entt::handle PhysicsSystem::getEntityByBodyID(const JPH::BodyID& bodyID) const

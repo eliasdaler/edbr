@@ -206,7 +206,16 @@ public:
 
     entt::handle getEntityByBodyID(const JPH::BodyID& bodyID) const;
 
+    const std::vector<entt::handle>& getInteractableEntities() const
+    {
+        return interactableEntities;
+    }
+
+    bool wireframesDrawn() const { return drawCollisionShapes; }
+
 private:
+    void collectInteractableEntities(const glm::quat& characterRotation);
+
     struct CharacterParams {
         float maxSlopeAngle = glm::radians(60.0f);
         float maxStrength{100.0f};
@@ -263,8 +272,11 @@ private:
 
     // dev
     bool drawCollisionLinesWithDepth{true};
-    bool drawCollisionShapeWireframe{true};
+    bool drawCollisionShapes{false};
+    bool drawCollisionShapesWireframe{true};
     bool drawCollisionShapeBoundingBox{false};
+    bool drawSensorsOnly{true};
 
     std::unordered_map<std::uint32_t, entt::handle> bodyIDToEntity;
+    std::vector<entt::handle> interactableEntities;
 };

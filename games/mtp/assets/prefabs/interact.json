@@ -1,9 +1,11 @@
 {
   "trigger": {},
+  "interact": {},
   "physics": {
     "type": "static",
+    "originType": "center",
     "sensor": true,
-    "bodyType": "mesh"
+    "bodyType": "aabb"
   }
 }
 

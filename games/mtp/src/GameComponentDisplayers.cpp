@@ -75,6 +75,52 @@ void Game::registerComponentDisplayers()
         {
             DisplayProperty("bodyId", pc.bodyId.GetIndex());
 
+            const auto typeString = [](PhysicsComponent::Type t) {
+                switch (t) {
+                case PhysicsComponent::Type::Static:
+                    return "Static";
+                case PhysicsComponent::Type::Dynamic:
+                    return "Dynamic";
+                case PhysicsComponent::Type::Kinematic:
+                    return "Kinematic";
+                default:
+                    return "???";
+                }
+            }(pc.type);
+            DisplayProperty("Type", typeString);
+
+            const auto originTypeString = [](PhysicsComponent::OriginType t) {
+                switch (t) {
+                case PhysicsComponent::OriginType::BottomPlane:
+                    return "BottomPlane";
+                case PhysicsComponent::OriginType::Center:
+                    return "Center";
+                default:
+                    return "???";
+                }
+            }(pc.originType);
+            DisplayProperty("Origin type", originTypeString);
+
+            const auto bodyTypeString = [](PhysicsComponent::BodyType t) {
+                switch (t) {
+                case PhysicsComponent::BodyType::None:
+                    return "None";
+                case PhysicsComponent::BodyType::Sphere:
+                    return "Sphere";
+                case PhysicsComponent::BodyType::AABB:
+                    return "AABB";
+                case PhysicsComponent::BodyType::Capsule:
+                    return "Capsule";
+                case PhysicsComponent::BodyType::Cylinder:
+                    return "Cylinder";
+                case PhysicsComponent::BodyType::TriangleMesh:
+                    return "Triangle mesh";
+                default:
+                    return "???";
+                }
+            }(pc.bodyType);
+            DisplayProperty("Body type", bodyTypeString);
+
             physicsSystem->doForBody(pc.bodyId, [](const JPH::Body& body) {
                 DisplayProperty("Position", util::joltToGLM(body.GetPosition()));
                 DisplayProperty("Center of mass", util::joltToGLM(body.GetCenterOfMassPosition()));
@@ -182,4 +228,22 @@ void Game::registerComponentDisplayers()
             }
             EndPropertyTable();
         });
+
+    eid.registerDisplayer("Interact", [](entt::const_handle e, const InteractComponent& ic) {
+        BeginPropertyTable();
+        {
+            const auto typeString = [](InteractComponent::Type t) {
+                switch (t) {
+                case InteractComponent::Type::Interact:
+                    return "Interact";
+                case InteractComponent::Type::Talk:
+                    return "Talk";
+                default:
+                    return "???";
+                }
+            }(ic.type);
+            DisplayProperty("Type", typeString);
+        }
+        EndPropertyTable();
+    });
 }

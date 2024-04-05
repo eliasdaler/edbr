@@ -79,6 +79,11 @@ struct CameraComponent {};
 
 struct PlayerComponent {};
 
+struct InteractComponent {
+    enum class Type { None, Interact, Talk };
+    Type type{Type::Interact};
+};
+
 struct PhysicsComponent {
     enum class Type {
         Static,
@@ -86,6 +91,13 @@ struct PhysicsComponent {
         Kinematic,
     };
     Type type{Type::Static};
+
+    enum class OriginType {
+        BottomPlane,
+        Center,
+    };
+    OriginType originType{OriginType::BottomPlane};
+
     bool sensor{false};
 
     enum class BodyType {

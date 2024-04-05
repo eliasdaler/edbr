@@ -1,9 +1,9 @@
 #include "GameUI.h"
 
+#include <edbr/Graphics/Camera.h>
+#include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Graphics/SpriteRenderer.h>
-
-#include <random>
 
 #include <utf8.h>
 
@@ -48,112 +48,52 @@ void GameUI::init(GfxDevice& gfxDevice)
     const auto interactTipImageId =
         gfxDevice.loadImageFromFile("assets/images/ui/interact_tip.png");
     const auto& interactTipImage = gfxDevice.getImage(interactTipImageId);
-    interactipTipSprite.setTexture(interactTipImage);
-    interactipTipSprite.pivot = glm::vec2{0.5f, 1.2f};
+    interactTipSprite.setTexture(interactTipImage);
+    interactTipSprite.setPivotPixel({26, 60});
 
     const auto talkTipImageId = gfxDevice.loadImageFromFile("assets/images/ui/talk_tip.png");
     const auto& talkTipImage = gfxDevice.getImage(talkTipImageId);
     talkTipSprite.setTexture(talkTipImage);
+    talkTipSprite.setPivotPixel({72, 72});
 
-    const auto& kaeruImageId = gfxDevice.loadImageFromFile("assets/images/kaeru.png");
-    const auto& kaeruImage = gfxDevice.getImage(kaeruImageId);
-    kaeruSprite.setTexture(kaeruImage);
-    kaeruSprite.setTextureRect({48, 64, 16, 16});
-
-    const auto& testImageId = gfxDevice.loadImageFromFile("assets/images/test_sprite.png");
-    const auto& testImage = gfxDevice.getImage(testImageId);
-    testSprite.setTexture(testImage);
-    testSprite.pivot = glm::vec2{0.5f, 0.5f};
-
-    kaeruTransform.setPosition({240.f, 160.f, 0.f});
-    kaeruTransform.setScale(glm::vec3{4.f, 4.f, 1.f});
+    interactTipBouncer = Bouncer({
+        .maxOffset = 4.f,
+        .moveDuration = 0.5f,
+        .tween = glm::quadraticEaseInOut<float>,
+    });
 }
 
-void GameUI::draw(SpriteRenderer& uiRenderer)
+void GameUI::update(float dt)
 {
-#if 1
-    { // draw test UI
-      // uiRenderer.drawSprite(talkTipSprite, {128.f, 160.f});
+    interactTipBouncer.update(dt);
+    updateDevTools(dt);
+}
 
-        /*
-        uiRenderer.drawSprite(testSprite, {128.f, 250.f}, glm::pi<float>() / 4.f);
-        uiRenderer.drawFilledRect(
-            {128.f, 250.f, 64.f, 64.f},
-            glm::vec4{1.f, 1.f, 0.f, 0.5f},
-            glm::pi<float>() / 4.f,
-            glm::vec2{1.f},
-            glm::vec2{0.5f, 0.5f});
-        uiRenderer.drawFilledRect(
-            math::FloatRect{0.f, 0.f, 128.f, 250.f}, glm::vec4{0.f, 0.f, 1.f, 0.5f}); */
-
-        // uiRenderer.drawSprite(kaeruSprite, kaeruTransform.asMatrix());
-
-        /* uiRenderer.drawText(
-            defaultFont, strings[0], glm::vec2{64.f, 64.f}, LinearColor{1.f, 1.f, 1.f, 1.f});
-        uiRenderer.drawText(
-            defaultFont, strings[1], glm::vec2{64.f, 90.f}, LinearColor{1.f, 1.f, 0.f, 1.f});
-
-        uiRenderer.drawText(
-            defaultFont, strings[2], glm::vec2{64.f, 120.f}, LinearColor{1.f, 0.f, 1.f, 1.f});
-*/
-
-        /* for (int i = 0; i < 8; ++i) {
-            const auto rotation = i * glm::pi<float>() / 4.f;
-            uiRenderer.drawSprite(interactipTipSprite, glm::vec2{64.f, 100.f}, rotation);
-        }
-
-        uiRenderer.drawFilledRect(
-            {rectPos, rectSize},
-            glm::vec4{1.f, 1.f, 0.f, 0.5f},
-            rectRotation,
-            rectScale,
-            rectPivot);
-        uiRenderer.drawRect(
-            {rectPos, rectSize},
-            glm::vec4{1.f, 0.f, 1.f, 0.5f},
-            borderWidth,
-            rectRotation,
-            rectScale,
-            rectPivot,
-            insetBorder); */
+void GameUI::draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const
+{
+    if (ctx.interactionType != InteractComponent::Type::None) {
+        drawInteractTip(uiRenderer, ctx);
     }
-#endif
+}
 
-#if 0
-    {
-        std::array<Sprite, 3> sprites{interactipTipSprite, talkTipSprite, kaeruSprite};
-
-        std::default_random_engine e1(1337);
-        std::uniform_int_distribution<int> uniform_dist(0, 1280);
-        std::uniform_real_distribution<float> angleDist(0.f, glm::pi<float>() / 2.f);
-        for (int x = 0; x < 100; ++x) {
-            for (int y = 0; y < 100; ++y) {
-                const auto& sprite = sprites[(x * y) % 3];
-                const auto pos = glm::vec2{uniform_dist(e1), uniform_dist(e1)};
-                const auto rot = angleDist(e1);
-                uiRenderer.drawSprite(sprite, pos, rot);
-            }
+void GameUI::drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const
+{
+    const Sprite& sprite = [this](InteractComponent::Type type) {
+        switch (type) {
+        case InteractComponent::Type::Interact:
+            return interactTipSprite;
+        case InteractComponent::Type::Talk:
+            return talkTipSprite;
+        default:
+            return interactTipSprite;
         }
-    }
-#endif
+    }(ctx.interactionType);
+
+    auto screenPos = edbr::util::fromWorldCoordsToScreenCoords(
+        ctx.playerPos + glm::vec3{0.f, 1.7f, 0.f}, ctx.camera.getViewProj(), ctx.screenSize);
+    screenPos.y += interactTipBouncer.getOffset();
+    uiRenderer.drawSprite(sprite, screenPos);
 }
 
 void GameUI::updateDevTools(float dt)
-{
-    /*
-    auto dragVec2 = [](const char* label, glm::vec2& v) {
-        std::array<float, 2> arr{v.x, v.y};
-        if (ImGui::DragFloat2(label, arr.data())) {
-            v.x = arr[0];
-            v.y = arr[1];
-        }
-    };
-    dragVec2("rectPos", rectPos);
-    dragVec2("rectSize", rectSize);
-    dragVec2("rectPivot", rectPivot);
-    dragVec2("rectScale", rectScale);
-    ImGui::DragFloat("rectRotation", &rectRotation, 0.01f, -2.f, 2.f);
-    ImGui::DragFloat("borderWidth", &borderWidth, 0.1f, 1.f, 16.f);
-    ImGui::Checkbox("insetBorder", &insetBorder);
-    */
-}
+{}

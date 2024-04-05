@@ -3,6 +3,7 @@
   "physics": {
     "type": "static",
     "sensor": true,
-    "bodyType": "mesh"
+    "bodyType": "aabb",
+    "originType": "center"
   }
 }

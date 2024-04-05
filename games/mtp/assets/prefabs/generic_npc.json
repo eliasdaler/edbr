@@ -12,5 +12,8 @@
       "halfHeight": 8.0,
       "radius": 3.0
     }
+  },
+  "interact": {
+    "type": "talk"
   }
 }

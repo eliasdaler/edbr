@@ -73,14 +73,11 @@ public:
 
     void setCamera(const Camera& camera);
 
-    void setDrawLinesDepthTest(bool b);
-    void setDrawShapeWireFrame(bool b);
-    void setDrawBoundingBox(bool b);
-
     JPH::BodyManager::DrawSettings bodyDrawSettings;
 
     Frustum frustum;
     JPH::Vec3 cameraPos;
-    float maxRenderDistSq {64.f * 64.f};
+    float maxRenderDistSq{64.f * 64.f};
     bool drawLinesDepthTest{true};
+    float solidShapeAlpha{0.3f};
 };

@@ -22,6 +22,7 @@
 #include <imgui.h>
 
 #include <glm/gtx/easing.hpp>
+#include <glm/gtx/norm.hpp> // length2
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
@@ -113,8 +114,8 @@ void Game::customInit()
         e.emplace<PlayerComponent>();
     }
 
-    // loadLevel("assets/levels/house.json");
-    loadLevel("assets/levels/city.json");
+    loadLevel("assets/levels/house.json");
+    // loadLevel("assets/levels/city.json");
 
     // spawn player
     const auto& spawnName = level.getDefaultPlayerSpawnerName();
@@ -237,6 +238,8 @@ void Game::customUpdate(float dt)
 
     // audio needs to be updated after the camera
     animationSoundSystem.update(registry, camera, dt);
+
+    ui.update(dt);
 
     updateDevTools(dt);
 
@@ -645,7 +648,31 @@ void Game::generateDrawList()
     renderer.endDrawing();
 
     spriteRenderer.beginDrawing();
-    ui.draw(spriteRenderer);
+
+    // draw interact tip
+    const auto& playerPos = physicsSystem->getCharacterPosition();
+    auto uiCtx = GameUI::UIContext{
+        .camera = camera,
+        .screenSize = {params.renderWidth, params.renderHeight},
+        .playerPos = playerPos,
+    };
+
+    // find closest interactable entity
+    float minDist = std::numeric_limits<float>::max();
+    entt::handle interactEntity{};
+    for (const auto& e : physicsSystem->getInteractableEntities()) {
+        float d = glm::distance2(eu::getWorldPosition(e), playerPos);
+        if (d < minDist) {
+            interactEntity = e;
+        }
+    }
+    if (interactEntity.entity() != entt::null) {
+        const auto& ic = interactEntity.get<InteractComponent>();
+        uiCtx.interactionType = ic.type;
+    }
+
+    ui.draw(spriteRenderer, uiCtx);
+
     spriteRenderer.endDrawing();
 }
 
@@ -687,7 +714,7 @@ std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
     if (sceneNodeName.empty()) {
         return {};
     }
-    const auto dotPos = sceneNodeName.find_first_of(".");
+    const auto dotPos = sceneNodeName.find_last_of(".");
     if (dotPos == std::string::npos || dotPos == sceneNodeName.length() - 1) {
         fmt::println(
             "ERROR: cannot extract name {}: should have format <prefab>.<name>", sceneNodeName);
@@ -740,14 +767,18 @@ void Game::entityPostInit(entt::handle e)
         case PhysicsComponent::BodyType::Capsule: {
             const auto& params = std::get<PhysicsComponent::CapsuleParams>(pc.bodyParams);
             shape = new JPH::CapsuleShape(params.halfHeight, params.radius);
-            shape = new JPH::RotatedTranslatedShape(
-                {0.f, params.halfHeight + params.radius, 0.f}, JPH::Quat().sIdentity(), shape);
+            if (pc.originType == PhysicsComponent::OriginType::BottomPlane) {
+                shape = new JPH::RotatedTranslatedShape(
+                    {0.f, params.halfHeight + params.radius, 0.f}, JPH::Quat().sIdentity(), shape);
+            }
         } break;
         case PhysicsComponent::BodyType::Cylinder: {
             const auto& params = std::get<PhysicsComponent::CylinderParams>(pc.bodyParams);
             shape = new JPH::CylinderShape(params.halfHeight, params.radius);
-            shape = new JPH::RotatedTranslatedShape(
-                {0.f, params.halfHeight, 0.f}, JPH::Quat().sIdentity(), shape);
+            if (pc.originType == PhysicsComponent::OriginType::BottomPlane) {
+                shape = new JPH::RotatedTranslatedShape(
+                    {0.f, params.halfHeight, 0.f}, JPH::Quat().sIdentity(), shape);
+            }
         } break;
         case PhysicsComponent::BodyType::AABB: {
             auto& params = std::get<PhysicsComponent::AABBParams>(pc.bodyParams);
@@ -774,7 +805,10 @@ void Game::entityPostInit(entt::handle e)
             // for completely flat objects, the origin will be at the center of the object
             // for objects with height, it will be at the center of the bottom AABB plane
             shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
-            const auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
+            auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
+            if (pc.originType == PhysicsComponent::OriginType::Center) {
+                offsetY = 0.f;
+            }
             shape = new JPH::
                 RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
         } break;
@@ -899,6 +933,17 @@ void Game::registerComponents(ComponentFactory& componentFactory)
                 fmt::println("[error] unknown physics component type '{}'", type);
             }
 
+            // origin type
+            std::string originType;
+            loader.getIfExists("originType", originType);
+            if (originType == "bottom_plane") {
+                pc.originType = PhysicsComponent::OriginType::BottomPlane;
+            } else if (originType == "center") {
+                pc.originType = PhysicsComponent::OriginType::Center;
+            } else if (!originType.empty()) {
+                fmt::println("[error] unknown physics component origin type '{}'", type);
+            }
+
             // sensor
             loader.getIfExists("sensor", pc.sensor);
 
@@ -922,6 +967,20 @@ void Game::registerComponents(ComponentFactory& componentFactory)
             } else if (!bodyType.empty()) {
                 // TODO: load other body types from JSON
                 fmt::println("[error] unknown physics component body type '{}'", bodyType);
+            }
+        });
+
+    componentFactory.registerComponentLoader(
+        "interact", [](entt::handle e, InteractComponent& ic, const JsonDataLoader& loader) {
+            // type
+            std::string type;
+            loader.getIfExists("type", type);
+            if (type == "examine") {
+                ic.type = InteractComponent::Type::Interact;
+            } else if (type == "talk") {
+                ic.type = InteractComponent::Type::Talk;
+            } else if (!type.empty()) {
+                fmt::println("[error] unknown interact component type '{}'", type);
             }
         });
 

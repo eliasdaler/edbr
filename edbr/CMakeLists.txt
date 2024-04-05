@@ -40,6 +40,7 @@ add_library(edbr
   src/Graphics/Vulkan/VulkanImmediateExecutor.cpp
 
   # Graphics
+  src/Graphics/Bouncer.cpp
   src/Graphics/Camera.cpp
   src/Graphics/Cubemap.cpp
   src/Graphics/Font.cpp

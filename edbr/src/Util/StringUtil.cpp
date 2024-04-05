@@ -21,4 +21,9 @@ std::string fromCamelCaseToSnakeCase(const std::string& str)
     return res;
 }
 
+bool stringContains(const std::string& str, const std::string& substr)
+{
+    return str.find(substr) != std::string::npos;
+}
+
 } // end of namespace util

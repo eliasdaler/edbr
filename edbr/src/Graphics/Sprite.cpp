@@ -22,3 +22,9 @@ void Sprite::setTextureRect(const math::IntRect& textureRect)
     uv0 = static_cast<glm::vec2>(textureRect.getTopLeftCorner()) / textureSize;
     uv1 = static_cast<glm::vec2>(textureRect.getBottomRightCorner()) / textureSize;
 }
+
+void Sprite::setPivotPixel(const glm::ivec2& pixel)
+{
+    assert(texture != NULL_IMAGE_ID);
+    pivot = static_cast<glm::vec2>(pixel) / textureSize;
+}

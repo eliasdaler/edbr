@@ -18,6 +18,8 @@ public:
     // Set texture rect by pixel coordinates, e.g. sprite.setTextureRect({32, 48, 16, 16});
     void setTextureRect(const math::IntRect& textureRect);
 
+    void setPivotPixel(const glm::ivec2& pixel);
+
     ImageId texture{NULL_IMAGE_ID};
     glm::vec2 textureSize{0.f};
 
@@ -28,5 +30,5 @@ public:
     // its center, you can set this to glm::vec2{0.5, 0.5}
     glm::vec2 pivot{0.f};
 
-    LinearColor color{1.f}; // the color the sprite is multiplied by in the shader
+    LinearColor color{LinearColor::White()}; // the color the sprite is multiplied by in the shader
 };

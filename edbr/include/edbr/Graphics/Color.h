@@ -16,6 +16,9 @@ struct LinearColor {
     float g{0.f};
     float b{0.f};
     float a{1.f};
+
+    static LinearColor Black() { return {0.f, 0.f, 0.f, 1.f}; }
+    static LinearColor White() { return {1.f, 1.f, 1.f, 1.f}; }
 };
 
 struct LinearColorNoAlpha {
