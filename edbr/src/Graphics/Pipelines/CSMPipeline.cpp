@@ -111,7 +111,7 @@ void CSMPipeline::draw(
         cascadeFarPlaneZs[i] = zFar;
 
         // create subfustrum by copying everything about the main camera,
-        // but changing zFar
+        // but changing zNear and zFar
         Camera subFrustumCamera;
         subFrustumCamera.setPosition(camera.getPosition());
         subFrustumCamera.setHeading(camera.getHeading());

@@ -352,7 +352,13 @@ void PhysicsSystem::collectInteractableEntities(const glm::quat& characterRotati
         collector);
 
     if (drawCollisionShapes) {
-        debugRenderer.DrawSphere(sphereCenterPos, interactionSphereRadius, JPH::Color::sBlue);
+        debugRenderer.DrawSphere(
+            sphereCenterPos,
+            interactionSphereRadius,
+            JPH::Color::sBlue,
+            JPH::DebugRenderer::ECastShadow::Off,
+            drawCollisionShapesWireframe ? JPH::DebugRenderer::EDrawMode::Wireframe :
+                                           JPH::DebugRenderer::EDrawMode::Solid);
     }
 
     bool had_hit = !collector.mHits.empty();
@@ -670,6 +676,7 @@ void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
         ImGui::Checkbox("Draw collision wireframe", &drawCollisionShapesWireframe);
         ImGui::Checkbox("Draw collision BB", &drawCollisionShapeBoundingBox);
         ImGui::Checkbox("Draw sensors only", &drawSensorsOnly);
+        ImGui::DragFloat("Solid shape alpha", &debugRenderer.solidShapeAlpha, 0.01f, 0.f, 1.f);
 
         if (ImGui::CollapsingHeader("Character")) {
             bool creationParamChanged = false;

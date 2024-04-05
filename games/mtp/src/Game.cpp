@@ -114,8 +114,8 @@ void Game::customInit()
         e.emplace<PlayerComponent>();
     }
 
-    loadLevel("assets/levels/house.json");
-    // loadLevel("assets/levels/city.json");
+    // loadLevel("assets/levels/house.json");
+    loadLevel("assets/levels/city.json");
 
     // spawn player
     const auto& spawnName = level.getDefaultPlayerSpawnerName();
@@ -222,6 +222,17 @@ void Game::customUpdate(float dt)
         auto physicsView = registry.view<TransformComponent, PhysicsComponent>();
         for (auto&& [e, tc, pc] : physicsView.each()) {
             physicsSystem->syncVisibleTransform(pc.bodyId, tc.transform);
+        }
+
+        // find closest interactable entity
+        float minDist = std::numeric_limits<float>::max();
+        interactEntity = {};
+        for (const auto& e : physicsSystem->getInteractableEntities()) {
+            float d =
+                glm::distance2(eu::getWorldPosition(e), physicsSystem->getCharacterPosition());
+            if (d < minDist) {
+                interactEntity = e;
+            }
         }
     }
 
@@ -350,6 +361,13 @@ void Game::handlePlayerInput(float dt)
     bool jumpHeld = actionMapping.isHeld(jumpAction);
     bool sprinting = actionMapping.isHeld(sprintAction);
     physicsSystem->handleCharacterInput(dt, moveDir, jumping, jumpHeld, sprinting);
+
+    static const auto interactAction = actionMapping.getActionTagHash("PrimaryAction");
+    if (actionMapping.wasJustPressed(interactAction)) {
+        if (interactEntity.entity() != entt::null) {
+            std::cout << "interact with " << (int)interactEntity.entity() << std::endl;
+        }
+    }
 }
 
 void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
@@ -657,15 +675,6 @@ void Game::generateDrawList()
         .playerPos = playerPos,
     };
 
-    // find closest interactable entity
-    float minDist = std::numeric_limits<float>::max();
-    entt::handle interactEntity{};
-    for (const auto& e : physicsSystem->getInteractableEntities()) {
-        float d = glm::distance2(eu::getWorldPosition(e), playerPos);
-        if (d < minDist) {
-            interactEntity = e;
-        }
-    }
     if (interactEntity.entity() != entt::null) {
         const auto& ic = interactEntity.get<InteractComponent>();
         uiCtx.interactionType = ic.type;

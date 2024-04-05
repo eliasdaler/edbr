@@ -135,12 +135,14 @@ void JoltDebugRenderer::DrawGeometry(
             auto col = joltToIm3d(inModelColor);
             col.setA(solidShapeAlpha);
             Im3d::PushColor(col);
-            auto& ctx = Im3d::GetContext();
-            ctx.begin(Im3d::PrimitiveMode_Triangles);
-            ctx.vertex(joltToIm3d(v0));
-            ctx.vertex(joltToIm3d(v1));
-            ctx.vertex(joltToIm3d(v2));
-            ctx.end();
+            {
+                auto& ctx = Im3d::GetContext();
+                ctx.begin(Im3d::PrimitiveMode_Triangles);
+                ctx.vertex(joltToIm3d(v0));
+                ctx.vertex(joltToIm3d(v1));
+                ctx.vertex(joltToIm3d(v2));
+                ctx.end();
+            }
             Im3d::PopColor();
         } else {
             float lineWidth = lodNum != 0 ? 1.f : 3.f;

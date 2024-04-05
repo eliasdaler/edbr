@@ -275,7 +275,7 @@ private:
     bool drawCollisionShapes{false};
     bool drawCollisionShapesWireframe{true};
     bool drawCollisionShapeBoundingBox{false};
-    bool drawSensorsOnly{true};
+    bool drawSensorsOnly{false};
 
     std::unordered_map<std::uint32_t, entt::handle> bodyIDToEntity;
     std::vector<entt::handle> interactableEntities;

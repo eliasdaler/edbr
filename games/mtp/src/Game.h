@@ -96,6 +96,8 @@ private:
     std::unique_ptr<PhysicsSystem> physicsSystem;
     AnimationSoundSystem animationSoundSystem;
 
+    entt::handle interactEntity;
+
     Level level;
     std::filesystem::path skyboxDir;
 
