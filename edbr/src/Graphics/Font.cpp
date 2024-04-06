@@ -119,6 +119,8 @@ bool Font::load(
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
 
+    loaded = true;
+
     return true;
 }
 

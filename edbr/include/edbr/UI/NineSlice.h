@@ -10,18 +10,9 @@ class NineSlice {
 public:
     void setStyle(NineSliceStyle s);
 
-    void setPosition(const glm::vec2& pos) { position = pos; }
-    const glm::vec2& getPosition() const { return position; }
-
-    void setSize(const glm::vec2& newSize);
-    const glm::vec2& getSize() const { return size; }
-
-    void draw(SpriteRenderer& renderer) const;
+    void draw(SpriteRenderer& renderer, const glm::vec2& position, const glm::vec2& size) const;
 
 private:
-    glm::vec2 position;
-    glm::vec2 size;
-
     ui::NineSliceStyle style;
 };
 

@@ -63,13 +63,13 @@ void GameUI::init(GfxDevice& gfxDevice)
         .tween = glm::quadraticEaseInOut<float>,
     });
 
-    ui::NineSliceStyle s;
+    ui::NineSliceStyle nsStyle;
 
     JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
-    s.load(file.getLoader(), gfxDevice);
-    nineSlice.setStyle(s);
-    nineSlice.setPosition({64.f, 64.f});
-    nineSlice.setSize({640.f, 256.f});
+    nsStyle.load(file.getLoader(), gfxDevice);
+
+    nineSlice = std::make_unique<ui::NineSliceElement>(nsStyle, glm::vec2{640.f, 256.f});
+    textLabel = std::make_unique<ui::TextLabel>(strings[0], defaultFont);
 }
 
 void GameUI::update(float dt)
@@ -84,12 +84,13 @@ void GameUI::draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const
         drawInteractTip(uiRenderer, ctx);
     }
 
-    nineSlice.draw(uiRenderer);
+    const auto nineSlicePos = glm::vec2{64.f, 64.f};
+    nineSlice->getNineSlice().draw(uiRenderer, nineSlicePos, nineSlice->getSize());
 
     const auto textPos = glm::vec2{120.f, 128.f};
-    uiRenderer.drawText(defaultFont, strings[0], textPos, LinearColor::White());
+    uiRenderer.drawText(textLabel->getFont(), textLabel->getText(), textPos, LinearColor::White());
 
-    auto bb = defaultFont.calculateTextBoundingBox(strings[0]);
+    auto bb = textLabel->getFont().calculateTextBoundingBox(textLabel->getText());
     bb.left += textPos.x;
     bb.top += textPos.y;
     uiRenderer.drawRect(bb, LinearColor{1.f, 0.f, 0.f, 1.f});

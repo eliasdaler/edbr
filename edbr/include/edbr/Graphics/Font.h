@@ -48,4 +48,5 @@ struct Font {
 
     int size{0};
     float lineSpacing{0}; // line spacing in pixels
+    bool loaded{false};
 };

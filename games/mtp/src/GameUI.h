@@ -7,7 +7,9 @@
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Math/Transform.h>
-#include <edbr/UI/NineSlice.h>
+
+#include <edbr/UI/NineSliceElement.h>
+#include <edbr/UI/TextLabel.h>
 
 #include "Components.h"
 
@@ -42,5 +44,6 @@ private:
     Sprite talkTipSprite;
     Bouncer interactTipBouncer;
 
-    ui::NineSlice nineSlice;
+    std::unique_ptr<ui::NineSliceElement> nineSlice;
+    std::unique_ptr<ui::TextLabel> textLabel;
 };

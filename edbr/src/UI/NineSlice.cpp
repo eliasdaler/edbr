@@ -10,15 +10,6 @@ namespace ui
 void NineSlice::setStyle(ui::NineSliceStyle s)
 {
     style = std::move(s);
-    setSize(size);
-}
-
-void NineSlice::setSize(const glm::vec2& newSize)
-{
-    if (newSize == size) {
-        return;
-    }
-    size = newSize;
 }
 
 namespace
@@ -56,7 +47,10 @@ namespace
     }
 }
 
-void NineSlice::draw(SpriteRenderer& spriteRenderer) const
+void NineSlice::draw(
+    SpriteRenderer& spriteRenderer,
+    const glm::vec2& position,
+    const glm::vec2& size) const
 {
     // Origin is at upper-left corner of (4)
     // The size of (4) is this->size
