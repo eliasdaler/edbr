@@ -50,8 +50,10 @@ bool Font::load(
 
     FT_Set_Pixel_Sizes(face, 0, size);
 
-    // because metrics.height is stored as 1/64th of pixels
+    // because metrics.height etc. is stored as 1/64th of pixels
     lineSpacing = face->size->metrics.height / 64.f;
+    ascenderPx = face->size->metrics.ascender / 64.f;
+    descenderPx = face->size->metrics.descender / 64.f;
 
     // TODO: allow to specify atlas size?
     int aw = GLYPH_ATLAS_SIZE;

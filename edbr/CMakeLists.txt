@@ -104,6 +104,7 @@ add_library(edbr
   src/UI/NineSliceElement.cpp
   src/UI/Style.cpp
   src/UI/TextLabel.cpp
+  src/UI/ListLayoutElement.cpp
 
   src/Application.cpp
   src/FreeCameraController.cpp

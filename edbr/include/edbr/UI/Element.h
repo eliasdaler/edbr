@@ -10,6 +10,14 @@ namespace ui
 
 class Element {
 public:
+    enum class AutomaticSizing {
+        None,
+        X, // auto-resize weight only
+        Y, // auto-resize height only
+        XY, // auto -resize both weight and height
+    };
+
+public:
     virtual ~Element() = default;
 
     void addChild(std::unique_ptr<Element> element);
@@ -17,14 +25,20 @@ public:
     const Element* getParent() const { return parent; }
     const std::vector<std::unique_ptr<Element>>& getChildren() const { return children; }
 
-    void setPosition(const glm::vec2& pos) { position = pos; }
-    const glm::vec2& getPosition() const { return position; }
+    virtual void setPosition(const glm::vec2& pos) { position = pos; }
+    virtual const glm::vec2 getPosition() const { return position; }
 
-private:
+    glm::vec2 getSize() const;
+    virtual glm::vec2 getContentSize() const = 0;
+
+    void setAutomaticSizing(AutomaticSizing s) { autoSizing = s; }
+
+protected:
     Element* parent{nullptr};
     std::vector<std::unique_ptr<Element>> children;
 
     glm::vec2 position;
+    AutomaticSizing autoSizing{AutomaticSizing::None};
 };
 
 } // end of namespace ui

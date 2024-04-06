@@ -9,6 +9,10 @@
 #include <utf8.h>
 
 #include <edbr/Util/ImGuiUtil.h>
+#include <misc/cpp/imgui_stdlib.h>
+
+#include <edbr/UI/ListLayoutElement.h>
+#include <edbr/UI/PaddingElement.h>
 
 namespace
 {
@@ -72,13 +76,20 @@ void GameUI::init(GfxDevice& gfxDevice)
 
     rootUIElement = std::make_unique<ui::NineSliceElement>(nsStyle, glm::vec2{640.f, 256.f});
     rootUIElement->setPosition(glm::vec2{64.f, 64.f});
+    rootUIElement->setAutomaticSizing(ui::Element::AutomaticSizing::XY);
 
-    auto textLabel = std::make_unique<ui::TextLabel>(strings[0], defaultFont);
-    const auto innerPadding = glm::vec2{16.f, 0.f};
-    const auto textHeight = 32.f;
-    textLabel->setPosition(glm::vec2{0.f, textHeight} + innerPadding);
+    auto listElement =
+        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
+    const auto strings = std::vector<std::string>{"Aaaaa", "Bbbb", "Dddd", "Exit"};
+    for (const auto& str : strings) {
+        auto textLabel = std::make_unique<ui::TextLabel>(str, defaultFont);
+        textLabel->setPadding({8.f, 8.f, 0.f, 0.f});
+        listElement->addChild(std::move(textLabel));
+    }
+    listElement->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 16.f}));
+    listElement->applyLayout();
 
-    rootUIElement->addChild(std::move(textLabel));
+    rootUIElement->addChild(std::move(listElement));
 }
 
 void GameUI::update(float dt)
@@ -120,6 +131,11 @@ void GameUI::updateDevTools(float dt)
     if (ImGui::Drag("UI pos", &pos)) {
         rootUIElement->setPosition(pos);
     }
+
+    if (ImGui::InputTextMultiline("text", &strings[0])) {
+        auto& textLabel = static_cast<ui::TextLabel&>(*rootUIElement->getChildren()[0]);
+        textLabel.setText(strings[0]);
+    }
 }
 
 void GameUI::drawUIElement(
@@ -130,14 +146,16 @@ void GameUI::drawUIElement(
     if (auto ns = dynamic_cast<const ui::NineSliceElement*>(&element); ns) {
         ns->getNineSlice().draw(uiRenderer, element.getPosition(), ns->getSize());
     }
-    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
-        uiRenderer.drawText(
-            tl->getFont(), tl->getText(), parentPos + element.getPosition(), LinearColor::White());
 
-        auto bb = tl->getFont().calculateTextBoundingBox(tl->getText());
-        bb.left += parentPos.x + element.getPosition().x;
-        bb.top += parentPos.y + element.getPosition().y;
-        uiRenderer.drawRect(bb, LinearColor{1.f, 0.f, 0.f, 1.f});
+    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
+        auto p = tl->getPadding();
+        auto textPos = parentPos + element.getPosition() + glm::vec2{p.left, p.top} +
+                       glm::vec2{0.f, tl->getFont().lineSpacing};
+        uiRenderer.drawText(tl->getFont(), tl->getText(), textPos, LinearColor::White());
+
+        auto pos = parentPos + tl->getPosition();
+        auto cs = tl->getContentSize();
+        // uiRenderer.drawRect({pos, cs}, LinearColor{1.f, 0.f, 0.f, 1.f});
     }
 
     for (const auto& childPtr : element.getChildren()) {
