@@ -13,6 +13,7 @@
 
 #include <edbr/UI/ListLayoutElement.h>
 #include <edbr/UI/PaddingElement.h>
+#include <edbr/UI/TextButton.h>
 
 namespace
 {
@@ -78,18 +79,46 @@ void GameUI::init(GfxDevice& gfxDevice)
     rootUIElement->setPosition(glm::vec2{64.f, 64.f});
     rootUIElement->setAutomaticSizing(ui::Element::AutomaticSizing::XY);
 
-    auto listElement =
+    auto settingsValueColumn =
         std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
-    const auto strings = std::vector<std::string>{"Aaaaa", "Bbbb", "Dddd", "Exit"};
+
+    auto settingsNameColumn =
+        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
+    const auto strings = std::vector<
+        std::string>{"Sound", "Subtitles", "Music volume", "SFX volume", "Speech volume", "Device"};
     for (const auto& str : strings) {
         auto textLabel = std::make_unique<ui::TextLabel>(str, defaultFont);
-        textLabel->setPadding({8.f, 8.f, 0.f, 0.f});
-        listElement->addChild(std::move(textLabel));
-    }
-    listElement->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 16.f}));
-    listElement->applyLayout();
+        textLabel->setPadding({24.f, 8.f, 0.f, 0.f});
+        settingsNameColumn->addChild(std::move(textLabel));
 
-    rootUIElement->addChild(std::move(listElement));
+        auto valueLabel = std::make_unique<ui::TextLabel>("<setting>", defaultFont);
+        valueLabel->setPadding({32.f, 32.f, 0.f, 0.f});
+        settingsValueColumn->addChild(std::move(valueLabel));
+    }
+    settingsNameColumn->applyLayout();
+    settingsValueColumn->applyLayout();
+
+    auto buttonsRow =
+        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Horizontal);
+    buttonsRow->addChild(std::make_unique<ui::TextButton>(nsStyle, defaultFont, "OK"));
+    buttonsRow->addChild(std::make_unique<ui::TextButton>(nsStyle, defaultFont, "Cancel"));
+    buttonsRow->applyLayout();
+
+    auto settingsMainLayout =
+        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Horizontal);
+    settingsMainLayout->addChild(std::move(settingsNameColumn));
+    settingsMainLayout->addChild(std::move(settingsValueColumn));
+    settingsMainLayout->applyLayout();
+
+    auto settingsLayout =
+        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
+    settingsLayout->addChild(std::move(settingsMainLayout));
+    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 32.f}));
+    settingsLayout->addChild(std::move(buttonsRow));
+    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 16.f}));
+    settingsLayout->applyLayout();
+
+    rootUIElement->addChild(std::move(settingsLayout));
 }
 
 void GameUI::update(float dt)
@@ -144,7 +173,7 @@ void GameUI::drawUIElement(
     const glm::vec2& parentPos) const
 {
     if (auto ns = dynamic_cast<const ui::NineSliceElement*>(&element); ns) {
-        ns->getNineSlice().draw(uiRenderer, element.getPosition(), ns->getSize());
+        ns->getNineSlice().draw(uiRenderer, parentPos + element.getPosition(), ns->getSize());
     }
 
     if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {

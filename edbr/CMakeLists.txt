@@ -105,6 +105,7 @@ add_library(edbr
   src/UI/Style.cpp
   src/UI/TextLabel.cpp
   src/UI/ListLayoutElement.cpp
+  src/UI/TextButton.cpp
 
   src/Application.cpp
   src/FreeCameraController.cpp
