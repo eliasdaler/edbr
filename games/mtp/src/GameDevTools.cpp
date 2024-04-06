@@ -147,6 +147,10 @@ void Game::updateDevTools(float dt)
         if (ImGui::CollapsingHeader("Renderer settings")) {
             renderer.updateDevTools(dt);
         }
+
+        if (ImGui::CollapsingHeader("UI")) {
+            ui.updateDevTools(dt);
+        }
     }
     ImGui::End();
 

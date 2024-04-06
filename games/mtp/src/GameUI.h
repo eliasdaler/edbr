@@ -28,13 +28,17 @@ public:
 public:
     void init(GfxDevice& gfxDevice);
     void update(float dt);
+    void updateDevTools(float dt);
 
     void draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
 
 private:
     void drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
 
-    void updateDevTools(float dt);
+    void drawUIElement(
+        SpriteRenderer& uiRenderer,
+        const ui::Element& element,
+        const glm::vec2& parentPos) const;
 
     Font defaultFont;
 
@@ -44,6 +48,5 @@ private:
     Sprite talkTipSprite;
     Bouncer interactTipBouncer;
 
-    std::unique_ptr<ui::NineSliceElement> nineSlice;
-    std::unique_ptr<ui::TextLabel> textLabel;
+    std::unique_ptr<ui::Element> rootUIElement;
 };

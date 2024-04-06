@@ -8,6 +8,8 @@
 
 #include <utf8.h>
 
+#include <edbr/Util/ImGuiUtil.h>
+
 namespace
 {
 
@@ -68,14 +70,20 @@ void GameUI::init(GfxDevice& gfxDevice)
     JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
     nsStyle.load(file.getLoader(), gfxDevice);
 
-    nineSlice = std::make_unique<ui::NineSliceElement>(nsStyle, glm::vec2{640.f, 256.f});
-    textLabel = std::make_unique<ui::TextLabel>(strings[0], defaultFont);
+    rootUIElement = std::make_unique<ui::NineSliceElement>(nsStyle, glm::vec2{640.f, 256.f});
+    rootUIElement->setPosition(glm::vec2{64.f, 64.f});
+
+    auto textLabel = std::make_unique<ui::TextLabel>(strings[0], defaultFont);
+    const auto innerPadding = glm::vec2{16.f, 0.f};
+    const auto textHeight = 32.f;
+    textLabel->setPosition(glm::vec2{0.f, textHeight} + innerPadding);
+
+    rootUIElement->addChild(std::move(textLabel));
 }
 
 void GameUI::update(float dt)
 {
     interactTipBouncer.update(dt);
-    updateDevTools(dt);
 }
 
 void GameUI::draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const
@@ -84,16 +92,7 @@ void GameUI::draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const
         drawInteractTip(uiRenderer, ctx);
     }
 
-    const auto nineSlicePos = glm::vec2{64.f, 64.f};
-    nineSlice->getNineSlice().draw(uiRenderer, nineSlicePos, nineSlice->getSize());
-
-    const auto textPos = glm::vec2{120.f, 128.f};
-    uiRenderer.drawText(textLabel->getFont(), textLabel->getText(), textPos, LinearColor::White());
-
-    auto bb = textLabel->getFont().calculateTextBoundingBox(textLabel->getText());
-    bb.left += textPos.x;
-    bb.top += textPos.y;
-    uiRenderer.drawRect(bb, LinearColor{1.f, 0.f, 0.f, 1.f});
+    drawUIElement(uiRenderer, *rootUIElement, {});
 }
 
 void GameUI::drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const
@@ -116,4 +115,32 @@ void GameUI::drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) c
 }
 
 void GameUI::updateDevTools(float dt)
-{}
+{
+    auto pos = rootUIElement->getPosition();
+    if (ImGui::Drag("UI pos", &pos)) {
+        rootUIElement->setPosition(pos);
+    }
+}
+
+void GameUI::drawUIElement(
+    SpriteRenderer& uiRenderer,
+    const ui::Element& element,
+    const glm::vec2& parentPos) const
+{
+    if (auto ns = dynamic_cast<const ui::NineSliceElement*>(&element); ns) {
+        ns->getNineSlice().draw(uiRenderer, element.getPosition(), ns->getSize());
+    }
+    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
+        uiRenderer.drawText(
+            tl->getFont(), tl->getText(), parentPos + element.getPosition(), LinearColor::White());
+
+        auto bb = tl->getFont().calculateTextBoundingBox(tl->getText());
+        bb.left += parentPos.x + element.getPosition().x;
+        bb.top += parentPos.y + element.getPosition().y;
+        uiRenderer.drawRect(bb, LinearColor{1.f, 0.f, 0.f, 1.f});
+    }
+
+    for (const auto& childPtr : element.getChildren()) {
+        drawUIElement(uiRenderer, *childPtr, parentPos + element.getPosition());
+    }
+}

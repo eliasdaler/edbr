@@ -99,6 +99,7 @@ add_library(edbr
   src/AudioManager.cpp
 
   # UI
+  src/UI/Element.cpp
   src/UI/NineSlice.cpp
   src/UI/NineSliceElement.cpp
   src/UI/Style.cpp

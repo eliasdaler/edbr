@@ -8,6 +8,8 @@
 #include <edbr/Graphics/Color.h>
 #include <edbr/Graphics/IdTypes.h>
 
+#include <edbr/Util/ImGuiGeneric.h>
+
 struct GPUImage;
 class GfxDevice;
 
