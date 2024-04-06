@@ -98,6 +98,10 @@ add_library(edbr
 
   src/AudioManager.cpp
 
+  # UI
+  src/UI/NineSlice.cpp
+  src/UI/Style.cpp
+
   src/Application.cpp
   src/FreeCameraController.cpp
   src/SceneCache.cpp

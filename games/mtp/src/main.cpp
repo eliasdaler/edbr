@@ -10,8 +10,10 @@ int main()
     game.init({
         .windowWidth = 2400,
         .windowHeight = 1080,
-        .renderWidth = 1280,
-        .renderHeight = 960,
+        // .renderWidth = 1280,
+        // .renderHeight = 960,
+        .renderWidth = 1440,
+        .renderHeight = 1080,
         .title = "Project MTP",
     });
     game.run();

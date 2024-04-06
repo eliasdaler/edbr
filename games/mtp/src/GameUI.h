@@ -7,6 +7,7 @@
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Math/Transform.h>
+#include <edbr/UI/NineSlice.h>
 
 #include "Components.h"
 
@@ -40,4 +41,6 @@ private:
     Sprite interactTipSprite;
     Sprite talkTipSprite;
     Bouncer interactTipBouncer;
+
+    ui::NineSlice nineSlice;
 };

@@ -11,6 +11,8 @@
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
 
+#include <utf8.h>
+
 static constexpr int GLYPH_ATLAS_SIZE = 1024;
 
 bool Font::load(GfxDevice& gfxDevice, const std::filesystem::path& path, int size)
@@ -133,4 +135,73 @@ glm::vec2 Font::getGlyphSize(std::uint32_t codePoint) const
     }
     const auto& g = it->second;
     return (g.uv1 - g.uv0) * atlasSize;
+}
+
+void Font::forEachGlyph(
+    const std::string& text,
+    std::function<void(const glm::vec2& pos, const glm::vec2& uv0, const glm::vec2& uv1)> f) const
+{
+    float x = 0.0f;
+    int lineNum = 0;
+
+    auto it = text.begin();
+    const auto e = text.end();
+    std::uint32_t cp = 0;
+    while (it != e) {
+        cp = utf8::next(it, e);
+
+        if (cp == static_cast<std::uint32_t>('\n')) {
+            ++lineNum;
+            x = 0.f;
+            continue;
+        }
+
+        const auto& glyph = glyphs.contains(cp) ? glyphs.at(cp) : glyphs.at('?');
+        const auto& uv0 = glyph.uv0;
+        const auto& uv1 = glyph.uv1;
+
+        float xpos = x + glyph.bearing.x;
+        float ypos = -glyph.bearing.y + static_cast<float>(lineNum) * lineSpacing;
+
+        f({xpos, ypos}, uv0, uv1);
+
+        x += glyph.advance;
+    }
+}
+
+math::FloatRect Font::calculateTextBoundingBox(const std::string& text) const
+{
+    if (text.empty()) {
+        return {};
+    }
+
+    float minX = std::numeric_limits<float>::max();
+    float minY = std::numeric_limits<float>::max();
+    float maxX = std::numeric_limits<float>::lowest();
+    float maxY = std::numeric_limits<float>::lowest();
+
+    forEachGlyph(
+        text,
+        [this,
+         &minX,
+         &maxX,
+         &minY,
+         &maxY](const glm::vec2& glyphPos, const glm::vec2& uv0, const glm::vec2& uv1) {
+            // no mirroring allowed
+            assert(uv1.x >= uv0.x);
+            assert(uv1.y >= uv0.y);
+
+            float gx = glyphPos.x;
+            float gy = glyphPos.y;
+            float gw = (uv1.x - uv0.x) * atlasSize.x;
+            float gh = (uv1.y - uv0.y) * atlasSize.y;
+
+            minX = std::min(minX, gx);
+            minY = std::min(minY, gy);
+
+            maxX = std::max(maxX, gx + gw);
+            maxY = std::max(maxY, gy + gh);
+        });
+
+    return math::FloatRect{minX, minY, maxX - minX, maxY - minY};
 }

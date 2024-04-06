@@ -6,8 +6,6 @@
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Math/Transform.h>
 
-#include <utf8.h>
-
 namespace
 {
 glm::vec2 getSpriteSize(const Sprite& sprite)
@@ -99,37 +97,19 @@ void SpriteRenderer::drawText(
     const glm::vec2& pos,
     const LinearColor& color)
 {
-    float x = 0.0f;
-    int lineNum = 0;
-
-    auto it = text.begin();
-    const auto e = text.end();
-    std::uint32_t cp = 0;
     const auto& atlasTexture = gfxDevice.getImage(font.glyphAtlasID);
-    while (it != e) {
-        cp = utf8::next(it, e);
+    Sprite glyphSprite(atlasTexture);
+    glyphSprite.color = color;
 
-        if (cp == static_cast<std::uint32_t>('\n')) {
-            ++lineNum;
-            x = 0.f;
-            continue;
-        }
-
-        const auto& glyph = font.glyphs.contains(cp) ? font.glyphs.at(cp) : font.glyphs.at('?');
-        const auto& uv0 = glyph.uv0;
-        const auto& uv1 = glyph.uv1;
-
-        float xpos = x + glyph.bearing.x;
-        float ypos = -glyph.bearing.y + static_cast<float>(lineNum) * font.lineSpacing;
-
-        Sprite glyphSprite(atlasTexture);
-        glyphSprite.uv0 = uv0;
-        glyphSprite.uv1 = uv1;
-        glyphSprite.color = color;
-        drawSprite(glyphSprite, pos + glm::vec2{xpos, ypos}, 0.f, glm::vec2{1.f}, textShaderId);
-
-        x += glyph.advance;
-    }
+    font.forEachGlyph(
+        text,
+        [this,
+         &glyphSprite,
+         &pos](const glm::vec2& glyphPos, const glm::vec2& uv0, const glm::vec2& uv1) {
+            glyphSprite.uv0 = uv0;
+            glyphSprite.uv1 = uv1;
+            drawSprite(glyphSprite, pos + glyphPos, 0.f, glm::vec2{1.f}, textShaderId);
+        });
 }
 
 void SpriteRenderer::drawRect(

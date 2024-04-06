@@ -1,5 +1,6 @@
 #include "GameUI.h"
 
+#include <edbr/Core/JsonFile.h>
 #include <edbr/Graphics/Camera.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/GfxDevice.h>
@@ -61,6 +62,14 @@ void GameUI::init(GfxDevice& gfxDevice)
         .moveDuration = 0.5f,
         .tween = glm::quadraticEaseInOut<float>,
     });
+
+    ui::NineSliceStyle s;
+
+    JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
+    s.load(file.getLoader(), gfxDevice);
+    nineSlice.setStyle(s);
+    nineSlice.setPosition({64.f, 64.f});
+    nineSlice.setSize({640.f, 256.f});
 }
 
 void GameUI::update(float dt)
@@ -74,6 +83,16 @@ void GameUI::draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const
     if (ctx.interactionType != InteractComponent::Type::None) {
         drawInteractTip(uiRenderer, ctx);
     }
+
+    nineSlice.draw(uiRenderer);
+
+    const auto textPos = glm::vec2{120.f, 128.f};
+    uiRenderer.drawText(defaultFont, strings[0], textPos, LinearColor::White());
+
+    auto bb = defaultFont.calculateTextBoundingBox(strings[0]);
+    bb.left += textPos.x;
+    bb.top += textPos.y;
+    uiRenderer.drawRect(bb, LinearColor{1.f, 0.f, 0.f, 1.f});
 }
 
 void GameUI::drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -8,6 +9,7 @@
 
 #include <edbr/Graphics/IdTypes.h>
 #include <edbr/Graphics/Vulkan/GPUImage.h>
+#include <edbr/Math/Rect.h>
 
 class GfxDevice;
 
@@ -29,6 +31,15 @@ struct Font {
     glm::vec2 getGlyphAtlasSize() const;
     glm::vec2 getGlyphSize(std::uint32_t codePoint) const;
 
+    void forEachGlyph(
+        const std::string& text,
+        std::function<void(const glm::vec2& pos, const glm::vec2& uv0, const glm::vec2& uv1)> f)
+        const;
+
+    // calculate bounding box - the return rect's position is top left corner
+    math::FloatRect calculateTextBoundingBox(const std::string& text) const;
+
+    // data
     std::unordered_map<std::uint32_t, Glyph> glyphs;
     std::unordered_set<std::uint32_t> loadedCodePoints;
 

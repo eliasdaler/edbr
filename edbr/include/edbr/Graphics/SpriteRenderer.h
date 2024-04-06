@@ -66,6 +66,8 @@ public:
         const glm::vec2& scale = glm::vec2{1.f},
         const glm::vec2& pivot = glm::vec2{0.f});
 
+    GfxDevice& getGfxDevice() { return gfxDevice; }
+
 private:
     GfxDevice& gfxDevice;
 
