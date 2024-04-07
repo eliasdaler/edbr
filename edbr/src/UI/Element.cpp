@@ -14,31 +14,7 @@ Element& Element::addChild(std::unique_ptr<Element> element)
 
 glm::vec2 Element::getSize() const
 {
-    auto size = getSizeImpl();
-    if (autoSizing == AutomaticSizing::None) {
-        return size;
-    }
-
-    const auto& child = children[autoSizeElementIndex];
-    const auto childContentSize = child->getSizeImpl();
-
-    switch (autoSizing) {
-    case AutomaticSizing::X:
-        size.x = childContentSize.x;
-        break;
-    case AutomaticSizing::Y:
-        size.y = childContentSize.y;
-        break;
-    case AutomaticSizing::XY:
-        size.x = childContentSize.x;
-        size.y = childContentSize.y;
-        break;
-    default:
-        assert(false);
-        break;
-    }
-
-    return size;
+    return getSizeImpl();
 }
 
 glm::vec2 Element::calculateScreenPosition() const

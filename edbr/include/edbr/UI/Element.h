@@ -5,6 +5,8 @@
 
 #include <glm/vec2.hpp>
 
+#include <edbr/Math/Rect.h>
+
 namespace ui
 {
 
@@ -27,7 +29,7 @@ public:
     std::vector<std::unique_ptr<Element>>& getChildren() { return children; }
 
     virtual void setPosition(const glm::vec2& pos) { position = pos; }
-    virtual const glm::vec2 getPosition() const { return position; }
+    virtual glm::vec2 getPosition() const { return position; }
     glm::vec2 calculateScreenPosition() const;
 
     glm::vec2 getSize() const;
@@ -41,6 +43,8 @@ public:
     void setAutomaticSizingElementIndex(std::size_t i);
 
     virtual void processMouseEvent(const glm::vec2& mouseRelPos, bool leftMousePressed){};
+
+    virtual math::FloatRect getBoundingBox() const { return {{}, getSize()}; }
 
 protected:
     virtual glm::vec2 getSizeImpl() const = 0;

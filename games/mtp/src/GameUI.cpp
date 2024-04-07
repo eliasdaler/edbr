@@ -141,7 +141,7 @@ void GameUI::createOptionsMenu(GfxDevice& gfxDevice)
     JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
     nsStyle.load(file.getLoader(), gfxDevice);
 
-    rootUIElement = std::make_unique<ui::NineSliceElement>(nsStyle, glm::vec2{640.f, 256.f});
+    rootUIElement = std::make_unique<ui::NineSliceElement>(nsStyle);
     rootUIElement->setPosition(glm::vec2{64.f, 64.f});
     rootUIElement->setAutomaticSizing(ui::Element::AutomaticSizing::XY);
 
@@ -203,10 +203,11 @@ void GameUI::createOptionsMenu(GfxDevice& gfxDevice)
     // [padding]
     auto settingsLayout =
         std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
+    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 8.f}));
     settingsLayout->addChild(std::move(settingsMainLayout));
     settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 24.f}));
     settingsLayout->addChild(std::move(buttonsRow));
-    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 16.f}));
+    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 8.f}));
     settingsLayout->applyLayout();
 
     const auto menuNameLabelColor = LinearColor::FromRGB(254, 214, 124);

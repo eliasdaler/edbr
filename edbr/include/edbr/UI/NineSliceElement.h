@@ -11,16 +11,20 @@ struct NineSliceStyle;
 
 class NineSliceElement : public Element {
 public:
-    NineSliceElement(const NineSliceStyle& style, const glm::vec2& size);
+    NineSliceElement(const NineSliceStyle& style, const glm::vec2& size = {});
 
     const ui::NineSlice& getNineSlice() const { return nineSlice; }
 
-    // Returns the size without the borders
-    glm::vec2 getSizeImpl() const override { return size; }
+    glm::vec2 getSizeImpl() const override;
+
+    glm::vec2 getContentSize() const;
+
+    math::FloatRect getBoundingBox() const override;
 
 private:
     ui::NineSlice nineSlice;
-    glm::vec2 size;
+
+    glm::vec2 contentSize;
 };
 
 } // end of namespace ui

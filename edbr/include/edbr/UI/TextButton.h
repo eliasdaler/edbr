@@ -36,6 +36,7 @@ public:
     const TextLabel& getLabel() const;
 
     glm::vec2 getSizeImpl() const override;
+    math::FloatRect getBoundingBox() const override;
 
     void processMouseEvent(const glm::vec2& mouseRelPos, bool leftMousePressed) override;
 

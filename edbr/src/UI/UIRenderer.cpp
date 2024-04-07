@@ -16,7 +16,8 @@ void UIRenderer::drawElement(
     const glm::vec2& parentPos) const
 {
     if (auto ns = dynamic_cast<const NineSliceElement*>(&element); ns) {
-        ns->getNineSlice().draw(spriteRenderer, parentPos + element.getPosition(), ns->getSize());
+        ns->getNineSlice()
+            .draw(spriteRenderer, parentPos + ns->getPosition(), ns->getContentSize());
     }
 
     if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {

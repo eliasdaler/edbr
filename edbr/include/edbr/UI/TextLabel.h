@@ -26,7 +26,7 @@ public:
     void setText(std::string text);
     const std::string& getText() const { return text; }
     const Font& getFont() const { return font; }
-    const math::FloatRect& getBoundingBox() { return boundingBox; }
+    math::FloatRect getBoundingBox() const override;
     void setPadding(const Padding& p);
     const Padding& getPadding() const { return padding; }
 

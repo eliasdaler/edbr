@@ -9,6 +9,7 @@ namespace ui
 class NineSlice {
 public:
     void setStyle(NineSliceStyle s);
+    const NineSliceStyle& getStyle() const { return style; }
 
     void draw(SpriteRenderer& renderer, const glm::vec2& position, const glm::vec2& size) const;
 

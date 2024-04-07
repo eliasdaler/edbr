@@ -27,6 +27,20 @@ void TextLabel::setPadding(const Padding& p)
     padding = p;
 }
 
+math::FloatRect TextLabel::getBoundingBox() const
+{
+    auto pos = boundingBox.getPosition();
+    pos.y += font.lineSpacing;
+    pos.x += padding.left;
+    pos.y += padding.top;
+
+    auto size = boundingBox.getSize();
+    // size.x += (padding.left + padding.right);
+    // size.y += (padding.top + padding.bottom);
+
+    return {pos, size};
+}
+
 glm::vec2 TextLabel::getSizeImpl() const
 {
     auto bbSize = boundingBox.getSize();

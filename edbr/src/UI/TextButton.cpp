@@ -19,7 +19,7 @@ TextButton::TextButton(
     std::unique_ptr<NineSliceElement> nineSlice,
     std::unique_ptr<TextLabel> label)
 {
-    label->setPadding({12.f, 12.f, 2.f, 8.f}); // TODO: make adjustable
+    label->setPadding({12.f, 12.f, 0.f, 8.f}); // TODO: make adjustable
     nineSlice->addChild(std::move(label));
 
     nineSlice->setAutomaticSizing(AutomaticSizing::XY);
@@ -54,12 +54,16 @@ const TextLabel& TextButton::getLabel() const
     return static_cast<TextLabel&>(*ns.getChildren()[0]);
 }
 
+math::FloatRect TextButton::getBoundingBox() const
+{
+    return getNineSlice().getBoundingBox();
+}
+
 void TextButton::processMouseEvent(const glm::vec2& mouseRelPos, bool leftMousePressed)
 {
-    const auto rect = math::FloatRect{{}, getSize()};
-    // FIXME: include border size in the rect
+    const auto bb = getBoundingBox();
     auto& label = getLabel();
-    if (rect.contains(mouseRelPos)) {
+    if (bb.contains(mouseRelPos)) {
         if (leftMousePressed) {
             // pressed
             label.setColor(LinearColor::FromRGB(254, 214, 124));

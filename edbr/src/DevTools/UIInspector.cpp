@@ -81,7 +81,14 @@ void UIInspector::showSelectedElementInfo()
     const auto& element = *selectedUIElement;
 
     DisplayProperty("Position", element.getPosition());
-    DisplayProperty("Screen position", element.calculateScreenPosition());
+    auto screenPos = element.calculateScreenPosition();
+    DisplayProperty("Screen position", screenPos);
+
+    auto bb = element.getBoundingBox();
+    DisplayProperty("Bounding box", bb);
+    bb.setPosition(screenPos + bb.getTopLeftCorner());
+    DisplayProperty("Bounding box(screen)", bb);
+
     DisplayProperty("Size", element.getSize());
 
     if (element.getAutomaticSizing() != ui::Element::AutomaticSizing::None) {
@@ -126,17 +133,19 @@ void UIInspector::drawBoundingBoxes(
     const ui::Element& element,
     const glm::vec2& parentPos) const
 {
-    const auto pos = parentPos + element.getPosition();
-    const auto cs = element.getSize();
+    auto bb = element.getBoundingBox();
+    auto selfPos = parentPos + element.getPosition();
+    bb.setPosition(selfPos + bb.getTopLeftCorner());
+
     auto bbColor =
         edbr::rgbToLinear(util::pickRandomColor(util::LightColorsPalette, (void*)&element));
     bbColor.a = 0.25f;
-    spriteRenderer.drawFilledRect({pos, cs}, bbColor);
+    spriteRenderer.drawFilledRect(bb, bbColor);
     bbColor.a = 1.f;
-    spriteRenderer.drawInsetRect({pos, cs}, bbColor);
+    spriteRenderer.drawInsetRect(bb, bbColor);
 
     for (const auto& childPtr : element.getChildren()) {
-        drawBoundingBoxes(spriteRenderer, *childPtr, parentPos + element.getPosition());
+        drawBoundingBoxes(spriteRenderer, *childPtr, selfPos);
     }
 }
 
@@ -145,8 +154,9 @@ void UIInspector::drawSelectedElement(SpriteRenderer& spriteRenderer) const
     assert(hasSelectedElement());
     const auto& element = *selectedUIElement;
 
-    const auto pos = element.calculateScreenPosition();
-    const auto cs = element.getSize();
+    auto pos = element.calculateScreenPosition();
+    auto bb = element.getBoundingBox();
+    bb.setPosition(pos + bb.getTopLeftCorner());
     auto bbColor =
         edbr::rgbToLinear(util::pickRandomColor(util::LightColorsPalette, (void*)&element));
 
@@ -160,5 +170,5 @@ void UIInspector::drawSelectedElement(SpriteRenderer& spriteRenderer) const
         bbColor.a = 0.5f;
     }
 
-    spriteRenderer.drawFilledRect({pos, cs}, bbColor);
+    spriteRenderer.drawFilledRect(bb, bbColor);
 }
