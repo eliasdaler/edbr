@@ -10,6 +10,9 @@
 
 #include <edbr/UI/NineSliceElement.h>
 #include <edbr/UI/TextLabel.h>
+#include <edbr/UI/UIRenderer.h>
+
+#include <edbr/DevTools/UIInspector.h>
 
 #include "Components.h"
 
@@ -31,7 +34,7 @@ public:
     void update(float dt);
     void updateDevTools(float dt);
 
-    void draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
+    void draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
 
 private:
     void processMouseEvent(
@@ -64,6 +67,7 @@ private:
     Bouncer interactTipBouncer;
 
     std::unique_ptr<ui::Element> rootUIElement;
-    const ui::Element* selectedUIElement{nullptr};
-    bool drawUIElementBoundingBoxes{false};
+
+    ui::UIRenderer renderer;
+    UIInspector uiInpector;
 };

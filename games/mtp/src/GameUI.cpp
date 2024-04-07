@@ -8,20 +8,12 @@
 
 #include <utf8.h>
 
-#include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/Util/ImGuiUtil.h>
-#include <edbr/Util/Palette.h>
-#include <misc/cpp/imgui_stdlib.h>
+#include <imgui.h>
 
 #include <edbr/UI/ListLayoutElement.h>
 #include <edbr/UI/PaddingElement.h>
 #include <edbr/UI/TextButton.h>
-
-#ifdef __GNUG__
-#include <cstdlib>
-#include <cxxabi.h>
-#include <memory>
-#endif
 
 namespace
 {
@@ -91,15 +83,19 @@ void GameUI::update(float dt)
     interactTipBouncer.update(dt);
 }
 
-void GameUI::draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const
+void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
 {
     if (ctx.interactionType != InteractComponent::Type::None) {
-        drawInteractTip(uiRenderer, ctx);
+        drawInteractTip(spriteRenderer, ctx);
     }
 
-    drawUIElement(uiRenderer, *rootUIElement, {});
-    if (drawUIElementBoundingBoxes) {
-        drawUIBoundingBoxes(uiRenderer, *rootUIElement, {});
+    renderer.drawElement(spriteRenderer, *rootUIElement);
+
+    if (uiInpector.drawUIElementBoundingBoxes) {
+        uiInpector.drawBoundingBoxes(spriteRenderer, *rootUIElement);
+        if (uiInpector.hasSelectedElement()) {
+            uiInpector.drawSelectedElement(spriteRenderer);
+        }
     }
 }
 
@@ -124,170 +120,20 @@ void GameUI::drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) c
 
 void GameUI::updateDevTools(float dt)
 {
-    ImGui::Checkbox("Draw BB", &drawUIElementBoundingBoxes);
+    ImGui::Checkbox("Draw BB", &uiInpector.drawUIElementBoundingBoxes);
     auto pos = rootUIElement->getPosition();
     if (ImGui::Drag("UI pos", &pos)) {
         rootUIElement->setPosition(pos);
     }
 
-    updateUITree(*rootUIElement);
-    if (selectedUIElement) {
+    uiInpector.showUITree(*rootUIElement);
+    if (uiInpector.hasSelectedElement()) {
         if (ImGui::Begin("Selected UI element")) {
-            updateSelectedUIElementInfo(*selectedUIElement);
+            uiInpector.showSelectedElementInfo();
         }
         ImGui::End();
     }
 }
-
-namespace
-{
-
-std::string getElementTypeName(const ui::Element& element)
-{
-    const auto tName = typeid(element).name();
-    auto name = tName;
-#ifdef __GNUG__
-    int status;
-    std::unique_ptr<char, void (*)(void*)>
-        res{abi::__cxa_demangle(tName, NULL, NULL, &status), std::free};
-    name = res.get();
-#endif
-    return name;
-}
-
-} // end of anonymous namespace
-
-void GameUI::updateUITree(const ui::Element& element)
-{
-    const auto typeName = getElementTypeName(element);
-    const auto nodeLabel =
-        element.getTag().empty() ? typeName : fmt::format("{} ({})", element.getTag(), typeName);
-
-    ImGui::PushID((void*)&element);
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-                               ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                               ImGuiTreeNodeFlags_DefaultOpen;
-    if (element.getChildren().empty()) {
-        flags |= ImGuiTreeNodeFlags_Leaf;
-    }
-    if (&element == selectedUIElement) {
-        flags |= ImGuiTreeNodeFlags_Selected;
-    }
-
-    auto textColor = util::pickRandomColor(util::LightColorsPalette, (void*)&element);
-    ImGui::PushStyleColor(ImGuiCol_Text, util::toImVec4(textColor));
-    bool isOpen = ImGui::TreeNodeEx(nodeLabel.c_str(), flags);
-    ImGui::PopStyleColor();
-    if (isOpen) {
-        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-            selectedUIElement = &element;
-        }
-        for (const auto& child : element.getChildren()) {
-            updateUITree(*child);
-        }
-        ImGui::TreePop();
-    }
-
-    ImGui::PopID();
-}
-
-void GameUI::updateSelectedUIElementInfo(const ui::Element& element)
-{
-    using namespace devtools;
-
-    BeginPropertyTable();
-
-    DisplayProperty("Position", element.getPosition());
-    DisplayProperty("Screen position", element.calculateScreenPosition());
-    DisplayProperty("Size", element.getSize());
-
-    if (element.getAutomaticSizing() != ui::Element::AutomaticSizing::None) {
-        const auto automaticSizeStr = [](ui::Element::AutomaticSizing s) {
-            switch (s) {
-            case ui::Element::AutomaticSizing::None:
-                return "None";
-                break;
-            case ui::Element::AutomaticSizing::X:
-                return "X";
-                break;
-            case ui::Element::AutomaticSizing::Y:
-                return "Y";
-                break;
-            case ui::Element::AutomaticSizing::XY:
-                return "XY";
-                break;
-            default:
-                return "???";
-                break;
-            }
-        }(element.getAutomaticSizing());
-        DisplayProperty("Auto size", automaticSizeStr);
-    }
-
-    if (auto lle = dynamic_cast<const ui::ListLayoutElement*>(&element); lle) {
-        const auto dirStr = (lle->getDirection() == ui::ListLayoutElement::Direction::Horizontal) ?
-                                "Horizontal" :
-                                "Vertical";
-        DisplayProperty("Direction", dirStr);
-    }
-
-    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
-        DisplayProperty("Text", tl->getText());
-    }
-
-    EndPropertyTable();
-}
-
-void GameUI::drawUIElement(
-    SpriteRenderer& uiRenderer,
-    const ui::Element& element,
-    const glm::vec2& parentPos) const
-{
-    if (auto ns = dynamic_cast<const ui::NineSliceElement*>(&element); ns) {
-        ns->getNineSlice().draw(uiRenderer, parentPos + element.getPosition(), ns->getSize());
-    }
-
-    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
-        auto p = tl->getPadding();
-        auto textPos = parentPos + element.getPosition() + glm::vec2{p.left, p.top} +
-                       glm::vec2{0.f, tl->getFont().lineSpacing};
-        uiRenderer.drawText(tl->getFont(), tl->getText(), textPos, tl->getColor());
-    }
-
-    for (const auto& childPtr : element.getChildren()) {
-        drawUIElement(uiRenderer, *childPtr, parentPos + element.getPosition());
-    }
-}
-
-void GameUI::drawUIBoundingBoxes(
-    SpriteRenderer& uiRenderer,
-    const ui::Element& element,
-    const glm::vec2& parentPos) const
-{
-    const auto pos = parentPos + element.getPosition();
-    const auto cs = element.getSize();
-    auto bbColor =
-        edbr::rgbToLinear(util::pickRandomColor(util::LightColorsPalette, (void*)&element));
-    uiRenderer.drawRect({pos, cs}, bbColor);
-    bbColor.a = 0.25f;
-    uiRenderer.drawFilledRect({pos, cs}, bbColor);
-
-    if (&element == selectedUIElement) {
-        static int frameNum = 0.f;
-        ++frameNum;
-        float v = std::abs(std::sin((float)frameNum / 60.f));
-        bbColor.r *= v;
-        bbColor.g *= v;
-        bbColor.b *= v;
-        bbColor.a = 0.5f;
-        uiRenderer.drawFilledRect({pos, cs}, bbColor);
-    }
-
-    for (const auto& childPtr : element.getChildren()) {
-        drawUIBoundingBoxes(uiRenderer, *childPtr, parentPos + element.getPosition());
-    }
-}
-
 void GameUI::createOptionsMenu(GfxDevice& gfxDevice)
 {
     ui::NineSliceStyle nsStyle;
