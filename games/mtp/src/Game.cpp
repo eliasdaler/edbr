@@ -199,12 +199,13 @@ void Game::customUpdate(float dt)
         const auto internalSize = glm::vec2{params.renderWidth, params.renderHeight};
         const auto& mouse = inputManager.getMouse();
         bool isMousePressed = mouse.isHeld(SDL_BUTTON(1));
-        const auto& gameScreenPos = edbr::util::getGameWindowScreenCoord(
+        const auto& gameScreenMousePos = edbr::util::getGameWindowScreenCoord(
             mouse.getPosition(),
             gameWindowPos,
             gameWindowSize,
             {params.renderWidth, params.renderHeight});
-        im3d.newFrame(dt, internalSize, camera, gameScreenPos, isMousePressed);
+        im3d.newFrame(
+            dt, internalSize, camera, static_cast<glm::ivec2>(gameScreenMousePos), isMousePressed);
     }
 
     // movement
@@ -250,6 +251,13 @@ void Game::customUpdate(float dt)
     // audio needs to be updated after the camera
     animationSoundSystem.update(registry, camera, dt);
 
+    {
+        const auto& mousePos = inputManager.getMouse().getPosition();
+        const auto& gameScreenMousePos = edbr::util::getGameWindowScreenCoord(
+            mousePos, gameWindowPos, gameWindowSize, {params.renderWidth, params.renderHeight});
+        bool isMousePressed = inputManager.getMouse().isHeld(SDL_BUTTON(1));
+        ui.handleMouseInput(gameScreenMousePos, isMousePressed);
+    }
     ui.update(dt);
 
     updateDevTools(dt);

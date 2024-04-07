@@ -26,22 +26,51 @@ TextButton::TextButton(
     addChild(std::move(nineSlice));
 }
 
+NineSliceElement& TextButton::getNineSlice()
+{
+    return const_cast<NineSliceElement&>(static_cast<const TextButton&>(*this).getNineSlice());
+}
+
+TextLabel& TextButton::getLabel()
+{
+    return const_cast<TextLabel&>(static_cast<const TextButton&>(*this).getLabel());
+}
+
+glm::vec2 TextButton::getSizeImpl() const
+{
+    return getNineSlice().getSize();
+}
+
 const NineSliceElement& TextButton::getNineSlice() const
 {
     assert(children.size() == 1);
-    return static_cast<const NineSliceElement&>(*children[0]);
+    return static_cast<NineSliceElement&>(*children[0]);
 }
 
 const TextLabel& TextButton::getLabel() const
 {
     auto& ns = getNineSlice();
     assert(ns.getChildren().size() == 1);
-    return static_cast<const TextLabel&>(*ns.getChildren()[0]);
+    return static_cast<TextLabel&>(*ns.getChildren()[0]);
 }
 
-glm::vec2 TextButton::getSizeImpl() const
+void TextButton::processMouseEvent(const glm::vec2& mouseRelPos, bool leftMousePressed)
 {
-    return getNineSlice().getSize();
+    const auto rect = math::FloatRect{{}, getSize()};
+    // FIXME: include border size in the rect
+    auto& label = getLabel();
+    if (rect.contains(mouseRelPos)) {
+        if (leftMousePressed) {
+            // pressed
+            label.setColor(LinearColor::FromRGB(254, 214, 124));
+        } else {
+            // howevered
+            label.setColor(LinearColor::FromRGB(254, 174, 52));
+        }
+    } else {
+        // default
+        label.setColor(LinearColor::FromRGB(255, 255, 255));
+    }
 }
 
 } // end of namespace ui

@@ -81,6 +81,11 @@ void GameUI::init(GfxDevice& gfxDevice)
     createOptionsMenu(gfxDevice);
 }
 
+void GameUI::handleMouseInput(const glm::vec2& mousePos, bool leftMousePressed)
+{
+    processMouseEvent(*rootUIElement, mousePos, leftMousePressed);
+}
+
 void GameUI::update(float dt)
 {
     interactTipBouncer.update(dt);
@@ -193,6 +198,7 @@ void GameUI::updateSelectedUIElementInfo(const ui::Element& element)
     BeginPropertyTable();
 
     DisplayProperty("Position", element.getPosition());
+    DisplayProperty("Screen position", element.calculateScreenPosition());
     DisplayProperty("Size", element.getSize());
 
     if (element.getAutomaticSizing() != ui::Element::AutomaticSizing::None) {
@@ -366,4 +372,17 @@ void GameUI::createOptionsMenu(GfxDevice& gfxDevice)
     rootUIElement->addChild(std::move(menuNameLabel));
     rootUIElement->addChild(std::move(settingsLayout));
     rootUIElement->setAutomaticSizingElementIndex(1);
+}
+
+void GameUI::processMouseEvent(
+    ui::Element& element,
+    const glm::vec2& mouseRelPos,
+    bool leftMousePressed)
+{
+    auto mousePos = mouseRelPos - element.getPosition();
+    element.processMouseEvent(mousePos, leftMousePressed);
+
+    for (const auto& childPtr : element.getChildren()) {
+        processMouseEvent(*childPtr, mousePos, leftMousePressed);
+    }
 }

@@ -27,12 +27,18 @@ public:
 
 public:
     void init(GfxDevice& gfxDevice);
+    void handleMouseInput(const glm::vec2& mousePos, bool leftMousePressed);
     void update(float dt);
     void updateDevTools(float dt);
 
     void draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
 
 private:
+    void processMouseEvent(
+        ui::Element& element,
+        const glm::vec2& mouseRelPos,
+        bool leftMousePressed);
+
     void createOptionsMenu(GfxDevice& gfxDevice);
 
     void updateUITree(const ui::Element& element);

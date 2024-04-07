@@ -29,10 +29,15 @@ public:
         const LinearColor& labelColor = LinearColor::Black());
     TextButton(std::unique_ptr<NineSliceElement> nineSlice, std::unique_ptr<TextLabel> label);
 
+    NineSliceElement& getNineSlice();
+    TextLabel& getLabel();
+
     const NineSliceElement& getNineSlice() const;
     const TextLabel& getLabel() const;
 
     glm::vec2 getSizeImpl() const override;
+
+    void processMouseEvent(const glm::vec2& mouseRelPos, bool leftMousePressed) override;
 
 private:
 };

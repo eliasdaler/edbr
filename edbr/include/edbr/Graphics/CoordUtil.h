@@ -54,15 +54,14 @@ inline glm::vec2 fromWorldCoordsToScreenCoords(
     return screen;
 }
 
-inline glm::ivec2 getGameWindowScreenCoord(
+inline glm::vec2 getGameWindowScreenCoord(
     const glm::ivec2& windowMousePos,
     const glm::ivec2& gameWindowPos,
     const glm::ivec2& gameWindowSize,
     const glm::ivec2& gameRenderSize)
 {
     const auto coord = glm::ivec2{windowMousePos - gameWindowPos};
-    return static_cast<glm::ivec2>(
-        static_cast<glm::vec2>(coord) *
-        (static_cast<glm::vec2>(gameRenderSize) / static_cast<glm::vec2>(gameWindowSize)));
+    return static_cast<glm::vec2>(coord) *
+           (static_cast<glm::vec2>(gameRenderSize) / static_cast<glm::vec2>(gameWindowSize));
 }
 } // end of namespace edbr::util
