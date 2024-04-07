@@ -42,6 +42,7 @@ add_library(edbr
   # Graphics
   src/Graphics/Bouncer.cpp
   src/Graphics/Camera.cpp
+  src/Graphics/Color.cpp
   src/Graphics/Cubemap.cpp
   src/Graphics/Font.cpp
   src/Graphics/FrustumCulling.cpp
@@ -78,6 +79,7 @@ add_library(edbr
   src/Util/InputUtil.cpp
   src/Util/ImGuiUtil.cpp
   src/Util/OSUtil.cpp
+  src/Util/Palette.cpp
   src/Util/StringUtil.cpp
 
   src/Input/ActionMapping.cpp

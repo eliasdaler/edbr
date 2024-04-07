@@ -8,10 +8,11 @@ namespace ui
 TextButton::TextButton(
     const ui::NineSliceStyle& nineSliceStyle,
     const Font& font,
-    const std::string& label) :
+    const std::string& label,
+    const LinearColor& labelColor) :
     TextButton(
         std::make_unique<NineSliceElement>(nineSliceStyle, glm::vec2{}),
-        std::make_unique<TextLabel>(label, font))
+        std::make_unique<TextLabel>(label, font, labelColor))
 {}
 
 TextButton::TextButton(
@@ -38,7 +39,7 @@ const TextLabel& TextButton::getLabel() const
     return static_cast<const TextLabel&>(*ns.getChildren()[0]);
 }
 
-glm::vec2 TextButton::getContentSize() const
+glm::vec2 TextButton::getSizeImpl() const
 {
     return getNineSlice().getSize();
 }

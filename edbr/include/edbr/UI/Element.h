@@ -20,7 +20,7 @@ public:
 public:
     virtual ~Element() = default;
 
-    void addChild(std::unique_ptr<Element> element);
+    Element& addChild(std::unique_ptr<Element> element);
 
     const Element* getParent() const { return parent; }
     const std::vector<std::unique_ptr<Element>>& getChildren() const { return children; }
@@ -29,16 +29,25 @@ public:
     virtual const glm::vec2 getPosition() const { return position; }
 
     glm::vec2 getSize() const;
-    virtual glm::vec2 getContentSize() const = 0;
 
     void setAutomaticSizing(AutomaticSizing s) { autoSizing = s; }
+    AutomaticSizing getAutomaticSizing() const { return autoSizing; }
+
+    void setTag(std::string t) { tag = std::move(t); }
+    const std::string& getTag() const { return tag; }
+
+    void setAutomaticSizingElementIndex(std::size_t i);
 
 protected:
+    virtual glm::vec2 getSizeImpl() const = 0;
+
     Element* parent{nullptr};
     std::vector<std::unique_ptr<Element>> children;
 
     glm::vec2 position;
     AutomaticSizing autoSizing{AutomaticSizing::None};
+    std::string tag;
+    std::size_t autoSizeElementIndex{0};
 };
 
 } // end of namespace ui

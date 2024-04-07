@@ -197,6 +197,17 @@ void SpriteRenderer::drawRect(
     }
 }
 
+void SpriteRenderer::drawInsetRect(
+    const math::FloatRect& rect,
+    const LinearColor& color,
+    float borderWidth,
+    float rotation,
+    const glm::vec2& scale,
+    const glm::vec2& pivot)
+{
+    drawRect(rect, color, borderWidth, rotation, scale, pivot, true);
+}
+
 void SpriteRenderer::drawFilledRect(
     const math::FloatRect& rect,
     const LinearColor& color,

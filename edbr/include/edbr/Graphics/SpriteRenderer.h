@@ -59,6 +59,14 @@ public:
         const glm::vec2& pivot = glm::vec2{0.f},
         bool insetBorder = false);
 
+    void drawInsetRect(
+        const math::FloatRect& rect,
+        const LinearColor& color,
+        float borderWidth = 1.f,
+        float rotation = 0.f, // rotation around Z in radians
+        const glm::vec2& scale = glm::vec2{1.f},
+        const glm::vec2& pivot = glm::vec2{0.f});
+
     void drawFilledRect(
         const math::FloatRect& rect,
         const LinearColor& color,

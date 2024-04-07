@@ -12,6 +12,8 @@ https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724
 
 ![another](screenshots/09.png)
 
+![dev_tools](screenshots/10_dev_tools.png)
+
 ## Features
 
 * glTF scene loading

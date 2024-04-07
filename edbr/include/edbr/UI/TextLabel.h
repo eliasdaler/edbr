@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include <edbr/Graphics/Color.h>
 #include <edbr/Math/Rect.h>
 #include <edbr/UI/Element.h>
 
@@ -20,7 +21,7 @@ public:
     };
 
 public:
-    TextLabel(std::string text, const Font& font);
+    TextLabel(std::string text, const Font& font, const LinearColor& color = LinearColor::Black());
 
     void setText(std::string text);
     const std::string& getText() const { return text; }
@@ -29,11 +30,15 @@ public:
     void setPadding(const Padding& p);
     const Padding& getPadding() const { return padding; }
 
-    glm::vec2 getContentSize() const override;
+    glm::vec2 getSizeImpl() const override;
+
+    void setColor(const LinearColor& c) { color = c; }
+    const LinearColor& getColor() const { return color; }
 
 private:
     std::string text;
     const Font& font;
+    LinearColor color;
     math::FloatRect boundingBox;
     Padding padding;
 };

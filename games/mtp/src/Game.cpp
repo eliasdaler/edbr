@@ -114,8 +114,8 @@ void Game::customInit()
         e.emplace<PlayerComponent>();
     }
 
-    // loadLevel("assets/levels/house.json");
-    loadLevel("assets/levels/city.json");
+    loadLevel("assets/levels/house.json");
+    // loadLevel("assets/levels/city.json");
 
     // spawn player
     const auto& spawnName = level.getDefaultPlayerSpawnerName();

@@ -15,7 +15,7 @@ public:
         assert(padding.y >= 0.f);
     }
 
-    glm::vec2 getContentSize() const override { return padding; }
+    glm::vec2 getSizeImpl() const override { return padding; }
 
 private:
     glm::vec2 padding;

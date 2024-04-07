@@ -17,6 +17,12 @@ struct LinearColor {
     float b{0.f};
     float a{1.f};
 
+    static LinearColor FromRGB(
+        std::uint8_t r,
+        std::uint8_t g,
+        std::uint8_t b,
+        std::uint8_t a = 255);
+
     static LinearColor Black() { return {0.f, 0.f, 0.f, 1.f}; }
     static LinearColor White() { return {1.f, 1.f, 1.f, 1.f}; }
 };

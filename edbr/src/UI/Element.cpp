@@ -4,22 +4,22 @@
 
 namespace ui
 {
-void Element::addChild(std::unique_ptr<Element> element)
+Element& Element::addChild(std::unique_ptr<Element> element)
 {
     assert(!element->parent);
     children.push_back(std::move(element));
+    return *children.back();
 }
 
 glm::vec2 Element::getSize() const
 {
-    auto size = getContentSize();
+    auto size = getSizeImpl();
     if (autoSizing == AutomaticSizing::None) {
         return size;
     }
 
-    assert(children.size() == 1); // TODO: what to do with multiple children?
-    const auto& child = children[0];
-    const auto childContentSize = child->getContentSize();
+    const auto& child = children[autoSizeElementIndex];
+    const auto childContentSize = child->getSizeImpl();
 
     switch (autoSizing) {
     case AutomaticSizing::X:
@@ -38,6 +38,12 @@ glm::vec2 Element::getSize() const
     }
 
     return size;
+}
+
+void Element::setAutomaticSizingElementIndex(std::size_t i)
+{
+    assert(i + 1 <= children.size());
+    autoSizeElementIndex = i;
 }
 
 } // end of namespace ui

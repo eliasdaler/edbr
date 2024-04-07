@@ -25,13 +25,14 @@ public:
     TextButton(
         const ui::NineSliceStyle& nineSliceStyle,
         const Font& font,
-        const std::string& label);
+        const std::string& label,
+        const LinearColor& labelColor = LinearColor::Black());
     TextButton(std::unique_ptr<NineSliceElement> nineSlice, std::unique_ptr<TextLabel> label);
 
     const NineSliceElement& getNineSlice() const;
     const TextLabel& getLabel() const;
 
-    glm::vec2 getContentSize() const override;
+    glm::vec2 getSizeImpl() const override;
 
 private:
 };

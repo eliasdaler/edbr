@@ -16,7 +16,7 @@ public:
     const ui::NineSlice& getNineSlice() const { return nineSlice; }
 
     // Returns the size without the borders
-    glm::vec2 getContentSize() const override { return size; }
+    glm::vec2 getSizeImpl() const override { return size; }
 
 private:
     ui::NineSlice nineSlice;

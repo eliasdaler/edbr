@@ -5,7 +5,8 @@
 namespace ui
 {
 
-TextLabel::TextLabel(std::string text, const Font& font) : text(std::move(text)), font(font)
+TextLabel::TextLabel(std::string text, const Font& font, const LinearColor& color) :
+    text(std::move(text)), font(font), color(color)
 {
     assert(font.loaded);
     boundingBox = font.calculateTextBoundingBox(this->text);
@@ -26,7 +27,7 @@ void TextLabel::setPadding(const Padding& p)
     padding = p;
 }
 
-glm::vec2 TextLabel::getContentSize() const
+glm::vec2 TextLabel::getSizeImpl() const
 {
     auto bbSize = boundingBox.getSize();
 

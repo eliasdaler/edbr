@@ -33,9 +33,18 @@ public:
     void draw(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
 
 private:
+    void createOptionsMenu(GfxDevice& gfxDevice);
+
+    void updateUITree(const ui::Element& element);
+    void updateSelectedUIElementInfo(const ui::Element& element);
+
     void drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
 
     void drawUIElement(
+        SpriteRenderer& uiRenderer,
+        const ui::Element& element,
+        const glm::vec2& parentPos) const;
+    void drawUIBoundingBoxes(
         SpriteRenderer& uiRenderer,
         const ui::Element& element,
         const glm::vec2& parentPos) const;
@@ -49,4 +58,6 @@ private:
     Bouncer interactTipBouncer;
 
     std::unique_ptr<ui::Element> rootUIElement;
+    const ui::Element* selectedUIElement{nullptr};
+    bool drawUIElementBoundingBoxes{false};
 };
