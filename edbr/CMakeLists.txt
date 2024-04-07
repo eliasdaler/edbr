@@ -10,8 +10,9 @@ add_library(edbr
   # DevTools
   src/DevTools/EntityInfoDisplayer.cpp
   src/DevTools/EntityTreeView.cpp
-  src/DevTools/ImGuiPropertyTable.cpp
   src/DevTools/Im3dState.cpp
+  src/DevTools/ImGuiPropertyTable.cpp
+  src/DevTools/JoltDebugRenderer.cpp
   src/DevTools/ResourcesInspector.cpp
 
   # Event

@@ -11,8 +11,7 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
-#include "JoltDebugRenderer.h"
-
+#include <edbr/DevTools/JoltDebugRenderer.h>
 #include <edbr/Graphics/IdTypes.h>
 #include <edbr/Math/Transform.h>
 

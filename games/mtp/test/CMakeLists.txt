@@ -20,7 +20,6 @@ target_sources(mtp_unit_test
   PRIVATE
     # can't link to the executable...
     # FIXME: make object lib?
-    "../src/JoltDebugRenderer.cpp"
     "../src/PhysicsSystem.cpp"
     "../src/EntityUtil.cpp"
     "../src/EntityCreator.cpp"
