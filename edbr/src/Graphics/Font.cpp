@@ -165,7 +165,7 @@ void Font::forEachGlyph(
         const auto& uv1 = glyph.uv1;
 
         float xpos = x + glyph.bearing.x;
-        float ypos = -glyph.bearing.y + static_cast<float>(lineNum) * lineSpacing;
+        float ypos = (ascenderPx - glyph.bearing.y) + static_cast<float>(lineNum) * lineSpacing;
 
         f({xpos, ypos}, uv0, uv1);
 
@@ -179,33 +179,26 @@ math::FloatRect Font::calculateTextBoundingBox(const std::string& text) const
         return {};
     }
 
-    float minX = std::numeric_limits<float>::max();
-    float minY = std::numeric_limits<float>::max();
-    float maxX = std::numeric_limits<float>::lowest();
-    float maxY = std::numeric_limits<float>::lowest();
+    float x = 0.0f;
+    int numLines = 1;
+    std::uint32_t cp = 0;
+    float maxAdvance = 0.f;
 
-    forEachGlyph(
-        text,
-        [this,
-         &minX,
-         &maxX,
-         &minY,
-         &maxY](const glm::vec2& glyphPos, const glm::vec2& uv0, const glm::vec2& uv1) {
-            // no mirroring allowed
-            assert(uv1.x >= uv0.x);
-            assert(uv1.y >= uv0.y);
+    auto it = text.begin();
+    const auto e = text.end();
+    while (it != e) {
+        cp = utf8::next(it, e);
 
-            float gx = glyphPos.x;
-            float gy = glyphPos.y;
-            float gw = (uv1.x - uv0.x) * atlasSize.x;
-            float gh = (uv1.y - uv0.y) * atlasSize.y;
+        if (cp == static_cast<std::uint32_t>('\n')) {
+            ++numLines;
+            x = 0.f;
+            continue;
+        }
 
-            minX = std::min(minX, gx);
-            minY = std::min(minY, gy);
+        const auto& glyph = glyphs.contains(cp) ? glyphs.at(cp) : glyphs.at('?');
+        x += glyph.advance;
+        maxAdvance = std::max(maxAdvance, x);
+    }
 
-            maxX = std::max(maxX, gx + gw);
-            maxY = std::max(maxY, gy + gh);
-        });
-
-    return math::FloatRect{minX, minY, maxX - minX, maxY - minY};
+    return {0.f, 0.f, maxAdvance, (float)(numLines) * (ascenderPx - descenderPx)};
 }

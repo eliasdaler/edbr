@@ -89,6 +89,16 @@ void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
         drawInteractTip(spriteRenderer, ctx);
     }
 
+    const std::string testString = "Funny frog industries.\nTest, test, test!\nHello, world...";
+    const auto textPos = glm::vec2{32.f, 64.f};
+    spriteRenderer.drawText(defaultFont, testString, textPos, LinearColor::White());
+    auto bb = defaultFont.calculateTextBoundingBox(testString);
+    bb.setPosition(textPos + bb.getTopLeftCorner());
+    spriteRenderer.drawInsetRect(bb, LinearColor{1.f, 0.f, 1.f});
+    spriteRenderer.drawFilledRect({{}, textPos}, LinearColor{1.f, 1.f, 0.f});
+    spriteRenderer.drawFilledRect(
+        {bb.getPosition().x, bb.getPosition().y + defaultFont.ascenderPx, bb.getSize().x, 1.f},
+        LinearColor{1.f, 0.f, 0.f});
     // renderer.drawElement(spriteRenderer, *rootUIElement);
 
     if (uiInpector.drawUIElementBoundingBoxes) {
