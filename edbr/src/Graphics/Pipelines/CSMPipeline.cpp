@@ -43,6 +43,7 @@ void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_
     vkutil::addDebugLabel(device, pipeline, "mesh depth only pipeline");
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
+    vkDestroyShaderModule(device, fragShader, nullptr);
 
     initCSMData(gfxDevice);
 }
@@ -97,7 +98,7 @@ void CSMPipeline::draw(
     const MeshCache& meshCache,
     const Camera& camera,
     const glm::vec3& sunlightDirection,
-    const GPUBuffer& sceneDataBuffer,
+    const GPUBuffer& materialsBuffer,
     const std::vector<MeshDrawCommand>& meshDrawCommands,
     bool shadowsEnabled)
 {
@@ -177,11 +178,10 @@ void CSMPipeline::draw(
             }
 
             const auto pushConstants = PushConstants{
-                .transform = dc.transformMatrix,
-                .vp = csmLightSpaceTMs[i],
-                .sceneDataBuffer = sceneDataBuffer.address,
+                .mvp = csmLightSpaceTMs[i] * dc.transformMatrix,
                 .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                                  mesh.vertexBuffer.address,
+                .materialsBuffer = materialsBuffer.address,
                 .materialId = (std::uint32_t)mesh.materialId,
             };
             vkCmdPushConstants(

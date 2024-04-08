@@ -35,7 +35,6 @@ public:
 private:
     struct PushConstants {
         glm::mat4 transform;
-        glm::mat4 vp;
         VkDeviceAddress sceneDataBuffer;
         VkDeviceAddress vertexBuffer;
         std::uint32_t materialId;

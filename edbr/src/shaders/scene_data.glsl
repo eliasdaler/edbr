@@ -5,23 +5,11 @@
 #extension GL_EXT_buffer_reference : require
 
 #include "light.glsl"
+#include "materials.glsl"
 
 layout (buffer_reference, scalar) readonly buffer LightsDataBuffer {
     Light data[];
 };
-
-struct MaterialData {
-    vec4 baseColor;
-    vec4 metallicRoughnessEmissive;
-    uint diffuseTex;
-    uint normalTex;
-    uint metallicRoughnessTex;
-    uint emissiveTex;
-};
-
-layout (buffer_reference, std430) readonly buffer MaterialsBuffer {
-    MaterialData data[];
-} materialsBuffer;
 
 layout (buffer_reference, scalar) readonly buffer SceneDataBuffer {
     // camera

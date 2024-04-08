@@ -28,7 +28,7 @@ public:
         const MeshCache& meshCache,
         const Camera& camera,
         const glm::vec3& sunlightDirection,
-        const GPUBuffer& sceneDataBuffer,
+        const GPUBuffer& materialsBuffer,
         const std::vector<MeshDrawCommand>& meshDrawCommands,
         bool shadowsEnabled);
 
@@ -52,10 +52,9 @@ private:
     VkPipeline pipeline;
 
     struct PushConstants {
-        glm::mat4 transform;
-        glm::mat4 vp;
-        VkDeviceAddress sceneDataBuffer;
+        glm::mat4 mvp;
         VkDeviceAddress vertexBuffer;
+        VkDeviceAddress materialsBuffer;
         std::uint32_t materialId;
         std::uint32_t padding;
     };

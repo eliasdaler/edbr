@@ -21,6 +21,7 @@ public:
 
     MaterialId getFreeMaterialId() const;
 
+    const GPUBuffer& getMaterialDataBuffer() const { return materialDataBuffer; }
     VkDeviceAddress getMaterialDataBufferAddress() const { return materialDataBuffer.address; }
 
 private:
