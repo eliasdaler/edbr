@@ -14,20 +14,23 @@ void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_
     this->percents = percents;
     const auto& device = gfxDevice.getDevice();
     const auto vertexShader = vkutil::loadShaderModule("shaders/mesh_depth_only.vert.spv", device);
+    const auto fragShader = vkutil::loadShaderModule("shaders/mesh_depth.frag.spv", device);
 
     vkutil::addDebugLabel(device, vertexShader, "mesh_depth_only.vert");
+    vkutil::addDebugLabel(device, fragShader, "mesh_depth.frag");
 
     const auto bufferRange = VkPushConstantRange{
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = sizeof(PushConstants),
     };
 
     const auto pushConstantRanges = std::array{bufferRange};
-    pipelineLayout = vkutil::createPipelineLayout(device, {}, pushConstantRanges);
+    const auto layouts = std::array{gfxDevice.getBindlessDescSetLayout()};
+    pipelineLayout = vkutil::createPipelineLayout(device, layouts, pushConstantRanges);
 
     pipeline = PipelineBuilder{pipelineLayout}
-                   .setShaders(vertexShader, VK_NULL_HANDLE)
+                   .setShaders(vertexShader, fragShader)
                    .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                    .setPolygonMode(VK_POLYGON_MODE_FILL)
                    .enableCulling()
@@ -94,9 +97,13 @@ void CSMPipeline::draw(
     const MeshCache& meshCache,
     const Camera& camera,
     const glm::vec3& sunlightDirection,
+    const GPUBuffer& sceneDataBuffer,
     const std::vector<MeshDrawCommand>& meshDrawCommands,
     bool shadowsEnabled)
 {
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    gfxDevice.bindBindlessDescSet(cmd, pipelineLayout);
+
     const auto& csmShadowMap = gfxDevice.getImage(csmShadowMapID);
 
     vkutil::transitionImage(
@@ -170,14 +177,17 @@ void CSMPipeline::draw(
             }
 
             const auto pushConstants = PushConstants{
-                .mvp = csmLightSpaceTMs[i] * dc.transformMatrix,
+                .transform = dc.transformMatrix,
+                .vp = csmLightSpaceTMs[i],
+                .sceneDataBuffer = sceneDataBuffer.address,
                 .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                                  mesh.vertexBuffer.address,
+                .materialId = (std::uint32_t)mesh.materialId,
             };
             vkCmdPushConstants(
                 cmd,
                 pipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0,
                 sizeof(PushConstants),
                 &pushConstants);

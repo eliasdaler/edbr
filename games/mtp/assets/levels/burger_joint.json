@@ -1,0 +1,15 @@
+{
+  "model": "assets/models/levels/burger_joint/burger_joint.gltf",
+  "skybox": "distant_sunset",
+  "default_spawn": "BurgerJoint",
+  "ambient": {
+    "color": { "rgb": [23, 64, 64] },
+    "intensity": 1.0
+  },
+  "fog": {
+    "color": { "rgb": [128, 128, 128] },
+    "density": 0.02
+  },
+  "bgm": "assets/music/forest_birds_ambient.ogg"
+}
+

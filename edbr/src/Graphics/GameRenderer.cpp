@@ -171,6 +171,39 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
         }
     }
 
+    { // upload scene data - can only be done after CSM has finished
+        const auto gpuSceneData = GPUSceneData{
+            .view = sceneData.camera.getView(),
+            .proj = sceneData.camera.getProjection(),
+            .viewProj = sceneData.camera.getViewProj(),
+            .cameraPos = glm::vec4{sceneData.camera.getPosition(), 1.f},
+            .ambientColor = LinearColorNoAlpha{sceneData.ambientColor},
+            .ambientIntensity = sceneData.ambientIntensity,
+            .fogColor = LinearColorNoAlpha{sceneData.fogColor},
+            .fogDensity = sceneData.fogDensity,
+            .cascadeFarPlaneZs =
+                glm::vec4{
+                    csmPipeline.cascadeFarPlaneZs[0],
+                    csmPipeline.cascadeFarPlaneZs[1],
+                    csmPipeline.cascadeFarPlaneZs[2],
+                    0.f,
+                },
+            .csmLightSpaceTMs = csmPipeline.csmLightSpaceTMs,
+            .csmShadowMapId = (std::uint32_t)csmPipeline.getShadowMap(),
+            .lightsBuffer = lightDataBuffer.getBuffer().address,
+            .numLights = (std::uint32_t)lightDataCPU.size(),
+            .sunlightIndex = sunlightIndex,
+            .materialsBuffer = materialCache.getMaterialDataBufferAddress(),
+        };
+        sceneDataBuffer.uploadNewData(
+            cmd, gfxDevice.getCurrentFrameIndex(), (void*)&gpuSceneData, sizeof(GPUSceneData));
+        lightDataBuffer.uploadNewData(
+            cmd,
+            gfxDevice.getCurrentFrameIndex(),
+            (void*)lightDataCPU.data(),
+            sizeof(GPULightData) * lightDataCPU.size());
+    }
+
     if (sunlightIndex != -1) { // CSM
         ZoneScopedN("CSM");
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "CSM", tracy::Color::CornflowerBlue);
@@ -183,6 +216,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             meshCache,
             camera,
             sunlight.direction,
+            sceneDataBuffer.getBuffer(),
             meshDrawCommands,
             shadowsEnabled);
 

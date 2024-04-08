@@ -12,6 +12,7 @@
 class GfxDevice;
 class MeshCache;
 struct MeshDrawCommand;
+struct GPUBuffer;
 
 class CSMPipeline {
 public:
@@ -27,6 +28,7 @@ public:
         const MeshCache& meshCache,
         const Camera& camera,
         const glm::vec3& sunlightDirection,
+        const GPUBuffer& sceneDataBuffer,
         const std::vector<MeshDrawCommand>& meshDrawCommands,
         bool shadowsEnabled);
 
@@ -50,7 +52,11 @@ private:
     VkPipeline pipeline;
 
     struct PushConstants {
-        glm::mat4 mvp;
+        glm::mat4 transform;
+        glm::mat4 vp;
+        VkDeviceAddress sceneDataBuffer;
         VkDeviceAddress vertexBuffer;
+        std::uint32_t materialId;
+        std::uint32_t padding;
     };
 };

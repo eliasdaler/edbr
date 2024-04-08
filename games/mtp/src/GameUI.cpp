@@ -89,7 +89,7 @@ void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
         drawInteractTip(spriteRenderer, ctx);
     }
 
-    renderer.drawElement(spriteRenderer, *rootUIElement);
+    // renderer.drawElement(spriteRenderer, *rootUIElement);
 
     if (uiInpector.drawUIElementBoundingBoxes) {
         uiInpector.drawBoundingBoxes(spriteRenderer, *rootUIElement);

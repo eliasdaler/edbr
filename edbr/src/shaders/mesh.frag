@@ -20,6 +20,10 @@ void main()
     MaterialData material = pcs.sceneData.materials.data[pcs.materialID];
 
     vec4 diffuse = sampleTexture2DLinear(material.diffuseTex, inUV);
+    if (diffuse.a < 0.1) {
+        discard;
+    }
+
     vec3 baseColor = material.baseColor.rgb * diffuse.rgb;
 
     vec3 normal = normalize(inNormal).rgb;

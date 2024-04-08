@@ -41,6 +41,7 @@ set(SHADERS
   skinning.comp
   mesh.vert
   mesh_depth_only.vert
+  mesh_depth.frag
   mesh.frag
   postfx.frag
   depth_resolve.frag

@@ -104,7 +104,7 @@ private:
     Camera camera;
     FreeCameraController cameraController;
     float cameraNear{1.f};
-    float cameraFar{64.f};
+    float cameraFar{200.f};
     float cameraFovX{glm::radians(45.f)};
 
     bool orbitCameraAroundSelectedEntity{false};

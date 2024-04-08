@@ -12,6 +12,7 @@ layout (buffer_reference, std430) readonly buffer VertexBuffer {
 layout (push_constant, scalar) uniform constants
 {
     mat4 transform;
+    mat4 vp;
     SceneDataBuffer sceneData;
     VertexBuffer vertexBuffer;
     uint materialID;

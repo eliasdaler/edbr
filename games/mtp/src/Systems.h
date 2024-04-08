@@ -125,7 +125,7 @@ inline void playerAnimationSystem(
                 animator.getCurrentAnimationName() == "Walk" ||
                 animator.getCurrentAnimationName() == "Jump" ||
                 animator.getCurrentAnimationName() == "Fall") {
-                eu::setAnimation(player, "Idle");
+                eu::setAnimation(player, "Think");
             }
         } else {
             // ^^^
