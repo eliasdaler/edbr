@@ -379,8 +379,7 @@ void Game::handlePlayerInput(float dt)
                 auto& dialogueBox = ui.getDialogueBox();
                 dialogueBox.setVisible(true);
                 dialogueBox.setSpeakerName("Some dude");
-                dialogueBox.setText(
-                    "I can finally talk!\n.................\nI have nothing to say, though.");
+                dialogueBox.setText("Hello, cato!\nHow is it going?...");
             }
         }
     }

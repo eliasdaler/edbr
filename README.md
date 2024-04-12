@@ -6,13 +6,13 @@ This is a monorepo and contains both the engine (in `edbr` directory) and variou
 
 ## Current progress
 
-https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724cf416b
-
-![latest](screenshots/08.png)
-
-![another](screenshots/09.png)
-
 ![dev_tools](screenshots/10_dev_tools.png)
+
+![dialogue](screenshots/12_dialogue.png)
+
+![burger_joint](screenshots/11_burger_joint.png)
+
+https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724cf416b
 
 ## Features
 
@@ -31,11 +31,12 @@ https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724
 * Sound via OpenAL-soft
 * ogg music playback
 * Jolt Physics integration
+* UI system with auto-layout, auto-resize and pixel perfect drawing support
 
 ## Vulkan usage
 
-* Using Vulkan 1.3.
-* No pipelines used, everything is dynamic rendering
+* Vulkan 1.3
+* No render passes used, everything is dynamic rendering
 * Bindless textures (aka descriptor indexing)
 * Using Vulkan Memory Allocator and vk-bootstrap to make the code simpler
 
