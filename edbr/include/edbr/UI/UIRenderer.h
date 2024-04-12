@@ -1,22 +1,10 @@
 #pragma once
 
-#include <glm/vec2.hpp>
-
-class SpriteRenderer;
+struct SpriteRenderer;
 
 namespace ui
 {
+struct Element;
 
-class Element;
-
-class UIRenderer {
-public:
-    void drawElement(
-        SpriteRenderer& spriteRenderer,
-        const Element& element,
-        const glm::vec2& parentPos = {}) const;
-
-private:
-};
-
+void drawElement(SpriteRenderer& spriteRenderer, const ui::Element& element);
 } // end of namespace ui

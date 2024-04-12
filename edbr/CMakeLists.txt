@@ -104,13 +104,16 @@ add_library(edbr
 
   # UI
   src/UI/Element.cpp
+  src/UI/ImageElement.cpp
   src/UI/ListLayoutElement.cpp
   src/UI/NineSlice.cpp
   src/UI/NineSliceElement.cpp
   src/UI/Style.cpp
-  src/UI/TextButton.cpp
-  src/UI/TextLabel.cpp
+  src/UI/TextElement.cpp
   src/UI/UIRenderer.cpp
+
+  # Game UI
+  src/GameUI/DialogueBox.cpp
 
   src/Application.cpp
   src/FreeCameraController.cpp

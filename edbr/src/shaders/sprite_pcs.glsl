@@ -19,6 +19,5 @@ layout (push_constant) uniform constants
 {
     mat4 viewProj;
     SpriteDrawBuffer drawBuffer;
-    uint shaderID;
 } pcs;
 

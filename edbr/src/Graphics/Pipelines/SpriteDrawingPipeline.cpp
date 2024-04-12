@@ -110,36 +110,19 @@ void SpriteDrawingPipeline::draw(
     };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    // Go over all commands and render as much as possible as many commands as
-    // possible, as long as the shaderID is the same.
-    std::uint32_t currShaderId = spriteDrawCommands[0].shaderId;
-    std::uint32_t startIndex = 0;
-    for (std::size_t i = 0; i < spriteDrawCommands.size(); ++i) {
-        bool last = (i == spriteDrawCommands.size() - 1);
-        const auto newShaderID = spriteDrawCommands[i].shaderId;
-        if (!last && newShaderID == currShaderId) {
-            continue;
-        }
+    const auto pushConstants = PushConstants{
+        .viewProj = viewProj,
+        .commandsBuffer = commandBuffer.address,
+    };
+    vkCmdPushConstants(
+        cmd,
+        pipelineLayout,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,
+        sizeof(PushConstants),
+        &pushConstants);
 
-        const auto pushConstants = PushConstants{
-            .viewProj = viewProj,
-            .commandsBuffer = commandBuffer.address,
-            .shaderID = currShaderId,
-        };
-        vkCmdPushConstants(
-            cmd,
-            pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(PushConstants),
-            &pushConstants);
-
-        const auto numDraws = last ? i - startIndex + 1 : i - startIndex;
-        vkCmdDraw(cmd, 6, numDraws, 0, startIndex);
-
-        startIndex = i;
-        currShaderId = newShaderID;
-    }
+    vkCmdDraw(cmd, 6, spriteDrawCommands.size(), 0, 0);
 
     vkCmdEndRendering(cmd);
 }

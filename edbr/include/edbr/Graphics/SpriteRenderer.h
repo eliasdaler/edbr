@@ -45,7 +45,8 @@ public:
         const Font& font,
         const std::string& text,
         const glm::vec2& pos,
-        const LinearColor& color = LinearColor{0.f, 0.f, 0.f, 1.f});
+        const LinearColor& color = LinearColor{0.f, 0.f, 0.f, 1.f},
+        int maxNumGlyphsToDraw = std::numeric_limits<int>::max());
 
     // Draw unfilled rectangle
     // if insetBorder == true, the border is drawn inside the rect

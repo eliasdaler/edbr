@@ -95,20 +95,25 @@ void SpriteRenderer::drawText(
     const Font& font,
     const std::string& text,
     const glm::vec2& pos,
-    const LinearColor& color)
+    const LinearColor& color,
+    int maxNumGlyphsToDraw)
 {
     const auto& atlasTexture = gfxDevice.getImage(font.glyphAtlasID);
     Sprite glyphSprite(atlasTexture);
     glyphSprite.color = color;
 
+    int numGlyphsDrawn = 0;
     font.forEachGlyph(
         text,
-        [this,
-         &glyphSprite,
-         &pos](const glm::vec2& glyphPos, const glm::vec2& uv0, const glm::vec2& uv1) {
+        [this, &glyphSprite, &pos, &numGlyphsDrawn, &maxNumGlyphsToDraw](
+            const glm::vec2& glyphPos, const glm::vec2& uv0, const glm::vec2& uv1) {
+            if (numGlyphsDrawn >= maxNumGlyphsToDraw) {
+                return;
+            }
             glyphSprite.uv0 = uv0;
             glyphSprite.uv1 = uv1;
             drawSprite(glyphSprite, pos + glyphPos, 0.f, glm::vec2{1.f}, textShaderId);
+            ++numGlyphsDrawn;
         });
 }
 

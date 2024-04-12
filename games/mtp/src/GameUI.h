@@ -8,16 +8,17 @@
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Math/Transform.h>
 
-#include <edbr/UI/NineSliceElement.h>
-#include <edbr/UI/TextLabel.h>
-#include <edbr/UI/UIRenderer.h>
+#include <edbr/UI/Element.h>
 
 #include <edbr/DevTools/UIInspector.h>
+
+#include <edbr/GameUI/DialogueBox.h>
 
 #include "Components.h"
 
 class SpriteRenderer;
 class Camera;
+class AudioManager;
 
 class GameUI {
 public:
@@ -29,34 +30,18 @@ public:
     };
 
 public:
-    void init(GfxDevice& gfxDevice);
+    void init(GfxDevice& gfxDevice, AudioManager& audioManager);
     void handleMouseInput(const glm::vec2& mousePos, bool leftMousePressed);
     void update(float dt);
     void updateDevTools(float dt);
 
     void draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
 
+    DialogueBox& getDialogueBox() { return dialogueBox; }
+
 private:
-    void processMouseEvent(
-        ui::Element& element,
-        const glm::vec2& mouseRelPos,
-        bool leftMousePressed);
-
-    void createOptionsMenu(GfxDevice& gfxDevice);
-
-    void updateUITree(const ui::Element& element);
-    void updateSelectedUIElementInfo(const ui::Element& element);
-
+    void createTestUI(GfxDevice& gfxDevice);
     void drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
-
-    void drawUIElement(
-        SpriteRenderer& uiRenderer,
-        const ui::Element& element,
-        const glm::vec2& parentPos) const;
-    void drawUIBoundingBoxes(
-        SpriteRenderer& uiRenderer,
-        const ui::Element& element,
-        const glm::vec2& parentPos) const;
 
     Font defaultFont;
 
@@ -66,8 +51,9 @@ private:
     Sprite talkTipSprite;
     Bouncer interactTipBouncer;
 
-    std::unique_ptr<ui::Element> rootUIElement;
+    std::unique_ptr<ui::Element> testUI;
+    DialogueBox dialogueBox;
 
-    ui::UIRenderer renderer;
-    UIInspector uiInpector;
+    UIInspector uiInspector;
+    bool drawBlackBG{false};
 };

@@ -10,10 +10,14 @@
 
 #include <edbr/Util/ImGuiUtil.h>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
+#include <edbr/UI/ImageElement.h>
 #include <edbr/UI/ListLayoutElement.h>
-#include <edbr/UI/PaddingElement.h>
-#include <edbr/UI/TextButton.h>
+#include <edbr/UI/NineSliceElement.h>
+#include <edbr/UI/RectElement.h>
+#include <edbr/UI/TextElement.h>
+#include <edbr/UI/UIRenderer.h>
 
 namespace
 {
@@ -39,7 +43,7 @@ std::unordered_set<std::uint32_t> getUsedCodePoints(
 }
 }
 
-void GameUI::init(GfxDevice& gfxDevice)
+void GameUI::init(GfxDevice& gfxDevice, AudioManager& audioManager)
 {
     strings = {
         "テキストのレンダリング、すごい",
@@ -49,7 +53,9 @@ void GameUI::init(GfxDevice& gfxDevice)
 
     auto neededCodePoints = getUsedCodePoints(strings, true);
 
-    bool ok = defaultFont.load(gfxDevice, "assets/fonts/JF-Dot-Kappa20B.ttf", 32, neededCodePoints);
+    // bool ok = defaultFont.load(gfxDevice, "assets/fonts/DejaVuSerif.ttf", 20, neededCodePoints);
+    bool ok = defaultFont
+                  .load(gfxDevice, "assets/fonts/JF-Dot-Kappa20B.ttf", 40, neededCodePoints, false);
 
     assert(ok && "font failed to load");
 
@@ -70,42 +76,45 @@ void GameUI::init(GfxDevice& gfxDevice)
         .tween = glm::quadraticEaseInOut<float>,
     });
 
-    createOptionsMenu(gfxDevice);
+    createTestUI(gfxDevice);
+
+    dialogueBox.init(gfxDevice, audioManager);
+    dialogueBox.setVisible(false);
 }
 
 void GameUI::handleMouseInput(const glm::vec2& mousePos, bool leftMousePressed)
-{
-    processMouseEvent(*rootUIElement, mousePos, leftMousePressed);
-}
+{}
 
 void GameUI::update(float dt)
 {
     interactTipBouncer.update(dt);
+
+    // const auto screenSize = glm::vec2{640, 480};
+    const auto screenSize = glm::vec2{1440, 1080};
+    testUI->calculateLayout(screenSize);
+    dialogueBox.update(screenSize, dt);
 }
 
 void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
 {
-    if (ctx.interactionType != InteractComponent::Type::None) {
-        drawInteractTip(spriteRenderer, ctx);
+    if (!dialogueBox.isVisible()) {
+        if (ctx.interactionType != InteractComponent::Type::None) {
+            drawInteractTip(spriteRenderer, ctx);
+        }
     }
 
-    const std::string testString = "Funny frog industries.\nTest, test, test!\nHello, world...";
-    const auto textPos = glm::vec2{32.f, 64.f};
-    spriteRenderer.drawText(defaultFont, testString, textPos, LinearColor::White());
-    auto bb = defaultFont.calculateTextBoundingBox(testString);
-    bb.setPosition(textPos + bb.getTopLeftCorner());
-    spriteRenderer.drawInsetRect(bb, LinearColor{1.f, 0.f, 1.f});
-    spriteRenderer.drawFilledRect({{}, textPos}, LinearColor{1.f, 1.f, 0.f});
-    spriteRenderer.drawFilledRect(
-        {bb.getPosition().x, bb.getPosition().y + defaultFont.ascenderPx, bb.getSize().x, 1.f},
-        LinearColor{1.f, 0.f, 0.f});
-    // renderer.drawElement(spriteRenderer, *rootUIElement);
+    if (drawBlackBG) {
+        spriteRenderer.drawFilledRect({{}, {640, 480}}, LinearColor::Black());
+    }
+    // ui::drawElement(spriteRenderer, *testUI);
 
-    if (uiInpector.drawUIElementBoundingBoxes) {
-        uiInpector.drawBoundingBoxes(spriteRenderer, *rootUIElement);
-        if (uiInpector.hasSelectedElement()) {
-            uiInpector.drawSelectedElement(spriteRenderer);
-        }
+    dialogueBox.draw(spriteRenderer);
+
+    if (uiInspector.drawUIElementBoundingBoxes) {
+        uiInspector.drawBoundingBoxes(spriteRenderer, *testUI);
+    }
+    if (uiInspector.hasSelectedElement()) {
+        uiInspector.drawSelectedElement(spriteRenderer);
     }
 }
 
@@ -130,116 +139,82 @@ void GameUI::drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) c
 
 void GameUI::updateDevTools(float dt)
 {
-    ImGui::Checkbox("Draw BB", &uiInpector.drawUIElementBoundingBoxes);
-    auto pos = rootUIElement->getPosition();
-    if (ImGui::Drag("UI pos", &pos)) {
-        rootUIElement->setPosition(pos);
+    if (ImGui::Button("Deselect element")) {
+        uiInspector.deselectSelectedElement();
     }
+    ImGui::Checkbox("Draw black BG", &drawBlackBG);
+    ImGui::Checkbox("Draw bounding boxes", &uiInspector.drawUIElementBoundingBoxes);
+    ImGui::Separator();
+    uiInspector.showUITree(*testUI);
 
-    uiInpector.showUITree(*rootUIElement);
-    if (uiInpector.hasSelectedElement()) {
+    if (uiInspector.hasSelectedElement()) {
         if (ImGui::Begin("Selected UI element")) {
-            uiInpector.showSelectedElementInfo();
+            uiInspector.showSelectedElementInfo();
         }
         ImGui::End();
     }
 }
-void GameUI::createOptionsMenu(GfxDevice& gfxDevice)
+
+void GameUI::createTestUI(GfxDevice& gfxDevice)
 {
     ui::NineSliceStyle nsStyle;
 
     JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
     nsStyle.load(file.getLoader(), gfxDevice);
 
-    rootUIElement = std::make_unique<ui::NineSliceElement>(nsStyle);
-    rootUIElement->setPosition(glm::vec2{64.f, 64.f});
-    rootUIElement->setAutomaticSizing(ui::Element::AutomaticSizing::XY);
+    auto listElement = std::make_unique<ui::ListLayoutElement>();
+    listElement->direction = ui::ListLayoutElement::Direction::Horizontal;
+    listElement->direction = ui::ListLayoutElement::Direction::Vertical;
+    listElement->autoSize = true;
+    listElement->offsetPosition = {32.f, 16.f};
+    listElement->offsetSize = {-64.f, -32.f};
+    // listElement->relativePosition = {0.5f, 0.5f};
+    // listElement->origin = {0.5f, 0.5f};
+    listElement->padding = 4.f;
+    // listElement->autoSizeChildren = false;
 
-    auto settingsNameColumn =
-        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
-    auto settingsValueColumn =
-        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
-    const auto strings = std::vector<std::string>{
-        "Sound",
-        "Subtitles",
-        "Music volume",
-        "SFX volume",
-        "Speech volume",
-        "Device",
+    struct ButtonInfo {
+        std::string text;
+        LinearColor color;
     };
-    for (const auto& str : strings) {
-        auto textLabel = std::make_unique<ui::TextLabel>(str, defaultFont, LinearColor::White());
-        textLabel->setPadding({24.f, 8.f, 0.f, 0.f});
-        settingsNameColumn->addChild(std::move(textLabel));
+    const auto buttons = std::vector<ButtonInfo>{
+        {"AAA", LinearColor{1.f, 0.f, 0.f}},
+        {"Hello, world", LinearColor{1.f, 1.f, 0.f}},
+        {"Yep...", LinearColor{1.f, 0.f, 1.f}},
+        {"Test!", LinearColor{0.f, 1.f, 1.f}},
+    };
 
-        auto valueLabel =
-            std::make_unique<ui::TextLabel>("<<<<<setting>>>>>", defaultFont, LinearColor::White());
-        valueLabel->setPadding({32.f, 32.f, 0.f, 0.f});
-        settingsValueColumn->addChild(std::move(valueLabel));
+    for (const auto& bi : buttons) {
+        auto textElement = std::make_unique<ui::TextElement>(bi.text, defaultFont, bi.color);
+
+        // text is centered inside the button
+        textElement->origin = {0.5f, 0.5f};
+        textElement->relativePosition = {0.5f, 0.5f};
+        // (16px, 8px) padding is added on both sides
+        textElement->offsetSize = {-32.f, -16.f};
+
+        auto nsElement = std::make_unique<ui::NineSliceElement>(nsStyle);
+        nsElement->autoSize = true;
+
+        nsElement->addChild(std::move(textElement));
+        listElement->addChild(std::move(nsElement));
     }
-    settingsNameColumn->applyLayout();
-    settingsValueColumn->applyLayout();
 
-    // [setting] [value]
-    auto settingsMainLayout =
-        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Horizontal);
-    settingsMainLayout->addChild(std::move(settingsNameColumn));
-    settingsMainLayout->addChild(std::move(settingsValueColumn));
-    settingsMainLayout->applyLayout();
+    auto nsElement = std::make_unique<ui::NineSliceElement>(nsStyle);
+    testUI = std::move(nsElement);
 
-    // buttons
-    auto okButton =
-        std::make_unique<ui::TextButton>(nsStyle, defaultFont, "OK", LinearColor::White());
-    okButton->setTag("OKButton");
+    testUI->relativePosition = {0.5f, 0.5f};
+    testUI->origin = {0.5f, 0.5f};
+    testUI->autoSize = true;
+    // rootUIElement->fixedSize = {300.f, 300.f};
 
-    auto cancelButton =
-        std::make_unique<ui::TextButton>(nsStyle, defaultFont, "Cancel", LinearColor::White());
-    cancelButton->setTag("CancelButton");
+    testUI->addChild(std::move(listElement));
 
-    auto buttonsRow =
-        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Horizontal);
-    buttonsRow->addChild(std::move(okButton));
-    buttonsRow->addChild(std::move(cancelButton));
-    buttonsRow->setCenteredPositioning(true);
-    buttonsRow->applyLayoutCentered(settingsMainLayout->getSize().x);
-
-    // main layout
-    // [setting] [value]
-    // [setting] [value]
-    // [setting] [value]
-    // ...
-    // [padding]
-    // [buttons]
-    // [padding]
-    auto settingsLayout =
-        std::make_unique<ui::ListLayoutElement>(ui::ListLayoutElement::Direction::Vertical);
-    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 8.f}));
-    settingsLayout->addChild(std::move(settingsMainLayout));
-    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 24.f}));
-    settingsLayout->addChild(std::move(buttonsRow));
-    settingsLayout->addChild(std::make_unique<ui::PaddingElement>(glm::vec2{0.f, 8.f}));
-    settingsLayout->applyLayout();
-
-    const auto menuNameLabelColor = LinearColor::FromRGB(254, 214, 124);
-    auto menuNameLabel =
-        std::make_unique<ui::TextLabel>("Sound Settings", defaultFont, menuNameLabelColor);
-    menuNameLabel->setTag("MenuName");
-    menuNameLabel->setPosition({16.f, -defaultFont.lineSpacing - 8.f});
-
-    rootUIElement->addChild(std::move(menuNameLabel));
-    rootUIElement->addChild(std::move(settingsLayout));
-    rootUIElement->setAutomaticSizingElementIndex(1);
-}
-
-void GameUI::processMouseEvent(
-    ui::Element& element,
-    const glm::vec2& mouseRelPos,
-    bool leftMousePressed)
-{
-    auto mousePos = mouseRelPos - element.getPosition();
-    element.processMouseEvent(mousePos, leftMousePressed);
-
-    for (const auto& childPtr : element.getChildren()) {
-        processMouseEvent(*childPtr, mousePos, leftMousePressed);
-    }
+    // menu name
+    auto menuName =
+        std::make_unique<ui::TextElement>("Menu", defaultFont, LinearColor::FromRGB(254, 214, 124));
+    const auto fontHeight = defaultFont.lineSpacing;
+    menuName->offsetPosition = {std::round(fontHeight / 2.f), -fontHeight};
+    menuName->shadow = true;
+    testUI->addChild(std::move(menuName));
 }

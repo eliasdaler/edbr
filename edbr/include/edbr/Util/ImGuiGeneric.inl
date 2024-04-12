@@ -15,9 +15,19 @@ bool Input(const char* label, glm::vec<N, T, glm::packed_highp>* v)
 }
 
 template<typename T, glm::length_t N>
-bool Drag(const char* label, glm::vec<N, T, glm::packed_highp>* v)
+bool Drag(
+    const char* label,
+    glm::vec<N, T, glm::packed_highp>* v,
+    float speed,
+    const glm::vec<N, T, glm::packed_highp>* min,
+    const glm::vec<N, T, glm::packed_highp>* max)
 {
-    return ImGui::Drag<T, N>(label, glm::value_ptr(*v));
+    return ImGui::Drag<T, N>(
+        label,
+        glm::value_ptr(*v),
+        speed,
+        min ? glm::value_ptr(*min) : nullptr,
+        max ? glm::value_ptr(*max) : nullptr);
 }
 
 template<typename T>
@@ -84,10 +94,10 @@ bool Input(const char* label, T* arr)
 }
 
 template<typename T, glm::length_t N>
-bool Drag(const char* label, T* arr)
+bool Drag(const char* label, T* arr, float speed, const T* min, const T* max)
 {
-    return ImGui::
-        DragScalarN(label, getDataType<T>(), arr, N, 1.f, nullptr, nullptr, getFormatString<T>());
+    return ImGui::DragScalarN(
+        label, getDataType<T>(), arr, N, speed, (void*)min, (void*)max, getFormatString<T>());
 }
 
 }

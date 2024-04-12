@@ -1,34 +1,51 @@
 #include <edbr/UI/UIRenderer.h>
 
-#include <edbr/UI/ListLayoutElement.h>
-#include <edbr/UI/PaddingElement.h>
-#include <edbr/UI/TextButton.h>
+#include <edbr/UI/Element.h>
+#include <edbr/UI/ImageElement.h>
+#include <edbr/UI/NineSliceElement.h>
+#include <edbr/UI/RectElement.h>
+#include <edbr/UI/TextElement.h>
 
-#include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 
 namespace ui
 {
+struct Element;
 
-void UIRenderer::drawElement(
-    SpriteRenderer& spriteRenderer,
-    const Element& element,
-    const glm::vec2& parentPos) const
+void drawElement(SpriteRenderer& spriteRenderer, const ui::Element& element)
 {
+    if (!element.visible) {
+        return;
+    }
+
+    if (auto r = dynamic_cast<const RectElement*>(&element); r) {
+        spriteRenderer
+            .drawFilledRect({element.absolutePosition, element.absoluteSize}, r->fillColor);
+    }
+
     if (auto ns = dynamic_cast<const NineSliceElement*>(&element); ns) {
-        ns->getNineSlice()
-            .draw(spriteRenderer, parentPos + ns->getPosition(), ns->getContentSize());
+        ns->getNineSlice().draw(spriteRenderer, element.absolutePosition, element.absoluteSize);
     }
 
-    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
-        auto p = tl->getPadding();
-        auto textPos = parentPos + element.getPosition() + glm::vec2{p.left, p.top} +
-                       glm::vec2{0.f, tl->getFont().lineSpacing};
-        spriteRenderer.drawText(tl->getFont(), tl->getText(), textPos, tl->getColor());
+    if (auto ts = dynamic_cast<const TextElement*>(&element); ts) {
+        if (ts->shadow) {
+            spriteRenderer.drawText(
+                ts->font,
+                ts->text,
+                element.absolutePosition + glm::vec2{0.f, 1.f},
+                ts->shadowColor,
+                ts->numGlyphsToDraw);
+        }
+        spriteRenderer
+            .drawText(ts->font, ts->text, element.absolutePosition, ts->color, ts->numGlyphsToDraw);
     }
 
-    for (const auto& childPtr : element.getChildren()) {
-        drawElement(spriteRenderer, *childPtr, parentPos + element.getPosition());
+    if (auto is = dynamic_cast<const ImageElement*>(&element); is) {
+        spriteRenderer.drawSprite(is->sprite, element.absolutePosition);
+    }
+
+    for (const auto& child : element.children) {
+        drawElement(spriteRenderer, *child);
     }
 }
 

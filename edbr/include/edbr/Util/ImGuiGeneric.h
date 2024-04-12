@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include <glm/glm.hpp>
 
 #include <edbr/Math/Rect.h>
@@ -24,15 +22,23 @@ template<typename T, glm::length_t N>
 bool Input(const char* label, T* arr);
 
 template<typename T, glm::length_t N>
-bool Drag(const char* label, glm::vec<N, T, glm::packed_highp>* v);
+bool Drag(
+    const char* label,
+    glm::vec<N, T, glm::packed_highp>* v,
+    float speed = 1.f,
+    const glm::vec<N, T, glm::packed_highp>* min = nullptr,
+    const glm::vec<N, T, glm::packed_highp>* max = nullptr);
 
 template<typename T>
 bool Drag(const char* label, math::Rect<T>* obj);
 
 template<typename T, glm::length_t N>
-bool Drag(const char* label, T* arr);
-
-bool Input(const char* label, std::string* obj);
+bool Drag(
+    const char* label,
+    T* arr,
+    float speed = 1.f,
+    const T* min = nullptr,
+    const T* max = nullptr);
 }
 
 #include "ImGuiGeneric.inl"

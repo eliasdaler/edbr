@@ -1,47 +1,69 @@
 #include <edbr/UI/ListLayoutElement.h>
 
-#include <cmath>
+#include <glm/common.hpp>
 
 namespace ui
 {
-void ListLayoutElement::applyLayout()
+
+void ListLayoutElement::calculateOwnSize()
 {
-    assert(!centeredPositoning && "call applyLayoutCentered instead");
+    glm::vec2 totalSize{};
+    for (const auto& child : children) {
+        child->calculateOwnSize();
 
-    totalSize = {};
-
-    auto currentPos = glm::vec2{};
-    for (const auto& c : children) {
-        c->setPosition(currentPos);
-
-        const auto childSize = c->getSize();
-        if (direction == Direction::Horizontal) {
-            currentPos.x += childSize.x;
-
-            totalSize.x += childSize.x;
-            totalSize.y = std::max(childSize.y, totalSize.y);
+        if (direction == Direction::Vertical) {
+            totalSize.x = std::max(totalSize.x, child->absoluteSize.x);
+            totalSize.y += child->absoluteSize.y + padding;
         } else {
-            currentPos.y += c->getSize().y;
+            totalSize.y = std::max(totalSize.y, child->absoluteSize.y);
+            totalSize.x += child->absoluteSize.x + padding;
+        }
+    }
 
-            totalSize.x = std::max(childSize.x, totalSize.x);
-            totalSize.y += childSize.y;
+    absoluteSize = totalSize;
+}
+
+void ListLayoutElement::calculateChildrenSizes()
+{
+    for (auto& child : children) {
+        child->calculateSizes();
+
+        if (autoSizeChildren) {
+            auto cs = child->absoluteSize;
+            if (direction == Direction::Vertical) {
+                cs.x = absoluteSize.x;
+            } else {
+                cs.y = absoluteSize.y;
+            }
+            child->absoluteSize = cs;
+            if (pixelPerfect) {
+                child->absoluteSize = glm::round(child->absoluteSize);
+            }
+            // need to refresh sizes again as the size changed
+            child->calculateChildrenSizes();
         }
     }
 }
 
-void ListLayoutElement::applyLayoutCentered(float parentWidth)
+void ListLayoutElement::calculateChildrenPositions()
 {
-    assert(direction == Direction::Horizontal);
+    auto currentPos = absolutePosition;
+    for (auto& child : children) {
+        child->absolutePosition = currentPos;
+        if (pixelPerfect) {
+            child->absolutePosition = glm::round(child->absolutePosition);
+        }
 
-    const auto w = parentWidth / (children.size() + 1);
-    totalSize = {parentWidth, 0.f};
-    for (std::size_t i = 0; i < children.size(); ++i) {
-        auto& c = *children[i];
-        const auto childSize = c.getSize();
-        c.setPosition(glm::vec2{std::floor((i + 1) * w - childSize.x / 2.f), 0.f});
+        // Can't call child.calculateSizes here because it will call
+        // child.calculateOwnSize and override the position we just calculated
+        child->calculateChildrenPositions();
 
-        totalSize.y = std::max(childSize.y, totalSize.y);
+        if (direction == Direction::Vertical) {
+            currentPos.y += child->absoluteSize.y + padding;
+        } else {
+            currentPos.x += child->absoluteSize.x + padding;
+        }
     }
 }
 
-}
+} // end of namespace ui

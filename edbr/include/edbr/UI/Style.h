@@ -13,12 +13,21 @@ struct NineSliceStyle {
     std::filesystem::path textureFilename;
     ImageId texture{NULL_IMAGE_ID};
 
+    math::IntRect textureRect;
+    math::IntRect contentsTextureRect;
+
     struct TextureCoords {
-        math::IntRect corner;
-        math::IntRect horizonal;
-        math::IntRect vertical;
+        math::IntRect topLeftCorner;
+        math::IntRect topBorder;
+        math::IntRect topRightCorner;
+        math::IntRect leftBorder;
         math::IntRect contents;
-    } coords;
+        math::IntRect rightBorder;
+        math::IntRect bottomLeftCorner;
+        math::IntRect bottomBorder;
+        math::IntRect bottomRightBorder;
+    };
+    TextureCoords textureCoords;
 
     void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
 };

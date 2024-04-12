@@ -5,28 +5,23 @@
 namespace ui
 {
 
-class ListLayoutElement : public Element {
-public:
-    enum class Direction { Horizontal, Vertical };
+struct ListLayoutElement : public Element {
+    void calculateOwnSize() override;
+    void calculateChildrenSizes() override;
+    void calculateChildrenPositions() override;
 
-public:
-    ListLayoutElement(Direction d = Direction::Horizontal) : direction(d) {}
+    // data
+    enum class Direction {
+        Vertical,
+        Horizontal,
+    };
 
-    void applyLayout();
-    void applyLayoutCentered(float parentWidth);
+    Direction direction{Direction::Vertical};
 
-    glm::vec2 getSizeImpl() const override { return totalSize; }
+    float padding{0.f}; // distance between elements
 
-    Direction getDirection() const { return direction; }
-
-    // if set to true, child elements are centered proportionaly, e.g.
-    // --[-A|A-]--[-B|B-]--
-    void setCenteredPositioning(bool b) { centeredPositoning = b; }
-
-private:
-    Direction direction;
-    glm::vec2 totalSize{};
-    bool centeredPositoning{false};
+    // if true - all children will have the same width/height (of the widest/tallest element)
+    bool autoSizeChildren{true};
 };
 
 } // end of namespace ui

@@ -15,21 +15,26 @@
 
 static constexpr int GLYPH_ATLAS_SIZE = 1024;
 
-bool Font::load(GfxDevice& gfxDevice, const std::filesystem::path& path, int size)
+bool Font::load(
+    GfxDevice& gfxDevice,
+    const std::filesystem::path& path,
+    int size,
+    bool antialiasing)
 {
     // only load ASCII by default
     std::unordered_set<std::uint32_t> neededCodePoints;
     for (std::uint32_t i = 0; i < 255; ++i) {
         neededCodePoints.insert(i);
     }
-    return load(gfxDevice, path, size, neededCodePoints);
+    return load(gfxDevice, path, size, neededCodePoints, antialiasing);
 }
 
 bool Font::load(
     GfxDevice& gfxDevice,
     const std::filesystem::path& path,
     int size,
-    const std::unordered_set<std::uint32_t>& neededCodePoints)
+    const std::unordered_set<std::uint32_t>& neededCodePoints,
+    bool antialiasing)
 {
     std::cout << "Loading font: " << path << ", size=" << size
               << ", num glyphs to load= " << neededCodePoints.size() << std::endl;
@@ -69,7 +74,11 @@ bool Font::load(
             continue;
         }
 
-        if (const auto err = FT_Load_Char(face, codepoint, FT_LOAD_RENDER)) {
+        auto loadFlags = FT_LOAD_RENDER;
+        if (!antialiasing) {
+            loadFlags |= FT_LOAD_MONOCHROME;
+        }
+        if (const auto err = FT_Load_Char(face, codepoint, loadFlags)) {
             std::cout << "Failed to load glyph: " << FT_Error_String(err) << std::endl;
             continue;
         }
@@ -81,11 +90,25 @@ bool Font::load(
             maxHeightInRow = 0;
         }
 
-        for (unsigned int row = 0; row < bmp.rows; ++row) {
-            for (unsigned int col = 0; col < bmp.width; ++col) {
-                int x = pen_x + col;
-                int y = pen_y + row;
-                atlasData[y * aw + x] = bmp.buffer[row * bmp.pitch + col];
+        if (antialiasing) {
+            for (unsigned int row = 0; row < bmp.rows; ++row) {
+                for (unsigned int col = 0; col < bmp.width; ++col) {
+                    int x = pen_x + col;
+                    int y = pen_y + row;
+                    atlasData[y * aw + x] = bmp.buffer[row * bmp.pitch + col];
+                }
+            }
+        } else {
+            assert(bmp.pixel_mode == FT_PIXEL_MODE_MONO);
+            const auto* pixels = bmp.buffer;
+            auto* dest = &atlasData[pen_y * aw + pen_x];
+            for (int y = 0; y < (int)bmp.rows; y++) {
+                for (int x = 0; x < (int)bmp.width; x++) {
+                    std::uint8_t v = ((pixels[x / 8]) & (1 << (7 - (x % 8)))) ? 255 : 0;
+                    dest[y * aw + x] = v;
+                }
+
+                pixels += bmp.pitch;
             }
         }
 

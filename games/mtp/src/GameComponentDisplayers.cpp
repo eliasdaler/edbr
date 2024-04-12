@@ -196,7 +196,7 @@ void Game::registerComponentDisplayers()
         {
             DisplayProperty("Type", lightTypeString);
 
-            DisplayColorProperty("Color", light.color);
+            DisplayProperty("Color", light.color);
             DisplayProperty("Range", light.range);
             DisplayProperty("Intensity", light.intensity);
             if (light.type == LightType::Spot) {

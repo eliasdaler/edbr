@@ -14,15 +14,13 @@ public:
     void showUITree(const ui::Element& element);
     void showSelectedElementInfo();
 
-    void drawBoundingBoxes(
-        SpriteRenderer& spriteRenderer,
-        const ui::Element& element,
-        const glm::vec2& parentPos = {}) const;
+    void drawBoundingBoxes(SpriteRenderer& spriteRenderer, const ui::Element& element) const;
 
     void drawSelectedElement(SpriteRenderer& spriteRenderer) const;
 
     bool drawUIElementBoundingBoxes{false};
 
+    void deselectSelectedElement() { selectedUIElement = nullptr; }
     bool hasSelectedElement() const { return selectedUIElement != nullptr; }
 
 private:

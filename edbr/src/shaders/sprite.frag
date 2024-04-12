@@ -9,6 +9,7 @@
 layout (location = 0) in vec2 inUV;
 layout (location = 1) in vec4 inColor;
 layout (location = 2) flat in uint textureID;
+layout (location = 3) flat in uint shaderID;
 
 layout (location = 0) out vec4 outColor;
 
@@ -18,7 +19,7 @@ layout (location = 0) out vec4 outColor;
 void main()
 {
     vec4 texColor = sampleTexture2DNearest(textureID, inUV);
-    if (pcs.shaderID == TEXT_SHADER_ID) {
+    if (shaderID == TEXT_SHADER_ID) {
         texColor = vec4(1.0, 1.0, 1.0, texColor.r);
     }
 

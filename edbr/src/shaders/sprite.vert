@@ -8,6 +8,7 @@
 layout (location = 0) out vec2 outUV;
 layout (location = 1) out vec4 outColor;
 layout (location = 2) flat out uint textureID;
+layout (location = 3) flat out uint shaderID;
 
 void main()
 {
@@ -20,5 +21,6 @@ void main()
     outUV = (1.f - baseCoord) * command.uv0 + baseCoord * command.uv1;
     outColor = command.color;
     textureID = command.textureID;
+    shaderID = command.shaderID;
 }
 

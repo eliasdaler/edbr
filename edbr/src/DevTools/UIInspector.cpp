@@ -10,7 +10,7 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <edbr/UI/ListLayoutElement.h>
-#include <edbr/UI/TextLabel.h>
+#include <edbr/UI/TextElement.h>
 
 #include <fmt/format.h>
 
@@ -41,13 +41,13 @@ void UIInspector::showUITree(const ui::Element& element)
 {
     const auto typeName = getElementTypeName(element);
     const auto nodeLabel =
-        element.getTag().empty() ? typeName : fmt::format("{} ({})", element.getTag(), typeName);
+        element.tag.empty() ? typeName : fmt::format("{} ({})", element.tag, typeName);
 
     ImGui::PushID((void*)&element);
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
                                ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                ImGuiTreeNodeFlags_DefaultOpen;
-    if (element.getChildren().empty()) {
+    if (element.children.empty()) {
         flags |= ImGuiTreeNodeFlags_Leaf;
     }
     if (&element == selectedUIElement) {
@@ -62,7 +62,7 @@ void UIInspector::showUITree(const ui::Element& element)
         if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
             selectedUIElement = &element;
         }
-        for (const auto& child : element.getChildren()) {
+        for (const auto& child : element.children) {
             showUITree(*child);
         }
         ImGui::TreePop();
@@ -80,62 +80,53 @@ void UIInspector::showSelectedElementInfo()
     assert(hasSelectedElement());
     const auto& element = *selectedUIElement;
 
-    DisplayProperty("Position", element.getPosition());
-    auto screenPos = element.calculateScreenPosition();
-    DisplayProperty("Screen position", screenPos);
+    DisplayProperty("Type", getElementTypeName(element));
+    DisplayProperty("Absolute position", element.absolutePosition);
+    DisplayProperty("Absolute size", element.absoluteSize);
 
-    auto bb = element.getBoundingBox();
-    DisplayProperty("Bounding box", bb);
-    bb.setPosition(screenPos + bb.getTopLeftCorner());
-    DisplayProperty("Bounding box(screen)", bb);
+    DisplayProperty("Relative position", element.relativePosition);
+    DisplayProperty("Relative size", element.relativeSize);
 
-    DisplayProperty("Size", element.getSize());
-
-    if (element.getAutomaticSizing() != ui::Element::AutomaticSizing::None) {
-        const auto automaticSizeStr = [](ui::Element::AutomaticSizing s) {
-            switch (s) {
-            case ui::Element::AutomaticSizing::None:
-                return "None";
-                break;
-            case ui::Element::AutomaticSizing::X:
-                return "X";
-                break;
-            case ui::Element::AutomaticSizing::Y:
-                return "Y";
-                break;
-            case ui::Element::AutomaticSizing::XY:
-                return "XY";
-                break;
-            default:
-                return "???";
-                break;
-            }
-        }(element.getAutomaticSizing());
-        DisplayProperty("Auto size", automaticSizeStr);
+    if (element.offsetPosition != glm::vec2{}) {
+        DisplayProperty("Offset position", element.offsetPosition);
     }
+    if (element.offsetSize != glm::vec2{}) {
+        DisplayProperty("Offset size", element.offsetSize);
+    }
+    if (element.origin != glm::vec2{}) {
+        DisplayProperty("Origin", element.origin);
+    }
+    if (element.fixedSize != glm::vec2{}) {
+        DisplayProperty("Fixed size", element.fixedSize);
+    }
+    if (element.autoSize) {
+        DisplayProperty("Auto size", element.autoSize);
+        DisplayProperty("Auto size child idx", element.autoSizeChildIdx);
+    }
+    EndPropertyTable();
 
+    BeginPropertyTable();
     if (auto lle = dynamic_cast<const ui::ListLayoutElement*>(&element); lle) {
-        const auto dirStr = (lle->getDirection() == ui::ListLayoutElement::Direction::Horizontal) ?
+        const auto dirStr = (lle->direction == ui::ListLayoutElement::Direction::Horizontal) ?
                                 "Horizontal" :
                                 "Vertical";
         DisplayProperty("Direction", dirStr);
+        DisplayProperty("Padding", lle->padding);
+        DisplayProperty("Auto size children", lle->autoSizeChildren);
     }
 
-    if (auto tl = dynamic_cast<const ui::TextLabel*>(&element); tl) {
-        DisplayProperty("Text", tl->getText());
+    if (auto tl = dynamic_cast<const ui::TextElement*>(&element); tl) {
+        DisplayProperty("Text", tl->text);
+        DisplayProperty("Color", tl->color);
     }
 
     EndPropertyTable();
 }
 
-void UIInspector::drawBoundingBoxes(
-    SpriteRenderer& spriteRenderer,
-    const ui::Element& element,
-    const glm::vec2& parentPos) const
+void UIInspector::drawBoundingBoxes(SpriteRenderer& spriteRenderer, const ui::Element& element)
+    const
 {
-    auto bb = element.getBoundingBox();
-    auto selfPos = parentPos + element.getPosition();
-    bb.setPosition(selfPos + bb.getTopLeftCorner());
+    const auto bb = math::FloatRect{element.absolutePosition, element.absoluteSize};
 
     auto bbColor =
         edbr::rgbToLinear(util::pickRandomColor(util::LightColorsPalette, (void*)&element));
@@ -144,8 +135,8 @@ void UIInspector::drawBoundingBoxes(
     bbColor.a = 1.f;
     spriteRenderer.drawInsetRect(bb, bbColor);
 
-    for (const auto& childPtr : element.getChildren()) {
-        drawBoundingBoxes(spriteRenderer, *childPtr, selfPos);
+    for (const auto& childPtr : element.children) {
+        drawBoundingBoxes(spriteRenderer, *childPtr);
     }
 }
 
@@ -154,9 +145,7 @@ void UIInspector::drawSelectedElement(SpriteRenderer& spriteRenderer) const
     assert(hasSelectedElement());
     const auto& element = *selectedUIElement;
 
-    auto pos = element.calculateScreenPosition();
-    auto bb = element.getBoundingBox();
-    bb.setPosition(pos + bb.getTopLeftCorner());
+    const auto bb = math::FloatRect{element.absolutePosition, element.absoluteSize};
     auto bbColor =
         edbr::rgbToLinear(util::pickRandomColor(util::LightColorsPalette, (void*)&element));
 

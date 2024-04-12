@@ -52,8 +52,7 @@ void NineSlice::draw(
     const glm::vec2& position,
     const glm::vec2& size) const
 {
-    // Origin is at upper-left corner of (4)
-    // The size of (4) is this->size
+    // Origin is at top-left corner
     // --------------------------
     // |0|         1          |2|
     // --------------------------
@@ -64,68 +63,95 @@ void NineSlice::draw(
     // |6|         7          |8|
     // --------------------------
     //
-    // 0 - up left corner
-    // 1 - up horizontal border
+    // 0 - top left corner
+    // 1 - top border
     // ...
     // 4 - contents
     // ... etc.
 
     const auto& texture = spriteRenderer.getGfxDevice().getImage(style.texture);
-    auto cornerSize = static_cast<glm::vec2>(style.coords.corner.getSize());
 
     assert(style.texture && "style was not set?");
     const auto ts = texture.getSize2D();
 
     Sprite sprite(texture);
 
-    // up left corner
-    sprite.uv0 = getUV0(style.coords.corner, ts, false, false);
-    sprite.uv1 = getUV1(style.coords.corner, ts, false, false);
-    spriteRenderer.drawSprite(sprite, position - cornerSize);
+    // top left corner
+    sprite.setTextureRect(style.textureCoords.topLeftCorner);
+    spriteRenderer.drawSprite(sprite, position);
 
-    // up horizontal border
-    sprite.uv0 = getUV0(style.coords.horizonal, ts, false, false);
-    sprite.uv1 = getUV1(style.coords.horizonal, ts, false, false);
-    spriteRenderer
-        .drawSprite(sprite, position + glm::vec2{0.f, -cornerSize.y}, 0.f, glm::vec2{size.x, 1.f});
+    // top border
+    sprite.setTextureRect(style.textureCoords.topBorder);
+    float topBorderWidth =
+        size.x - style.textureCoords.topLeftCorner.width - style.textureCoords.topRightCorner.width;
+    spriteRenderer.drawSprite(
+        sprite,
+        position + glm::vec2{(float)style.textureCoords.topLeftCorner.width, 0.f},
+        0.f,
+        {topBorderWidth / (float)style.textureCoords.topBorder.width, 1.f});
 
-    // up right corner
-    sprite.uv0 = getUV0(style.coords.corner, ts, true, false);
-    sprite.uv1 = getUV1(style.coords.corner, ts, true, false);
-    spriteRenderer.drawSprite(sprite, position + glm::vec2{size.x, -cornerSize.y});
+    // top right corner
+    sprite.setTextureRect(style.textureCoords.topRightCorner);
+    spriteRenderer.drawSprite(
+        sprite,
+        position + glm::vec2{style.textureCoords.topLeftCorner.width + topBorderWidth, 0.f});
 
-    // left vertical border
-    sprite.uv0 = getUV0(style.coords.vertical, ts, false, false);
-    sprite.uv1 = getUV1(style.coords.vertical, ts, false, false);
-    spriteRenderer
-        .drawSprite(sprite, position + glm::vec2{-cornerSize.x, 0.f}, 0.f, glm::vec2{1.f, size.y});
+    // left border
+    float leftBorderHeight = size.y - style.textureCoords.topLeftCorner.height -
+                             style.textureCoords.bottomLeftCorner.height;
+    sprite.setTextureRect(style.textureCoords.leftBorder);
+    spriteRenderer.drawSprite(
+        sprite,
+        position + glm::vec2{0.f, style.textureCoords.topLeftCorner.height},
+        0.f,
+        {1.f, leftBorderHeight / (float)style.textureCoords.leftBorder.height});
 
     // contents
-    sprite.uv0 = getUV0(style.coords.contents, ts, false, false);
-    sprite.uv1 = getUV1(style.coords.contents, ts, false, false);
-    spriteRenderer.drawSprite(sprite, position, 0.f, size);
+    sprite.setTextureRect(style.textureCoords.contents);
+    spriteRenderer.drawSprite(
+        sprite,
+        position +
+            glm::vec2{
+                style.textureCoords.topLeftCorner.width, style.textureCoords.topLeftCorner.height},
+        0.f,
+        {topBorderWidth / (float)style.textureCoords.contents.width,
+         leftBorderHeight / (float)style.textureCoords.contents.height});
 
-    // right vertical border
-    sprite.uv0 = getUV0(style.coords.vertical, ts, true, false);
-    sprite.uv1 = getUV1(style.coords.vertical, ts, true, false);
-    spriteRenderer
-        .drawSprite(sprite, position + glm::vec2{size.x, 0.f}, 0.f, glm::vec2{1.f, size.y});
+    // right border
+    sprite.setTextureRect(style.textureCoords.rightBorder);
+    spriteRenderer.drawSprite(
+        sprite,
+        position +
+            glm::vec2{
+                style.textureCoords.topLeftCorner.width + topBorderWidth,
+                style.textureCoords.topLeftCorner.height},
+        0.f,
+        {1.f, leftBorderHeight / (float)style.textureCoords.rightBorder.height});
 
-    // down left corner
-    sprite.uv0 = getUV0(style.coords.corner, ts, false, true);
-    sprite.uv1 = getUV1(style.coords.corner, ts, false, true);
-    spriteRenderer.drawSprite(sprite, position + glm::vec2{-cornerSize.y, size.y});
+    // bottom left corner
+    sprite.setTextureRect(style.textureCoords.bottomLeftCorner);
+    spriteRenderer.drawSprite(
+        sprite,
+        position + glm::vec2{0.f, leftBorderHeight + style.textureCoords.topLeftCorner.height});
 
-    // down horizontal border
-    sprite.uv0 = getUV0(style.coords.horizonal, ts, false, true);
-    sprite.uv1 = getUV1(style.coords.horizonal, ts, false, true);
-    spriteRenderer
-        .drawSprite(sprite, position + glm::vec2{0.f, size.y}, 0.f, glm::vec2{size.x, 1.f});
+    // bottom border
+    sprite.setTextureRect(style.textureCoords.bottomBorder);
+    spriteRenderer.drawSprite(
+        sprite,
+        position +
+            glm::vec2{
+                style.textureCoords.topLeftCorner.width,
+                leftBorderHeight + style.textureCoords.topLeftCorner.height},
+        0.f,
+        {topBorderWidth / (float)style.textureCoords.bottomBorder.width, 1.f});
 
-    // down right corner
-    sprite.uv0 = getUV0(style.coords.corner, ts, true, true);
-    sprite.uv1 = getUV1(style.coords.corner, ts, true, true);
-    spriteRenderer.drawSprite(sprite, position + size);
+    // bottom right corner
+    sprite.setTextureRect(style.textureCoords.bottomRightBorder);
+    spriteRenderer.drawSprite(
+        sprite,
+        position + glm::vec2{
+                       style.textureCoords.topLeftCorner.width + topBorderWidth,
+                       leftBorderHeight + style.textureCoords.topLeftCorner.height});
 }
 
 } // end of namespace UI

@@ -100,7 +100,7 @@ void Game::customInit()
     registerComponents(entityFactory.getComponentFactory());
     registerComponentDisplayers();
 
-    ui.init(gfxDevice);
+    ui.init(gfxDevice, audioManager);
 
     { // create camera
         static const float aspectRatio = (float)params.renderWidth / (float)params.renderHeight;
@@ -114,9 +114,9 @@ void Game::customInit()
         e.emplace<PlayerComponent>();
     }
 
-    loadLevel("assets/levels/house.json");
+    // loadLevel("assets/levels/house.json");
     // loadLevel("assets/levels/burger_joint.json");
-    // loadLevel("assets/levels/city.json");
+    loadLevel("assets/levels/city.json");
 
     // spawn player
     const auto& spawnName = level.getDefaultPlayerSpawnerName();
@@ -375,6 +375,13 @@ void Game::handlePlayerInput(float dt)
     if (actionMapping.wasJustPressed(interactAction)) {
         if (interactEntity.entity() != entt::null) {
             std::cout << "interact with " << (int)interactEntity.entity() << std::endl;
+            if ((int)interactEntity.entity() == 1138) {
+                auto& dialogueBox = ui.getDialogueBox();
+                dialogueBox.setVisible(true);
+                dialogueBox.setSpeakerName("Some dude");
+                dialogueBox.setText(
+                    "I can finally talk!\n.................\nI have nothing to say, though.");
+            }
         }
     }
 }

@@ -21,12 +21,17 @@ struct Glyph {
 };
 
 struct Font {
-    bool load(GfxDevice& gfxDevice, const std::filesystem::path& path, int size);
     bool load(
         GfxDevice& gfxDevice,
         const std::filesystem::path& path,
         int size,
-        const std::unordered_set<std::uint32_t>& neededCodePoints);
+        bool antialiasing = true);
+    bool load(
+        GfxDevice& gfxDevice,
+        const std::filesystem::path& path,
+        int size,
+        const std::unordered_set<std::uint32_t>& neededCodePoints,
+        bool antialiasing = true);
 
     glm::vec2 getGlyphAtlasSize() const;
     glm::vec2 getGlyphSize(std::uint32_t codePoint) const;

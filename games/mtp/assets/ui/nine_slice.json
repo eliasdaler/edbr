@@ -1,10 +1,6 @@
 {
   "texture": "assets/images/ui/nine_slice.png",
-  "size": [526, 116],
   "textureCoords": {
-    "contents": [ 5, 5, 1, 1 ],
-    "corner": [ 0, 0, 5, 5 ],
-    "horizontal": [ 5, 0, 1, 5 ],
-    "vertical": [ 0, 5, 5, 1 ]
+    "contents": [ 5, 5, 1, 1]
   }
 }

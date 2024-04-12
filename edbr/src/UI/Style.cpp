@@ -12,10 +12,75 @@ void NineSliceStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 
     if (loader.hasKey("textureCoords")) {
         const auto cl = loader.getLoader("textureCoords");
-        cl.get("corner", coords.corner);
-        cl.get("horizontal", coords.horizonal);
-        cl.get("vertical", coords.vertical);
-        cl.get("contents", coords.contents);
+        if (cl.hasKey("rect")) {
+            cl.get("rect", textureRect);
+        } else {
+            auto& tex = gfxDevice.getImage(texture);
+            textureRect = {{}, tex.getSize2D()};
+        }
+        cl.get("contents", contentsTextureRect);
+
+        // compute texture coords
+        textureCoords.topLeftCorner = math::IntRect{
+            textureRect.left,
+            textureRect.top,
+            contentsTextureRect.left - textureRect.left,
+            contentsTextureRect.top - textureRect.top};
+
+        textureCoords.topBorder = math::IntRect{
+            contentsTextureRect.left,
+            textureRect.top,
+            contentsTextureRect.width,
+            contentsTextureRect.top - textureRect.top};
+
+        textureCoords.topRightCorner = math::IntRect{
+            textureRect.left + contentsTextureRect.left + contentsTextureRect.width,
+            textureRect.top,
+            textureRect.left + textureRect.width -
+                (contentsTextureRect.left + contentsTextureRect.width),
+            contentsTextureRect.top - textureRect.top};
+
+        textureCoords.leftBorder = math::IntRect{
+            textureRect.left,
+            contentsTextureRect.top,
+            contentsTextureRect.left - textureRect.left,
+            contentsTextureRect.height,
+        };
+
+        textureCoords.contents = contentsTextureRect;
+
+        textureCoords.rightBorder = math::IntRect{
+            contentsTextureRect.left + contentsTextureRect.width,
+            contentsTextureRect.top,
+            textureRect.left + textureRect.width -
+                (contentsTextureRect.left + contentsTextureRect.width),
+            contentsTextureRect.height,
+        };
+
+        textureCoords.bottomLeftCorner = math::IntRect{
+            textureRect.left,
+            textureRect.top + (contentsTextureRect.top + contentsTextureRect.height),
+            contentsTextureRect.left - textureRect.left,
+            textureRect.top + textureRect.height -
+                (contentsTextureRect.top + contentsTextureRect.height),
+        };
+
+        textureCoords.bottomBorder = math::IntRect{
+            contentsTextureRect.left,
+            contentsTextureRect.top + contentsTextureRect.height,
+            contentsTextureRect.width,
+            textureRect.top + textureRect.height -
+                (contentsTextureRect.top + contentsTextureRect.height),
+        };
+
+        textureCoords.bottomRightBorder = math::IntRect{
+            contentsTextureRect.left + contentsTextureRect.width,
+            contentsTextureRect.top + contentsTextureRect.height,
+            textureRect.left + textureRect.width -
+                (contentsTextureRect.left + contentsTextureRect.width),
+            textureRect.top + textureRect.height -
+                (contentsTextureRect.top + contentsTextureRect.height),
+        };
     }
 }
 

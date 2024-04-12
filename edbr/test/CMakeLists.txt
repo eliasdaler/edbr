@@ -14,6 +14,7 @@ set_target_properties(unit_test PROPERTIES
 target_sources(unit_test
   PRIVATE
     TestBasic.cpp
+    TestUILayout.cpp
 )
 
 target_include_directories(unit_test

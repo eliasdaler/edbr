@@ -81,26 +81,20 @@ void DisplayPropertyF(const char* name, const char* fmt, ...)
     va_end(args);
 }
 
-void DisplayColorProperty(const char* name, const RGBColor& c)
+void DisplayProperty(const char* name, const RGBColor& c)
 {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::TextUnformatted(name);
     ImGui::TableSetColumnIndex(1);
-    const auto flags = ImGuiColorEditFlags_InputRGB;
+    const auto flags = ImGuiColorEditFlags_NoInputs;
     std::array<float, 4> arr{(float)c.r / 255.f, (float)c.g / 255.f, (float)c.b / 255.f, 1.f};
     ImGui::ColorEdit3("##Color", arr.data(), flags);
 }
 
-void DisplayColorProperty(const char* name, const LinearColor& c)
+void DisplayProperty(const char* name, const LinearColor& c)
 {
-    ImGui::TableNextRow();
-    ImGui::TableSetColumnIndex(0);
-    ImGui::TextUnformatted(name);
-    ImGui::TableSetColumnIndex(1);
-    const auto flags = ImGuiColorEditFlags_Float;
-    std::array<float, 4> arr{c.r, c.g, c.b, c.a};
-    ImGui::ColorEdit3("##Color", arr.data(), flags);
+    DisplayProperty(name, edbr::linearToRGB(c));
 }
 
 }

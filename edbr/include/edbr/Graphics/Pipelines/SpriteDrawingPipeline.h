@@ -35,7 +35,6 @@ private:
     struct PushConstants {
         glm::mat4 viewProj;
         VkDeviceAddress commandsBuffer;
-        std::uint32_t shaderID;
     };
 
     struct PerFrameData {
