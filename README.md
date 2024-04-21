@@ -4,6 +4,14 @@ This project initially started for learning Vulkan but quickly grew into a full-
 
 This is a monorepo and contains both the engine (in `edbr` directory) and various games/test projects (in `games` directory).
 
+Playable demo of cat adventure game: https://eliasdaler.itch.io/project-mtp-dev
+
+## Build dependencies
+
+* Vulkan SDK
+* CMake 3.21+
+* Linux: whatever SDL2 needs
+
 ## Current progress
 
 ![dev_tools](screenshots/10_dev_tools.png)
