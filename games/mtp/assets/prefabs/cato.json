@@ -12,6 +12,20 @@
       "pickup_start_sound": "ui/pickup_start",
       "pickup_end_sound": "ui/pickup"
     }
+  },
+  "physics": {
+    "type": "dynamic",
+    "bodyType": "virtual_character",
+    "bodyParams": {
+      "maxSlopeAngleDeg": 60,
+      "characterRadius": 0.3,
+      "characterHeight": 0.75,
+      "runSpeed": 4.0,
+      "walkSpeed": 1.15,
+      "jumpSpeed": 8.0,
+      "gravityFactor": 1.5,
+      "smallJumpFactor": 4.0
+    }
   }
 }
 

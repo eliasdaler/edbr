@@ -2,6 +2,8 @@
 
 #include <glm/common.hpp>
 
+#include <stdexcept>
+
 namespace ui
 {
 
@@ -49,6 +51,11 @@ void Element::calculateSizes()
 
 void Element::calculateOwnSize()
 {
+    if (!parent && !autoSize && fixedSize == glm::vec2{}) {
+        throw std::runtime_error(
+            "root element can't calculate own size unless fixedSize or autoSize is set");
+    }
+
     if (autoSize) {
         // autosize based on the child's size
         assert(autoSizeChildIdx + 1 <= children.size());
@@ -57,12 +64,7 @@ void Element::calculateOwnSize()
 
         // Calculate parent's size based on child's
         absoluteSize = child.absoluteSize / child.relativeSize - child.offsetSize;
-    } else {
-        if (!parent) {
-            throw std::runtime_error(
-                "root element can't calculate own size unless fixedSize or autoSize is set");
-        }
-
+    } else if (parent) {
         absoluteSize = relativeSize * parent->absoluteSize + offsetSize;
     }
 
@@ -115,6 +117,26 @@ void Element::calculateChildrenPositions()
 {
     for (auto& childPtr : children) {
         childPtr->calculatePositions();
+    }
+}
+
+void Element::setSelected(bool b)
+{
+    selected = b;
+    if (selected) {
+        onSelected();
+    } else {
+        onDeselected();
+    }
+}
+
+void Element::setEnabled(bool b)
+{
+    enabled = b;
+    if (enabled) {
+        onEnabled();
+    } else {
+        onDisabled();
     }
 }
 

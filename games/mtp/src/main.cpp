@@ -2,19 +2,17 @@
 
 #include "Game.h"
 
-int main()
+int main(int argc, char** argv)
 {
     util::setCurrentDirToExeDir();
 
     Game game{};
+
+    game.defineCLIArgs();
+    game.parseCLIArgs(argc, argv);
+
     game.init({
-        .windowWidth = 2400,
-        .windowHeight = 1080,
-        // .renderWidth = 1280,
-        // .renderHeight = 960,
-        .renderWidth = 1440,
-        .renderHeight = 1080,
-        .title = "Project MTP",
+        .appName = "Project MTP",
     });
     game.run();
     game.cleanup();

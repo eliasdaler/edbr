@@ -6,6 +6,7 @@
 #include <edbr/Graphics/IdTypes.h>
 
 class GfxDevice;
+struct Font;
 
 namespace ui
 {
@@ -30,6 +31,22 @@ struct NineSliceStyle {
     TextureCoords textureCoords;
 
     void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
+};
+
+struct ButtonStyle {
+    const NineSliceStyle* nineSliceStyle{nullptr}; // if null - the button will have invisible
+                                                   // border
+    const Font& font;
+
+    LinearColor normalColor; // when not selected
+    LinearColor selectedColor;
+    LinearColor disabledColor;
+
+    enum class TextAlignment { Left, Center };
+    TextAlignment textAlignment{TextAlignment::Center};
+
+    glm::vec2 padding; // padding of text around the nine-patch/invisible frame
+    glm::vec2 cursorOffset; // cursor offset relative to top-left corner of the button
 };
 
 } // end of namespace ui

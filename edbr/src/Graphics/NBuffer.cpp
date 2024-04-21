@@ -58,6 +58,10 @@ void NBuffer::uploadNewData(
     assert(frameIndex < framesInFlight);
     assert(offset + dataSize <= gpuBufferSize && "NBuffer::uploadNewData: out of bounds write");
 
+    if (dataSize == 0) {
+        return;
+    }
+
     // sync with previous read
     if (sync) {
         const auto bufferBarrier = VkBufferMemoryBarrier2{

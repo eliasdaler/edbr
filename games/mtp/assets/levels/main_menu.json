@@ -1,0 +1,14 @@
+{
+  "model": "assets/models/levels/main_menu/main_menu.gltf",
+  "skybox": "distant_sunset",
+  "default_camera": "TV",
+  "ambient": {
+    "color": { "rgb": [18, 24, 24] },
+    "intensity": 1.0
+  },
+  "fog": {
+    "color": { "rgb": [128, 128, 128] },
+    "density": 0.03
+  },
+  "bgm": "assets/music/jungle.ogg"
+}

@@ -1,6 +1,6 @@
 #pragma once
 
-struct SpriteRenderer;
+class SpriteRenderer;
 
 namespace ui
 {

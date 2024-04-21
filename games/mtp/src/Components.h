@@ -15,6 +15,9 @@
 #include <edbr/Graphics/SkeletalAnimation.h>
 #include <edbr/Graphics/SkeletonAnimator.h>
 #include <edbr/Math/Transform.h>
+#include <edbr/Text/LocalizedStringTag.h>
+
+#include "VirtualCharacterParams.h"
 
 struct TransformComponent {
     Transform transform; // local (relative to parent)
@@ -80,8 +83,12 @@ struct CameraComponent {};
 struct PlayerComponent {};
 
 struct InteractComponent {
-    enum class Type { None, Interact, Talk };
+    enum class Type { None, Interact, Talk, Save };
     Type type{Type::Interact};
+};
+
+struct NPCComponent {
+    LocalizedStringTag name;
 };
 
 struct PhysicsComponent {
@@ -106,7 +113,9 @@ struct PhysicsComponent {
         AABB,
         Capsule,
         Cylinder,
+        ConvexHull,
         TriangleMesh,
+        VirtualCharacter,
     };
 
     BodyType bodyType{BodyType::None};
@@ -130,10 +139,16 @@ struct PhysicsComponent {
         float halfHeight{0.f};
     };
 
-    std::variant<std::monostate, SphereParams, AABBParams, CapsuleParams, CylinderParams>
+    std::variant<
+        std::monostate,
+        SphereParams,
+        AABBParams,
+        CapsuleParams,
+        CylinderParams,
+        VirtualCharacterParams>
         bodyParams;
 
-    JPH::BodyID bodyId;
+    JPH::BodyID bodyId{};
 };
 
 struct AnimationEventSoundComponent {

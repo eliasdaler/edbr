@@ -34,12 +34,14 @@ static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
 GfxDevice::GfxDevice() : imageCache(*this)
 {}
 
-void GfxDevice::init(SDL_Window* window, const char* appName, bool vSync)
+void GfxDevice::init(SDL_Window* window, const char* appName, const Version& version, bool vSync)
 {
-    initVulkan(window, appName);
+    initVulkan(window, appName, version);
     executor = createImmediateExecutor();
 
     swapchain.initSyncStructures(device);
+
+    this->vSync = vSync;
 
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
@@ -74,12 +76,13 @@ void GfxDevice::init(SDL_Window* window, const char* appName, bool vSync)
     }
 }
 
-void GfxDevice::initVulkan(SDL_Window* window, const char* appName)
+void GfxDevice::initVulkan(SDL_Window* window, const char* appName, const Version& appVersion)
 {
     VK_CHECK(volkInitialize());
 
     instance = vkb::InstanceBuilder{}
                    .set_app_name(appName)
+                   .set_app_version(appVersion.major, appVersion.major, appVersion.patch)
                    // .request_validation_layers()
                    .use_default_debug_messenger()
                    .require_api_version(1, 3, 0)
@@ -194,6 +197,18 @@ void GfxDevice::createCommandBuffers()
     }
 }
 
+void GfxDevice::recreateSwapchain(std::uint32_t swapchainWidth, std::uint32_t swapchainHeight)
+{
+    assert(swapchainWidth != 0 && swapchainHeight != 0);
+    waitIdle();
+    swapchain.recreate(
+        device,
+        swapchainFormat,
+        (std::uint32_t)swapchainWidth,
+        (std::uint32_t)swapchainHeight,
+        vSync);
+}
+
 VkCommandBuffer GfxDevice::beginFrame()
 {
     swapchain.beginFrame(device, getCurrentFrameIndex());
@@ -214,6 +229,12 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
     // get swapchain image
     const auto [swapchainImage, swapchainImageIndex] =
         swapchain.acquireImage(device, getCurrentFrameIndex());
+    if (swapchainImage == VK_NULL_HANDLE) {
+        return;
+    }
+
+    // Fences are reset here to prevent the deadlock in case swapchain becomes dirty
+    swapchain.resetFences(device, getCurrentFrameIndex());
 
     auto swapchainLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 

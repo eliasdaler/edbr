@@ -11,10 +11,11 @@ class EntityTreeView {
 public:
     virtual ~EntityTreeView() = default;
 
-    void update(const entt::registry& registry, float dt);
+    void update(entt::registry& registry, float dt);
 
     void setSelectedEntity(const entt::handle e) { selectedEntity = e; };
-    entt::const_handle getSelectedEntity() const { return selectedEntity; }
+    entt::handle getSelectedEntity() const { return selectedEntity; }
+    void deselectedEntity() { setSelectedEntity({}); }
     bool hasSelectedEntity() const { return selectedEntity.entity() != entt::null; }
 
     virtual void displayExtraFilters(){};
@@ -27,8 +28,8 @@ public:
     virtual RGBColor getDisplayColor(entt::const_handle e) const { return RGBColor{255, 255, 255}; }
 
 private:
-    entt::const_handle selectedEntity{};
-    void updateEntityTreeUI(entt::const_handle e);
+    entt::handle selectedEntity{};
+    void updateEntityTreeUI(entt::handle e);
 
     ImGuiTextFilter filter;
 };

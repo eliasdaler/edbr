@@ -18,6 +18,9 @@
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
 
+#include "Events.h"
+#include "VirtualCharacterParams.h"
+
 namespace Layers
 {
 static constexpr JPH::ObjectLayer NON_MOVING = 0;
@@ -27,6 +30,8 @@ static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
 
 struct CPUMesh;
 class InputManager;
+class EventManager;
+class SceneCache;
 
 class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
 public:
@@ -164,6 +169,8 @@ public:
 
 class PhysicsSystem {
 public:
+    PhysicsSystem(EventManager& eventManager);
+    // Need to call this function before init to initialize various Jolt stuff
     static void InitStaticObjects();
 
     void init();
@@ -177,10 +184,14 @@ public:
     void update(float dt, const glm::quat& characterRotation);
     void cleanup();
 
+    void stopCharacterMovement();
     void setCharacterPosition(const glm::vec3 pos);
     glm::vec3 getCharacterPosition() const;
     glm::vec3 getCharacterVelocity() const;
     bool isCharacterOnGround() const;
+
+    // creates entity physics body
+    void addEntity(entt::handle e, SceneCache& sceneCache);
 
     JPH::Ref<JPH::Shape> cacheMeshShape(
         const std::vector<const CPUMesh*>& meshes,
@@ -195,6 +206,7 @@ public:
         bool sensor);
     void updateTransform(JPH::BodyID id, const Transform& transform, bool updateScale = false);
     void setVelocity(JPH::BodyID id, const glm::vec3& velocity);
+    void syncCharacterTransform();
     void syncVisibleTransform(JPH::BodyID id, Transform& transform);
 
     void doForBody(JPH::BodyID id, std::function<void(const JPH::Body&)> f);
@@ -210,46 +222,26 @@ public:
         return interactableEntities;
     }
 
-    bool wireframesDrawn() const { return drawCollisionShapes; }
+    void onEntityTeleported(const EntityTeleportedEvent& event);
+    // Remove physics body on destory
+    void onEntityDestroyed(entt::handle e);
+
+    // draw settings
+    bool drawCollisionLinesWithDepth{true};
+    bool drawCollisionShapes{false};
+    bool drawCollisionShapesWireframe{true};
+    bool drawCollisionShapeBoundingBox{false};
+    bool drawSensorsOnly{true};
+    bool drawCharacterShape{false};
 
 private:
     void collectInteractableEntities(const glm::quat& characterRotation);
-
-    struct CharacterParams {
-        float maxSlopeAngle = glm::radians(60.0f);
-        float maxStrength{100.0f};
-        float characterPadding{0.02f};
-        float penetrationRecoverySpeed{1.0f};
-        float predictiveContactDistance{0.1f};
-
-        float characterRadius{0.3f};
-        float characterHeight{0.8f};
-
-        bool enableWalkStairs{false};
-        bool enableStickToFloor{true};
-        bool enableCharacterInertia{false};
-
-        float characterSpeedRun{4.f};
-        float characterSpeedWalk{1.15f};
-        float jumpSpeed{8.f};
-        bool controlMovementDuringJump{true};
-        float gravityFactor{1.5f};
-        float smallJumpFactor{4.f};
-    };
-    bool characterOnGround{true};
-    void createCharacter(const CharacterParams& cp);
-    void characterPreUpdate(float dt, const glm::quat& characterRotation);
+    void drawBodies(const Camera& camera);
     void sendCollisionEvents();
 
-    JPH::Ref<JPH::CharacterVirtual> character;
-    JPH::RefConst<JPH::Shape> characterShape;
-    JPH::RefConst<JPH::Shape> characterInteractionShape;
-    float interactionSphereRadius{0.75f};
-    glm::vec3 interactionSphereOffset{0.f, 1.f, 0.75f};
-    JPH::Vec3 characterDesiredVelocity;
-    CharacterParams characterParams;
-
     JPH::PhysicsSystem physicsSystem;
+    EventManager& eventManager;
+
     JPH::Body* floor{nullptr};
 
     std::unique_ptr<JPH::TempAllocatorImpl> tempAllocator;
@@ -269,13 +261,22 @@ private:
     };
     std::vector<CachedMeshShape> cachedMeshShapes;
 
-    // dev
-    bool drawCollisionLinesWithDepth{true};
-    bool drawCollisionShapes{false};
-    bool drawCollisionShapesWireframe{true};
-    bool drawCollisionShapeBoundingBox{false};
-    bool drawSensorsOnly{false};
-
     std::unordered_map<std::uint32_t, entt::handle> bodyIDToEntity;
     std::vector<entt::handle> interactableEntities;
+
+    // character stuff
+    bool characterOnGround{true};
+    void createCharacter(entt::handle e, const VirtualCharacterParams& cp);
+    void characterPreUpdate(float dt, const glm::quat& characterRotation);
+    // character data
+    entt::handle characterEntity;
+    JPH::Ref<JPH::CharacterVirtual> character;
+    JPH::RefConst<JPH::Shape> characterShape;
+    JPH::Vec3 characterDesiredVelocity;
+    VirtualCharacterParams characterParams;
+    // character interaction
+    JPH::RefConst<JPH::Shape> characterInteractionShape;
+    float interactionSphereRadius{0.5f};
+    glm::vec3 interactionSphereOffset{0.f, 1.f, 0.5f};
+    bool handledPlayerInputThisFrame{false};
 };

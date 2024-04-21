@@ -12,13 +12,29 @@
 
 #include <edbr/DevTools/UIInspector.h>
 
+#include <edbr/GameUI/Cursor.h>
 #include <edbr/GameUI/DialogueBox.h>
+#include <edbr/GameUI/MenuStack.h>
 
 #include "Components.h"
 
 class SpriteRenderer;
 class Camera;
 class AudioManager;
+class ActionListManager;
+class Action;
+class InputManager;
+class ActionList;
+
+namespace ui
+{
+class ButtonElement;
+struct ListLayoutElement;
+struct NineSliceStyle;
+struct ButtonStyle;
+}
+
+class Game;
 
 class GameUI {
 public:
@@ -30,30 +46,93 @@ public:
     };
 
 public:
-    void init(GfxDevice& gfxDevice, AudioManager& audioManager);
-    void handleMouseInput(const glm::vec2& mousePos, bool leftMousePressed);
+    GameUI(ActionListManager& am, AudioManager& audioManager);
+
+    void init(Game& game, GfxDevice& gfxDevice, const glm::ivec2& screenSize);
+    bool capturesInput() const;
+    void handleInput(const InputManager& inputManager, float dt);
     void update(float dt);
     void updateDevTools(float dt);
+
+    void onScreenSizeChanged(const glm::ivec2 newScreenSize);
 
     void draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
 
     DialogueBox& getDialogueBox() { return dialogueBox; }
 
+    void doFadeInFromBlack(float duration);
+    void doFadeOutToBlack(float duration);
+
+    std::unique_ptr<Action> fadeInFromBlackAction(float duration);
+    std::unique_ptr<Action> fadeOutToBlackAction(float duration);
+
+    void enterMainMenu();
+    void exitMainMenu();
+    bool isInMainMenu() const;
+
+    void enterPauseMenu();
+    void closePauseMenu();
+    bool isInPauseMenu() const;
+
+    void openDialogueBox();
+    void closeDialogueBox();
+    bool isDialogueBoxOpen() const;
+
+    const Font& getDefaultFont() const { return defaultFont; }
+
 private:
-    void createTestUI(GfxDevice& gfxDevice);
+    void createTitleScreen(Game& game, GfxDevice& gfxDevice);
+    void createMenus(Game& game, GfxDevice& gfxDevice);
+    void createMainMenu(Game& game, GfxDevice& gfxDevice, const ui::NineSliceStyle& nsStyle);
+    void createSettingsMenu(Game& game, GfxDevice& gfxDevice, const ui::NineSliceStyle& nsStyle);
+    void createPauseMenu(Game& game, GfxDevice& gfxDevice, const ui::NineSliceStyle& nsStyle);
+
     void drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
 
-    Font defaultFont;
+    void enterMenu(ui::Element& menu);
+    void exitMenu(ui::Element& menu);
 
-    std::vector<std::string> strings;
+    std::unique_ptr<ui::ButtonElement> makeSimpleButton(
+        const ui::ButtonStyle& buttonStyle,
+        const std::string& text,
+        std::function<void()> onPressed);
+
+    struct ButtonDesc {
+        std::string text;
+        std::function<void()> onPressed;
+        std::string buttonTag;
+    };
+    std::unique_ptr<ui::ListLayoutElement> makeSimpleButtonList(
+        const ui::NineSliceStyle& nsStyle,
+        const std::vector<ButtonDesc>& buttons);
+
+    Cursor cursor;
+    MenuStack menuStack;
+
+    Font defaultFont;
+    Font titleFont;
 
     Sprite interactTipSprite;
     Sprite talkTipSprite;
+    Sprite saveTipSprite;
     Bouncer interactTipBouncer;
 
-    std::unique_ptr<ui::Element> testUI;
+    std::unique_ptr<ui::Element> mainMenu;
+    std::unique_ptr<ui::Element> titleScreenUI;
+    std::string mainMenuTag{"main_menu"};
+
+    std::unique_ptr<ui::Element> settingsMenu;
+
+    std::unique_ptr<ui::Element> pauseMenu;
+    std::string pauseMenuTag{"pause_menu"};
+
     DialogueBox dialogueBox;
 
     UIInspector uiInspector;
-    bool drawBlackBG{false};
+
+    glm::vec2 screenSize;
+    float fadeLevel{0.f};
+
+    ActionListManager& actionListManager;
+    AudioManager& audioManager;
 };

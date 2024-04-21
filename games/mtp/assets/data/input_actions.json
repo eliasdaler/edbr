@@ -9,8 +9,8 @@
     "CursorRight",
     "CursorUp",
     "CursorDown",
-    "CursorConfirm",
-    "MenuExit",
+    "MenuConfirm",
+    "MenuBack",
     "CameraMoveFast",
     "ToggleFreeCamera",
     "ToggleImGuiVisibility"

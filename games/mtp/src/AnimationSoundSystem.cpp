@@ -1,6 +1,6 @@
 #include "AnimationSoundSystem.h"
 
-#include <edbr/AudioManager.h>
+#include <edbr/Audio/AudioManager.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/Camera.h>
@@ -55,7 +55,7 @@ void AnimationSoundSystem::update(entt::registry& registry, const Camera& camera
             // e.g. to be able to map "step1" to "cat_step1"
             const auto soundPath = soundsPath / (soundName + ".wav");
             const auto& pos = entityutil::getWorldPosition(event.entity);
-            audioManager.playSound(soundPath, pos.x, pos.y, pos.z);
+            audioManager.playSound(soundPath.string(), pos.x, pos.y, pos.z);
         }
     }
     queuedEvents.clear();
@@ -88,5 +88,5 @@ void AnimationSoundSystem::handleStepSounds(
     const auto pitch = dist(randomEngine);
     const auto& pos = entityutil::getWorldPosition(e);
 
-    am.playSound(soundPath, pos.x, pos.y, pos.z, pitch);
+    am.playSound(soundPath.string(), pos.x, pos.y, pos.z, pitch);
 }

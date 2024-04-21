@@ -1,5 +1,6 @@
 {
   "model": "assets/models/levels/house/house.gltf",
   "default_camera": "Default",
-  "default_spawn": "Test"
+  "default_spawn": "Test",
+  "bgm": "assets/music/forest_birds_ambient_inside.ogg"
 }

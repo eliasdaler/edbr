@@ -17,6 +17,7 @@ namespace detail
 {
     template<typename T>
     void DisplayPropertyImpl(const T& v);
+    void DisplayPropertyImpl(const bool& v);
     void DisplayPropertyImpl(const float& v);
     void DisplayPropertyImpl(const std::string& v);
 
@@ -29,6 +30,8 @@ namespace detail
     void DisplayPropertyImpl(const math::IntRect& v);
     void DisplayPropertyImpl(const math::FloatRect& v);
 }
+
+void DisplayPropertyCustomBegin(const char* name);
 
 template<std::size_t N>
 void DisplayProperty(const char* name, const char (&str)[N])

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <glm/vec2.hpp>
+
+#include <edbr/UI/InputEvent.h>
 
 namespace ui
 {
@@ -40,6 +43,16 @@ struct Element {
     virtual void calculateChildrenPositions();
     // Calculate own position (based on screen size or parent)
     void calculateOwnPosition();
+
+    void setSelected(bool b);
+    // what happens when element becomes in focus or focus exits from it
+    virtual void onSelected() { selected = true; };
+    virtual void onDeselected() { selected = false; };
+
+    void setEnabled(bool b);
+    // what happens when element is disabled/enabled
+    virtual void onEnabled(){};
+    virtual void onDisabled(){};
 
     // data
 
@@ -98,6 +111,28 @@ struct Element {
     std::string tag;
 
     bool visible{true};
+
+    // if true - element accepts inputs, otherwise it's drawn, but doesn't accept inputs
+    // call setEnabled(b) to set, don't set manually
+    bool enabled{true};
+
+    // call setSelected(b), don't set manually
+    bool selected{false};
+
+    // The first element that will get selected when the cursor enters the menu
+    // Should be set on the root node only
+    Element* cursorSelectionStartElement{nullptr};
+
+    // which objects cursor navigates to when up/down/left right is pressed
+    Element* cursorUpElement{nullptr};
+    Element* cursorDownElement{nullptr};
+    Element* cursorLeftElement{nullptr};
+    Element* cursorRightElement{nullptr};
+
+    InputHandlerType inputHandler;
+
+    // Offset from absolute position to which point the cursor will point to
+    glm::vec2 cursorSelectionOffset{};
 };
 
 } // end of namespace ui

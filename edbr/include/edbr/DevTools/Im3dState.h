@@ -39,7 +39,9 @@ public:
     void drawText(
         const glm::mat4& viewProj,
         const glm::ivec2& gameWindowPos,
-        const glm::ivec2& gameWindowSize);
+        const glm::ivec2& gameWindowSize,
+        const char* gameWindowLabel,
+        bool gameDrawnInWindow);
 
     struct RenderState {
         bool depthTest{false};

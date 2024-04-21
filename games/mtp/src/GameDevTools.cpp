@@ -2,10 +2,12 @@
 
 #include "Components.h"
 #include "EntityUtil.h"
+#include "FollowCameraController.h"
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
+#include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/Util/Im3dUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
 
@@ -14,49 +16,126 @@
 
 namespace
 {
-void drawFrustum(const Camera& camera)
+const char* gameStateStr(Game::GameState state)
 {
-    const auto corners = edge::calculateFrustumCornersWorldSpace(camera);
-
-    // near plane
-    Im3d::PushColor(Im3d::Color_Magenta);
-    Im3d::DrawQuad(
-        glm2im3d(glm::vec3{corners[0]}),
-        glm2im3d(glm::vec3{corners[1]}),
-        glm2im3d(glm::vec3{corners[2]}),
-        glm2im3d(glm::vec3{corners[3]}));
-
-    // far plane
-    Im3d::DrawQuad(
-        glm2im3d(glm::vec3{corners[4]}),
-        glm2im3d(glm::vec3{corners[5]}),
-        glm2im3d(glm::vec3{corners[6]}),
-        glm2im3d(glm::vec3{corners[7]}));
-    Im3d::PopColor();
-
-    // left plane
-    Im3d::PushColor(Im3d::Color_Orange);
-    Im3d::DrawQuad(
-        glm2im3d(glm::vec3{corners[4]}),
-        glm2im3d(glm::vec3{corners[5]}),
-        glm2im3d(glm::vec3{corners[1]}),
-        glm2im3d(glm::vec3{corners[0]}));
-
-    // right plane
-    Im3d::DrawQuad(
-        glm2im3d(glm::vec3{corners[7]}),
-        glm2im3d(glm::vec3{corners[6]}),
-        glm2im3d(glm::vec3{corners[2]}),
-        glm2im3d(glm::vec3{corners[3]}));
-    Im3d::PopColor();
-
-    /* for (std::size_t i = 0; i < corners.size(); ++i) {
-        Im3dText(corners[i], 8.f, RGBColor{255, 255, 255, 255}, std::to_string(i).c_str());
-    } */
+    switch (state) {
+    case Game::GameState::Invalid:
+        return "Invalid";
+    case Game::GameState::MainMenu:
+        return "MainMenu";
+    case Game::GameState::Playing:
+        return "Playing";
+    case Game::GameState::Cutscene:
+        return "Cutscene";
+    case Game::GameState::Paused:
+        return "Paused";
+    default:
+        assert(false);
+        return "";
+    }
 }
 }
 
-void Game::updateDevTools(float dt)
+void Game::devToolsNewFrame(float dt)
+{
+    // im3d
+    {
+        const auto& mouse = inputManager.getMouse();
+        bool isMousePressed = mouse.isHeld(SDL_BUTTON(1));
+        const auto gameScreenMousePos = getMouseGameScreenCoord();
+        im3d.newFrame(
+            dt,
+            static_cast<glm::vec2>(getGameScreenSize()),
+            camera,
+            static_cast<glm::ivec2>(gameScreenMousePos),
+            isMousePressed);
+        // Note: this passes previous frame's camera position/orientation
+        // We want to call im3d.newFrame before the game's update so that we
+        // can draw debug shapes from anywhere, not just devToolsUpdate.
+    }
+}
+
+void Game::devToolsHandleInput(float dt)
+{
+    const auto& kb = inputManager.getKeyboard();
+    if (kb.wasJustPressed(SDL_SCANCODE_T)) {
+        drawEntityTags = !drawEntityTags;
+    }
+
+    // spawn ball when pressing "O"
+    if (kb.wasJustPressed(SDL_SCANCODE_O)) {
+        static std::default_random_engine randEngine(1337);
+        static std::uniform_real_distribution<float> scaleDist(2.f, 3.f);
+        auto ball = entityCreator.createFromPrefab("ball");
+
+        // random scale
+        const auto scale = scaleDist(randEngine);
+        auto& transform = ball.get<TransformComponent>().transform;
+        transform.setScale(glm::vec3{scale});
+
+        // sync physics
+        physicsSystem->updateTransform(ball.get<PhysicsComponent>().bodyId, transform, true);
+        // set velocity
+        physicsSystem->setVelocity(
+            ball.get<PhysicsComponent>().bodyId, camera.getTransform().getLocalFront() * 20.f);
+        // set position
+        entityutil::teleportEntity(ball, camera.getPosition());
+    }
+
+    if (kb.wasJustPressed(SDL_SCANCODE_B)) {
+        physicsSystem->drawCollisionShapes = !physicsSystem->drawCollisionShapes;
+    }
+
+    if (kb.wasJustPressed(SDL_SCANCODE_M)) {
+        audioManager.setMuted(!audioManager.isMuted());
+    }
+
+    if (kb.wasJustPressed(SDL_SCANCODE_P)) {
+        devPaused = !devPaused;
+    }
+
+    if (kb.wasJustPressed(SDL_SCANCODE_LEFTBRACKET)) {
+        devPaused = false;
+        devResumeForOneFrame = true;
+    }
+
+    if (kb.isHeld(SDL_SCANCODE_RIGHTBRACKET)) {
+        devPaused = false;
+        devResumeForOneFrame = true;
+    }
+
+    const auto& actionMapping = inputManager.getActionMapping();
+    // "C" by default
+    static const auto toggleFreeCameraAction = actionMapping.getActionTagHash("ToggleFreeCamera");
+    if (actionMapping.wasJustPressed(toggleFreeCameraAction) &&
+        entityutil::playerExists(registry)) {
+        freeCameraMode = !freeCameraMode;
+        playerInputEnabled = !freeCameraMode;
+        if (!freeCameraMode) {
+            if (previousCameraControllerTag == followCameraControllerTag) {
+                auto& controller = getFollowCameraController();
+                controller.init(camera);
+                controller.teleportCameraToDesiredPosition(camera);
+            }
+            camera.setPosition(previousCameraTransform.getPosition());
+            camera.setHeading(previousCameraTransform.getHeading());
+            cameraManager.setController(previousCameraControllerTag);
+        } else {
+            previousCameraControllerTag = cameraManager.getCurrentControllerTag();
+            previousCameraTransform = camera.getTransform();
+            cameraManager.setController(freeCameraControllerTag);
+            cameraManager.stopCameraTransitions();
+        }
+    }
+
+    // "Tab" by default
+    static const auto toggleImGuiAction = actionMapping.getActionTagHash("ToggleImGuiVisibility");
+    if (actionMapping.wasJustPressed(toggleImGuiAction)) {
+        drawImGui = !drawImGui;
+    }
+}
+
+void Game::devToolsUpdate(float dt)
 {
     if (displayFPSDelay > 0.f) {
         displayFPSDelay -= dt;
@@ -80,13 +159,27 @@ void Game::updateDevTools(float dt)
     }
 
     if (ImGui::Begin("Debug")) {
+        if (devPaused) {
+            if (ImGui::Button("Resume")) {
+                devPaused = false;
+            }
+        } else {
+            if (ImGui::Button("Pause")) {
+                devPaused = true;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Advance frame")) {
+            devResumeForOneFrame = true;
+            devPaused = false;
+        }
+
         ImGui::Text("FPS: %d", (int)displayedFPS);
 
         ImGui::Checkbox("Draw game in window", &gameDrawnInWindow);
         ImGui::Checkbox("Draw entity tags", &drawEntityTags);
         ImGui::Checkbox("Draw entity heading", &drawEntityHeading);
         ImGui::Checkbox("Draw gizmo", &drawGizmos);
-        ImGui::Text("Char on ground: %d", (int)physicsSystem->isCharacterOnGround());
 
         if (drawGizmos) {
             ImGui::Checkbox("Local gizmo", &Im3d::GetContext().m_gizmoLocal);
@@ -99,30 +192,54 @@ void Game::updateDevTools(float dt)
             Im3d::GetContext().m_gizmoMode = (Im3d::GizmoMode)gizmoMode;
         }
 
-        /* static const auto interactTipImageId =
-            gfxDevice.loadImageFromFile("assets/images/ui/interact_tip.png");
-        static const auto talkTipImageId =
-            gfxDevice.loadImageFromFile("assets/images/ui/talk_tip.png");
-
-        util::ImGuiImage(gfxDevice, interactTipImageId);
-        ImGui::SameLine();
-        util::ImGuiImage(gfxDevice, talkTipImageId); */
-
         using namespace devtools;
         BeginPropertyTable();
         {
+            DisplayProperty("Game state", gameStateStr(gameState));
+            DisplayProperty("Game paused", gamePaused);
+            DisplayProperty("Input enabled", playerInputEnabled);
             DisplayProperty("Level", level.getPath().string());
+            DisplayProperty("Level name", level.getName());
 
             const auto& mousePos = inputManager.getMouse().getPosition();
             const auto& gameScreenPos = edbr::util::getGameWindowScreenCoord(
-                mousePos, gameWindowPos, gameWindowSize, {params.renderWidth, params.renderHeight});
+                mousePos, gameWindowPos, gameWindowSize, params.renderSize);
             DisplayProperty("Mouse pos", mousePos);
             DisplayProperty("Game screen pos", gameScreenPos);
         }
         EndPropertyTable();
 
         ImGui::Checkbox("Orbit around selected entity", &orbitCameraAroundSelectedEntity);
-        ImGui::DragFloat("Orbit distance", &orbitDistance, 0.01f, 0.f, 100.f);
+
+        if (ImGui::CollapsingHeader("Save files")) {
+            if (ImGui::Button("Save")) {
+                saveFileManager.writeCurrentSaveFile();
+            }
+            BeginPropertyTable();
+            DisplayProperty("Save index", saveFileManager.getCurrentSaveFileIndex());
+            DisplayProperty(
+                "Save exits",
+                saveFileManager.saveFileExists(saveFileManager.getCurrentSaveFileIndex()));
+            DisplayProperty("Save path", saveFileManager.getCurrentSaveFilePath().string());
+            EndPropertyTable();
+
+            if (ImGui::TreeNode("Raw data")) {
+                BeginPropertyTable();
+                for (auto& [key, val] : saveFileManager.getCurrentSaveFile().getRawData().items()) {
+                    if (val.is_string()) {
+                        DisplayProperty(key.c_str(), val.get<std::string>());
+                    } else if (val.is_number()) {
+                        DisplayProperty(key.c_str(), val.get<float>());
+                    } else if (val.is_boolean()) {
+                        DisplayProperty(key.c_str(), val.get<bool>());
+                    } else {
+                        DisplayProperty(key.c_str(), "???");
+                    }
+                }
+                EndPropertyTable();
+                ImGui::TreePop();
+            }
+        }
 
         if (ImGui::CollapsingHeader("Scene settings")) {
             auto ambientColor = level.getAmbientLightColor();
@@ -155,9 +272,18 @@ void Game::updateDevTools(float dt)
     }
     ImGui::End();
 
+    if (ImGui::Begin("Action lists")) {
+        for (const auto& [name, al] : actionListManager.getActionLists()) {
+            actionListInspector.showActionListInfo(al, true);
+            ImGui::Separator();
+        }
+    }
+    ImGui::End();
+
     if (ImGui::Begin("Camera")) {
         using namespace devtools;
         BeginPropertyTable();
+        DisplayProperty("Camera controller", cameraManager.getCurrentControllerTag());
         DisplayProperty("Cam pos", camera.getPosition());
         DisplayProperty("Cam heading", camera.getHeading());
         EndPropertyTable();
@@ -175,25 +301,25 @@ void Game::updateDevTools(float dt)
             recreateCamera = true;
         }
         if (recreateCamera) {
-            static const float aspectRatio = (float)params.renderWidth / (float)params.renderHeight;
+            static const float aspectRatio =
+                (float)params.renderSize.x / (float)params.renderSize.y;
 
             camera.init(cameraFovX, cameraNear, cameraFar, aspectRatio);
         }
 
-        ImGui::Checkbox("Smoothing", &smoothCamera);
-        ImGui::Checkbox("Smart smoothing", &smoothSmartCamera);
-        ImGui::Checkbox("Draw track point", &drawCameraTrackPoint);
-        ImGui::DragFloat("Delay", &cameraDelay, 0.1f, 0.f, 1.f);
-        ImGui::DragFloat("Max speed", &cameraMaxSpeed, 0.1f, 10.f, 1000.f);
-        ImGui::DragFloat("Y offset", &cameraYOffset, 0.1f);
-        ImGui::DragFloat("Z offset", &cameraZOffset, 0.1f);
-        ImGui::DragFloat("max offset time", &cameraMaxOffsetTime, 0.1f);
-        ImGui::DragFloat("max offset run", &maxCameraOffsetFactorRun, 0.1f);
-        ImGui::DragFloat("Test", &testParam, 0.1f);
-        ImGui::Text(".%2f", prevOffsetZ);
-
-        ImGui::DragFloat("Yaw rotate speed", &cameraController.rotateYawSpeed, 0.1f);
-        ImGui::DragFloat("Pitch rotate speed", &cameraController.rotatePitchSpeed, 0.1f);
+        auto& fcc = getFollowCameraController();
+        ImGui::Checkbox("Smart smoothing", &fcc.smoothSmartCamera);
+        ImGui::Checkbox("Draw track point", &fcc.drawCameraTrackPoint);
+        ImGui::DragFloat("Delay", &fcc.cameraDelay, 0.1f, 0.f, 1.f);
+        ImGui::DragFloat("Max speed", &fcc.cameraMaxSpeed, 0.1f, 10.f, 1000.f);
+        ImGui::DragFloat("Y offset", &fcc.cameraYOffset, 0.1f);
+        ImGui::DragFloat("Z offset", &fcc.cameraZOffset, 0.1f);
+        ImGui::DragFloat("Orbit distance", &fcc.orbitDistance, 0.1f);
+        ImGui::DragFloat("Yaw", &fcc.currentYaw, 0.1f);
+        ImGui::DragFloat("Pitch", &fcc.currentPitch, 0.1f);
+        ImGui::Checkbox("Control rotation", &fcc.controlRotation);
+        ImGui::DragFloat("max offset time", &fcc.cameraMaxOffsetTime, 0.1f);
+        ImGui::DragFloat("max offset run", &fcc.maxCameraOffsetFactorRun, 0.1f);
     }
     ImGui::End();
 
@@ -207,23 +333,35 @@ void Game::updateDevTools(float dt)
 
     if (entityTreeView.hasSelectedEntity()) {
         if (ImGui::Begin("Selected entity")) {
-            entityInfoDisplayer.displayEntityInfo(entityTreeView.getSelectedEntity(), dt);
+            auto selectedEntity = entityTreeView.getSelectedEntity();
+            if (ImGui::Button("Destroy")) {
+                entityTreeView.deselectedEntity();
+                destroyEntity(selectedEntity);
+                selectedEntity = {};
+            }
+            if (selectedEntity.entity() != entt::null) {
+                entityInfoDisplayer.displayEntityInfo(selectedEntity, dt);
+            }
         }
         ImGui::End();
     }
 
-    auto e = entityutil::getPlayerEntity(registry);
-    const auto& tc = e.get<TransformComponent>();
-    const auto& pos = tc.transform.getPosition();
+    if (auto player = entityutil::getPlayerEntity(registry); player.entity() != entt::null) {
+        const auto& tc = player.get<TransformComponent>();
+        const auto& pos = tc.transform.getPosition();
 
-    Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
-    if (drawEntityHeading) {
-        Im3dDrawArrow(RGBColor{255, 0, 255, 128}, pos, pos + tc.transform.getLocalFront() * 0.5f);
+        Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
+        if (drawEntityHeading) {
+            Im3dDrawArrow(
+                RGBColor{255, 0, 255, 128}, pos, pos + tc.transform.getLocalFront() * 0.5f);
+        }
+        Im3d::PopLayerId();
     }
 
     // Im3d::DrawCapsule(glm2im3d(pos), glm2im3d(pos + glm::vec3{0.f, 1.f, 0.f}), 0.5f, 50);
 
     if (drawGizmos && entityTreeView.hasSelectedEntity()) {
+        Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
         auto ent = entityTreeView.getSelectedEntity().entity();
         auto e = entt::handle{registry, ent};
         auto& tc = e.get<TransformComponent>();
@@ -231,37 +369,43 @@ void Game::updateDevTools(float dt)
         if (Im3d::Gizmo("Gizmo", (float*)&transform)) {
             tc.transform = Transform(im3d2glm(transform));
         }
+        Im3d::PopLayerId();
     }
 
-    Im3d::PopLayerId();
-
-    if (drawEntityTags) {
-        for (const auto& [e, tc, tagC] : registry.view<TransformComponent, TagComponent>().each()) {
-            if (!tagC.getTag().empty()) {
-                Im3dText(
-                    tc.transform.getPosition(),
-                    1.f,
-                    RGBColor{255, 255, 255},
-                    tagC.getTag().c_str());
+    if (drawEntityTags || physicsSystem->drawCollisionShapes) {
+        for (auto entity : registry.view<entt::entity>()) {
+            auto e = entt::const_handle(registry, entity);
+            const auto& metaName = entityutil::getMetaName(e);
+            if (e.any_of<TagComponent, NameComponent>() && !metaName.empty()) {
+                auto& mic = registry.get<MetaInfoComponent>(e);
+                if (e.any_of<
+                        PlayerSpawnComponent,
+                        ColliderComponent,
+                        TriggerComponent,
+                        NPCComponent>()) {
+                    // it's easier to read Collision./Interact./Trigger.<Something>
+                    // instead of just "Something"
+                    Im3dText(
+                        e.get<TransformComponent>().transform.getPosition(),
+                        1.f,
+                        RGBColor{255, 255, 255},
+                        mic.sceneNodeName.c_str());
+                } else {
+                    Im3dText(
+                        e.get<TransformComponent>().transform.getPosition(),
+                        1.f,
+                        RGBColor{255, 255, 255},
+                        metaName.c_str());
+                }
             }
         }
     }
 
+    physicsSystem->drawDebugShapes(camera);
     physicsSystem->updateDevUI(inputManager, dt);
 
-    // automatically draw scene node names of triggers, interacts etc. when wireframes
-    // for these shapes are drawn
-    if (physicsSystem->wireframesDrawn()) {
-        for (const auto& [e, tc, nameC] :
-             registry.view<TransformComponent, NameComponent>().each()) {
-            auto& mic = registry.get<MetaInfoComponent>(e);
-            Im3dText(
-                tc.transform.getPosition(),
-                1.f,
-                RGBColor{255, 255, 255},
-                mic.sceneNodeName.c_str());
-        }
-
+    // draw spawners and cameras
+    if (physicsSystem->drawCollisionShapes) {
         Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
         for (const auto& [e, tc, nc] : registry.view<TransformComponent, NameComponent>().each()) {
             if (!registry.any_of<CameraComponent, PlayerSpawnComponent>(e)) {
@@ -290,14 +434,35 @@ void Game::updateDevTools(float dt)
                 camera.setPosition(transform.getPosition());
                 camera.setHeading(transform.getHeading());
                 static const float aspectRatio =
-                    (float)params.renderWidth / (float)params.renderHeight;
+                    (float)params.renderSize.x / (float)params.renderSize.y;
 
                 camera.init(cameraFovX, 0.001f, 1.f, aspectRatio);
-                drawFrustum(camera);
+                Im3dDrawFrustum(camera);
             }
         }
         Im3d::PopLayerId();
     }
 
     ImGui::ShowDemoWindow();
+
+    // im3d end
+    im3d.updateCameraViewProj(Im3dState::WorldNoDepthLayer, camera.getViewProj());
+    im3d.updateCameraViewProj(Im3dState::WorldWithDepthLayer, camera.getViewProj());
+    im3d.endFrame();
+    im3d.drawText(
+        camera.getViewProj(), gameWindowPos, gameWindowSize, gameWindowLabel, gameDrawnInWindow);
+}
+
+void Game::devToolsDrawUI(SpriteRenderer& spriteRenderer)
+{
+    if (devPaused) {
+        spriteRenderer.drawInsetRect(
+            {{}, static_cast<glm::vec2>(getGameScreenSize())}, LinearColor{1.f, 1.f, 1.f}, 4.f);
+        spriteRenderer
+            .drawText(ui.getDefaultFont(), "Paused", {32.f, 32.f}, LinearColor{1.f, 1.f, 1.f});
+    }
+    if (freeCameraMode) {
+        spriteRenderer
+            .drawText(ui.getDefaultFont(), "Free cam", {32.f, 64.f}, LinearColor{1.f, 1.f, 1.f});
+    }
 }

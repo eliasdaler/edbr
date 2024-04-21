@@ -21,6 +21,7 @@
 #include <edbr/Graphics/Vulkan/Swapchain.h>
 #include <edbr/Graphics/Vulkan/VulkanImGuiBackend.h>
 #include <edbr/Graphics/Vulkan/VulkanImmediateExecutor.h>
+#include <edbr/Version.h>
 
 namespace vkutil
 {
@@ -45,7 +46,8 @@ public:
     GfxDevice(const GfxDevice&) = delete;
     GfxDevice& operator=(const GfxDevice&) = delete;
 
-    void init(SDL_Window* window, const char* appName, bool vSync);
+    void init(SDL_Window* window, const char* appName, const Version& appVersion, bool vSync);
+    void recreateSwapchain(std::uint32_t swapchainWidth, std::uint32_t swapchainHeight);
 
     VkCommandBuffer beginFrame();
 
@@ -130,8 +132,10 @@ public:
     VkFormat getSwapchainFormat() const { return swapchainFormat; }
     const TracyVkCtx& getTracyVkCtx() const;
 
+    bool needsSwapchainRecreate() const { return swapchain.needsRecreation(); }
+
 private:
-    void initVulkan(SDL_Window* window, const char* appName);
+    void initVulkan(SDL_Window* window, const char* appName, const Version& appVersion);
     void checkDeviceCapabilities();
     void createCommandBuffers();
 
@@ -164,4 +168,6 @@ private: // data
     ImageCache imageCache;
 
     ImageId whiteTextureID;
+
+    bool vSync{true};
 };

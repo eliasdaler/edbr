@@ -1,4 +1,4 @@
-#include <edbr/AudioManager.h>
+#include <edbr/Audio/AudioManager.h>
 
 #include <edbr/Audio/OpenALUtil.h>
 #include <edbr/Audio/SoundBuffer.h>

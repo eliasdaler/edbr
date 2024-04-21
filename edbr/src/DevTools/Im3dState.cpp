@@ -133,6 +133,16 @@ void Im3dState::init(GfxDevice& gfxDevice, VkFormat drawImageFormat, VkFormat de
         sizeof(Im3d::VertexData) * MAX_VTX_COUNT,
         graphics::FRAME_OVERLAP,
         "im3d vertex buffer");
+
+    addRenderState(
+        Im3dState::DefaultLayer,
+        Im3dState::RenderState{.depthTest = false, .viewProj = glm::mat4{1.f}});
+    addRenderState(
+        Im3dState::WorldNoDepthLayer,
+        Im3dState::RenderState{.depthTest = false, .viewProj = glm::mat4{1.f}});
+    addRenderState(
+        Im3dState::WorldWithDepthLayer,
+        Im3dState::RenderState{.depthTest = true, .viewProj = glm::mat4{1.f}});
 }
 
 void Im3dState::cleanup(GfxDevice& device)
@@ -204,14 +214,36 @@ void Im3dState::endFrame()
 void Im3dState::drawText(
     const glm::mat4& viewProj,
     const glm::ivec2& gameWindowPos,
-    const glm::ivec2& gameWindowSize)
+    const glm::ivec2& gameWindowSize,
+    const char* gameWindowLabel,
+    bool gameDrawnInWindow)
 {
+    if (gameDrawnInWindow) {
+        ImGui::Begin(gameWindowLabel); // go inside the window context
+    } else {
+        // create invisible window that covers the game screen area
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32_BLACK_TRANS);
+        ImGui::SetNextWindowPos(ImVec2(gameWindowPos.x, gameWindowPos.y));
+        ImGui::SetNextWindowSize(ImVec2{(float)gameWindowSize.x, (float)gameWindowSize.y});
+        ImGui::Begin(
+            "Invisible",
+            nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar |
+                ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    }
+
     drawTextDrawListsImGui(
         Im3d::GetTextDrawLists(),
         Im3d::GetTextDrawListCount(),
         viewProj,
         gameWindowPos,
         gameWindowSize);
+
+    ImGui::End();
+    if (!gameDrawnInWindow) {
+        ImGui::PopStyleColor();
+    }
 }
 
 void Im3dState::draw(

@@ -23,6 +23,11 @@ void EndPropertyTable()
 
 namespace detail
 {
+    void DisplayPropertyImpl(const bool& v)
+    {
+        ImGui::TextUnformatted(v ? "true" : "false");
+    }
+
     void DisplayPropertyImpl(const float& v)
     {
         ImGui::Text("%.2f", v);
@@ -67,6 +72,14 @@ namespace detail
     {
         ImGui::Text("(%.2f, %.2f, %.2f, %.2f)", v.left, v.top, v.width, v.height);
     }
+}
+
+void DisplayPropertyCustomBegin(const char* name)
+{
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(name);
+    ImGui::TableSetColumnIndex(1);
 }
 
 void DisplayPropertyF(const char* name, const char* fmt, ...)

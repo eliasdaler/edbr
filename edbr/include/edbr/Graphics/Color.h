@@ -55,11 +55,11 @@ namespace
     // See http://www.brucelindbloom.com/index.html?Eqn_XYZ_to_RGB.html
     float linearToGamma(float v)
     {
-        return v < 0.00313108 ? 12.92 * v : 1.055 * std::pow(v, 1.f / 2.4f) - 0.055f;
+        return v < 0.00313108f ? 12.92f * v : 1.055f * std::pow(v, 1.f / 2.4f) - 0.055f;
     }
 } // end of anonymous namespace
 
-inline LinearColor rgbToLinear(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a = 1)
+inline LinearColor rgbToLinear(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a = 255)
 {
     return LinearColor{
         gammaToLinear((float)r / 255.f),

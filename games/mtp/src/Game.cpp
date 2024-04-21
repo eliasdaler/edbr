@@ -2,36 +2,28 @@
 
 #include "Components.h"
 #include "EntityUtil.h"
+#include "FollowCameraController.h"
+#include "MTPSaveFile.h"
 #include "Systems.h"
 
+#include <edbr/ActionList/ActionWrappers.h>
+#include <edbr/Camera/FreeCameraController.h>
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Graphics/Vulkan/Util.h>
 #include <edbr/Math/Util.h>
+#include <edbr/Util/CameraUtil.h>
 #include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
 
 #include <tracy/Tracy.hpp>
 
-#include <edbr/Util/Im3dUtil.h>
-#include <im3d.h>
-#include <imgui.h>
-
-#include <glm/gtx/easing.hpp>
-#include <glm/gtx/norm.hpp> // length2
-
-#include <Jolt/Jolt.h>
-#include <Jolt/Physics/Collision/Shape/BoxShape.h>
-#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
-#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
-#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
-#include <Jolt/Physics/Collision/Shape/SphereShape.h>
-
-#include <edbr/Util/JoltUtil.h>
+#include <glm/gtx/norm.hpp> // distance2
 
 namespace eu = entityutil;
 
@@ -41,153 +33,240 @@ Game::Game() :
     spriteRenderer(gfxDevice),
     sceneCache(gfxDevice, meshCache, materialCache, animationCache),
     entityCreator(registry, "static_geometry", entityFactory, sceneCache),
-    animationSoundSystem(audioManager)
+    animationSoundSystem(audioManager),
+    cameraManager(actionListManager),
+    ui(actionListManager, audioManager)
 {}
 
-namespace
+void Game::defineCLIArgs()
 {
-glm::vec3 getCameraOrbitTarget(entt::const_handle e, float cameraYOffset, float cameraZOffset)
-{
-    const auto& tc = e.get<TransformComponent>();
-    return tc.transform.getPosition() + math::GlobalUpAxis * cameraYOffset +
-           tc.transform.getLocalFront() * cameraZOffset;
+    Application::defineCLIArgs();
+    cliApp.add_option("-l,--level", devLevelToLoad, "Level to load (dev only)");
+    cliApp.add_option("--spawn", devStartSpawnPoint, "Spawn to start from (dev only)");
 }
 
-glm::vec3 getCameraDesiredPosition(
-    const Camera& camera,
-    const glm::vec3& trackPoint,
-    float orbitDistance)
+void Game::loadAppSettings()
 {
-    return trackPoint - camera.getTransform().getLocalFront() * orbitDistance;
-}
+    const std::filesystem::path appSettingsPath{"assets/data/default_app_settings.json"};
+    JsonFile file(appSettingsPath);
+    if (!file.isGood()) {
+        fmt::println("failed to load dev settings from {}", appSettingsPath.string());
+        return;
+    }
+
+    const auto loader = file.getLoader();
+    loader.getIfExists("renderResolution", params.renderSize);
+    loader.getIfExists("vSync", vSync);
+
+    params.version = Version{
+        .major = 0,
+        .minor = 1,
+        .patch = 0,
+    };
 }
 
 void Game::customInit()
 {
     inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
     inputManager.loadMapping("assets/data/input_mapping.json");
+    textManager.loadText("en", "assets/text/en.json", "");
+    handleSaveFiles();
+
     animationCache.loadAnimationData("assets/data/animation_data.json");
-
-    materialCache.init(gfxDevice);
-    renderer.init(glm::ivec2{params.renderWidth, params.renderHeight});
-    spriteRenderer.init(renderer.getDrawImageFormat());
-
-    entityCreator.setPostInitEntityFunc([this](entt::handle e) { entityPostInit(e); });
-
-    // important: need to do this before creating any Jolt objects
-    PhysicsSystem::InitStaticObjects();
-    physicsSystem = std::make_unique<PhysicsSystem>();
-    physicsSystem->init();
-
-    animationSoundSystem.init(eventManager, "assets/sounds");
 
     skyboxDir = "assets/images/skybox";
 
-    { // im3d
-        im3d.init(gfxDevice, renderer.getDrawImageFormat(), renderer.getDepthImageFormat());
-        im3d.addRenderState(
-            Im3dState::DefaultLayer,
-            Im3dState::RenderState{.depthTest = false, .viewProj = glm::mat4{1.f}});
-        im3d.addRenderState(
-            Im3dState::WorldNoDepthLayer,
-            Im3dState::RenderState{.depthTest = false, .viewProj = glm::mat4{1.f}});
-        im3d.addRenderState(
-            Im3dState::WorldWithDepthLayer,
-            Im3dState::RenderState{.depthTest = true, .viewProj = glm::mat4{1.f}});
-    }
+    materialCache.init(gfxDevice);
+    renderer.init(params.renderSize);
+    spriteRenderer.init(renderer.getDrawImageFormat());
 
+    animationSoundSystem.init(eventManager, "assets/sounds");
+
+    im3d.init(gfxDevice, renderer.getDrawImageFormat(), renderer.getDepthImageFormat());
+
+    // register entity stuff
     initEntityFactory();
     registerComponents(entityFactory.getComponentFactory());
     registerComponentDisplayers();
+    entityCreator.setPostInitEntityFunc([this](entt::handle e) { entityPostInit(e); });
+    eu::setEventManager(eventManager);
 
-    ui.init(gfxDevice, audioManager);
+    { // physics
+        PhysicsSystem::InitStaticObjects();
+        physicsSystem = std::make_unique<PhysicsSystem>(eventManager);
+        physicsSystem->init();
+
+        // sub to physics events
+        eventManager.addListener(this, &Game::onCollisionStarted);
+        eventManager.addListener(this, &Game::onCollisionEnded);
+    }
+
+    // create UI
+    ui.init(*this, gfxDevice, params.renderSize);
 
     { // create camera
-        static const float aspectRatio = (float)params.renderWidth / (float)params.renderHeight;
+        static const float aspectRatio = (float)params.renderSize.x / (float)params.renderSize.y;
 
         camera.setUseInverseDepth(true);
         camera.init(cameraFovX, cameraNear, cameraFar, aspectRatio);
     }
 
-    { // create player
-        auto e = entityCreator.createFromPrefab("cato");
-        e.emplace<PlayerComponent>();
+    { // create camera controllers
+        cameraManager
+            .addController(freeCameraControllerTag, std::make_unique<FreeCameraController>());
+        cameraManager.addController(
+            followCameraControllerTag, std::make_unique<FollowCameraController>(*physicsSystem));
     }
 
-    // loadLevel("assets/levels/house.json");
-    // loadLevel("assets/levels/burger_joint.json");
-    loadLevel("assets/levels/city.json");
+    registerLevels();
 
-    // spawn player
-    const auto& spawnName = level.getDefaultPlayerSpawnerName();
-    if (!spawnName.empty()) {
-        eu::spawnPlayer(registry, level.getDefaultPlayerSpawnerName());
-        // FIXME: physics system should catch position change event
-        physicsSystem->setCharacterPosition(eu::getWorldPosition(eu::getPlayerEntity(registry)));
-    }
-
-    // set camera
-    const auto& cameraName = level.getDefaultCameraName();
-    if (!cameraName.empty()) {
-        setCurrentCamera(eu::findCameraByName(registry, cameraName));
+    if (!isDevEnvironment) {
+        enterMainMenu();
     } else {
-        auto player = eu::getPlayerEntity(registry);
-        if (player.entity() != entt::null) {
-            fmt::println("No default camera found: using follow camera");
+        audioManager.setMuted(true);
+        startLoadedGame();
+    }
+}
 
-            orbitCameraAroundSelectedEntity = true;
+void Game::startNewGame()
+{
+    saveFileManager.setCurrentSaveIndex(0);
 
-            // follow cam
-            camera.setYawPitch(glm::radians(-135.f), glm::radians(-20.f));
+    const auto newGameSaveFilePath = std::filesystem::path{"assets/data/new_game_save_file.json"};
+    saveFileManager.getCurrentSaveFile().loadFromFile(newGameSaveFilePath);
+    fmt::println("No save files found: creating one from {}", newGameSaveFilePath.string());
 
-            // FIXME: should be done more automatically?
-            // e.g. setFollowEntity(camera, player, Behaviour::TeleportInstantly)
-            cameraCurrentTrackPointPos = getCameraOrbitTarget(player, cameraYOffset, cameraZOffset);
-            camera.setPosition(
-                getCameraDesiredPosition(camera, cameraCurrentTrackPointPos, orbitDistance));
+    startGameplay();
+}
 
-            entityTreeView.setSelectedEntity(player);
-        } else {
-            // try to find camera named "Default"
-            auto cameraEnt = findDefaultCamera();
-            if (cameraEnt.entity() != entt::null) {
-                setCurrentCamera(cameraEnt);
-            } else {
-                fmt::println("No default camera found");
+void Game::startLoadedGame()
+{
+    // TODO "load game" screen
+    assert(saveFileManager.saveFileExists(0));
+    saveFileManager.setCurrentSaveIndex(0);
+    saveFileManager.loadCurrentSaveFile();
+
+    startGameplay();
+}
+
+void Game::enterMainMenu()
+{
+    gameState = GameState::MainMenu;
+    doWithDelay("show main menu", 0.5f, [this]() { ui.enterMainMenu(); });
+    changeLevel("main_menu");
+}
+
+void Game::exitGame()
+{
+    isRunning = false;
+}
+
+void Game::startGameplay()
+{
+    playerInputEnabled = false;
+
+    auto l = ActionList(
+        "exit_main_menu", //
+        exitLevel(LevelTransitionType::Teleport), // exit from main menu level
+        [this]() {
+            // so that the game doesn't think we have a previous level
+            level = Level{};
+
+            assert(!eu::playerExists(registry));
+            { // create player
+                static const std::string playerPrefabName = "cato";
+                auto e = entityCreator.createFromPrefab(playerPrefabName);
+                e.emplace<PlayerComponent>();
+                eu::makePersistent(e);
             }
-        }
+
+            const auto& saveFile = getSaveFile();
+            std::string startLevel = saveFile.getLevelName();
+            std::string startSpawnPoint = saveFile.getSpawnName();
+
+            // dev override
+            if (isDevEnvironment && !devLevelToLoad.empty()) {
+                startLevel = devLevelToLoad;
+                startSpawnPoint = devStartSpawnPoint;
+
+                // so that new levels loaded as usual
+                devLevelToLoad.clear();
+            }
+
+            changeLevel(startLevel, startSpawnPoint);
+            doLevelChange(); // immediately do level change here
+            gameState = GameState::Playing;
+        });
+
+    actionListManager.addActionList(std::move(l));
+}
+
+void Game::enterPauseMenu()
+{
+    assert(gameState == GameState::Playing);
+    gameState = GameState::Paused;
+    ui.enterPauseMenu();
+}
+
+void Game::exitPauseMenu()
+{
+    assert(gameState == GameState::Paused);
+    gameState = GameState::Playing;
+    ui.closePauseMenu();
+}
+
+void Game::exitToTitle()
+{
+    assert(gameState == GameState::Paused);
+
+    ui.closePauseMenu();
+    cameraManager.stopCameraTransitions();
+
+    // TODO: stop ALL music and sounds
+    if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
+        audioManager.stopMusic(bgmPath.string());
     }
 
-    { // create entities from prefabs
-        { // test
-            /* const glm::vec3 treePos{-58.5f, 0.07f, 7.89f};
-            auto tree = entityFactory.createEntity(registry, "pine_tree");
-            eu::setPosition(tree, treePos);
-            physicsSystem->updateTransform(
-                tree.get<PhysicsComponent>().bodyId, tree.get<TransformComponent>().transform);
-            setEntityTag(tree, "WiseTree");
+    // destory level
+    renderer.setSkyboxImage(NULL_IMAGE_ID);
+    level = Level{};
 
-            auto interactor = entityFactory.createEntity(registry, "interaction_trigger");
-            eu::addChild(tree, interactor); */
-        }
+    // just destroy all entities?
+    eu::makeNonPersistent(eu::getPlayerEntity(registry));
+    destroyNonPersistentEntities();
 
-        { // for city level
-            auto npc = eu::findEntityBySceneNodeName(registry, "generic_npc.2");
-            if ((bool)npc) {
-                setEntityTag(npc, "CoolDude");
-            }
+    enterMainMenu();
+}
+
+void Game::handleSaveFiles()
+{
+    // TODO: use saveFileManager.findSaveFileDir when it's implemented
+    const auto saveFileDir = std::filesystem::path{"saves"};
+    if (!std::filesystem::exists(saveFileDir)) {
+        std::filesystem::create_directory(saveFileDir);
+    }
+    saveFileManager.registerSaveFiles<MTPSaveFile>(NumSaveFiles, saveFileDir, *this);
+}
+
+bool Game::hasAnySaveFile() const
+{
+    for (std::size_t i = 0; i < NumSaveFiles; ++i) {
+        if (saveFileManager.saveFileExists(i)) {
+            return true;
         }
     }
+    return false;
 }
 
 void Game::customUpdate(float dt)
 {
     ZoneScopedN("Update");
 
-    auto& io = ImGui::GetIO();
-    if (!io.WantCaptureKeyboard) {
-        handleInput(dt);
+    if (isDevEnvironment && devResumeForOneFrame) {
+        devResumeForOneFrame = false;
+        devPaused = true;
     }
+
     if (!gameDrawnInWindow) {
         const auto blitRect = util::
             calculateLetterbox(renderer.getDrawImage().getSize2D(), gfxDevice.getSwapchainSize());
@@ -195,154 +274,153 @@ void Game::customUpdate(float dt)
         gameWindowSize = {blitRect.z, blitRect.w};
     }
 
-    // im3d
-    {
-        const auto internalSize = glm::vec2{params.renderWidth, params.renderHeight};
-        const auto& mouse = inputManager.getMouse();
-        bool isMousePressed = mouse.isHeld(SDL_BUTTON(1));
-        const auto& gameScreenMousePos = edbr::util::getGameWindowScreenCoord(
-            mouse.getPosition(),
-            gameWindowPos,
-            gameWindowSize,
-            {params.renderWidth, params.renderHeight});
-        im3d.newFrame(
-            dt, internalSize, camera, static_cast<glm::ivec2>(gameScreenMousePos), isMousePressed);
+    if (isDevEnvironment) {
+        devToolsNewFrame(dt);
     }
 
+    // changeLevel loads level with a delay so that the call to it
+    // in the middle of the frame doesn't lead to unexpected results
+    if (!newLevelToLoad.empty()) {
+        doLevelChange();
+    }
+
+    // input
+    auto& io = ImGui::GetIO();
+    if (!io.WantCaptureKeyboard && !io.WantTextInput) {
+        handleInput(dt);
+    }
+
+    if (!gamePaused) {
+        updateGameLogic(dt);
+    }
+
+    if (isDevEnvironment && devPaused) {
+        // allow free camera movement inside dev pause
+        if (cameraManager.getCurrentControllerTag() == freeCameraControllerTag) {
+            cameraManager.update(camera, dt);
+        }
+    }
+
+    ui.update(dt);
+
+    if (isDevEnvironment) {
+        devToolsUpdate(dt);
+    }
+}
+
+glm::ivec2 Game::getGameScreenSize() const
+{
+    return params.renderSize;
+}
+
+glm::vec2 Game::getMouseGameScreenCoord() const
+{
+    const auto& mouse = inputManager.getMouse();
+    return edbr::util::getGameWindowScreenCoord(
+        mouse.getPosition(), gameWindowPos, gameWindowSize, getGameScreenSize());
+}
+
+void Game::updateGameLogic(float dt)
+{
     // movement
     movementSystemUpdate(registry, dt);
+
     { // physics
-        auto player = entityutil::getPlayerEntity(registry);
-        physicsSystem->drawDebugShapes(camera);
-        physicsSystem->update(dt, player.get<TransformComponent>().transform.getHeading());
-        { // sync player with the virtual character
-            if (player.entity() != entt::null) {
-                eu::setPosition(player, physicsSystem->getCharacterPosition());
-            }
+        // get player heading (if player exist)
+        const auto player = entityutil::getPlayerEntity(registry);
+        glm::quat playerHeading = {};
+        if (player.entity() != entt::null) {
+            playerHeading = player.get<TransformComponent>().transform.getHeading();
         }
-        // sync other entities with their physics bodies transforms
+
+        physicsSystem->update(dt, playerHeading);
+
+        // sync visible transforms
+        physicsSystem->syncCharacterTransform();
         auto physicsView = registry.view<TransformComponent, PhysicsComponent>();
         for (auto&& [e, tc, pc] : physicsView.each()) {
             physicsSystem->syncVisibleTransform(pc.bodyId, tc.transform);
         }
 
-        // find closest interactable entity
-        float minDist = std::numeric_limits<float>::max();
-        interactEntity = {};
-        for (const auto& e : physicsSystem->getInteractableEntities()) {
-            float d =
-                glm::distance2(eu::getWorldPosition(e), physicsSystem->getCharacterPosition());
-            if (d < minDist) {
-                interactEntity = e;
+        if (player.entity() != entt::null) { // find closest interactable entity
+            interactEntity = {};
+            float minDist = std::numeric_limits<float>::max();
+            for (const auto& e : physicsSystem->getInteractableEntities()) {
+                float d =
+                    glm::distance2(eu::getWorldPosition(e), physicsSystem->getCharacterPosition());
+                if (d < minDist) {
+                    interactEntity = e;
+                }
             }
         }
     }
 
     transformSystemUpdate(registry, dt);
     movementSystemPostPhysicsUpdate(registry, dt);
-    playerAnimationSystem(registry, *physicsSystem, dt);
+    if (auto player = entityutil::getPlayerEntity(registry); player.entity() != entt::null) {
+        playerAnimationSystemUpdate(player, *physicsSystem, dt);
+    }
     skeletonAnimationSystemUpdate(registry, eventManager, dt);
 
     // camera update
-    cameraController.update(camera, dt);
-    if (orbitCameraAroundSelectedEntity && entityTreeView.hasSelectedEntity()) {
-        updateFollowCamera(entityTreeView.getSelectedEntity(), dt);
-    }
+    cameraManager.update(camera, dt);
 
-    // audio needs to be updated after the camera
+    // audio needs to be updated after the camera to set listener's position
     animationSoundSystem.update(registry, camera, dt);
 
-    {
-        const auto& mousePos = inputManager.getMouse().getPosition();
-        const auto& gameScreenMousePos = edbr::util::getGameWindowScreenCoord(
-            mousePos, gameWindowPos, gameWindowSize, {params.renderWidth, params.renderHeight});
-        bool isMousePressed = inputManager.getMouse().isHeld(SDL_BUTTON(1));
-        ui.handleMouseInput(gameScreenMousePos, isMousePressed);
-    }
-    ui.update(dt);
-
-    updateDevTools(dt);
-
-    //  needs to be called in the end of update after the camera is in the final position
-    im3d.updateCameraViewProj(Im3dState::WorldNoDepthLayer, camera.getViewProj());
-    im3d.updateCameraViewProj(Im3dState::WorldWithDepthLayer, camera.getViewProj());
-
-    im3d.endFrame();
-
-    { // draw im3d text
-        if (gameDrawnInWindow) {
-            ImGui::Begin(gameWindowLabel);
-            im3d.drawText(camera.getViewProj(), gameWindowPos, gameWindowSize);
-            ImGui::End();
-        } else {
-            // TODO: get proper window coords
-            ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32_BLACK_TRANS);
-            ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-            ImGui::SetNextWindowSize(ImVec2{
-                (float)gfxDevice.getSwapchainExtent().width,
-                (float)gfxDevice.getSwapchainExtent().height});
-
-            ImGui::Begin(
-                "Invisible",
-                nullptr,
-                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs |
-                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                    ImGuiWindowFlags_NoBringToFrontOnFocus);
-            im3d.drawText(camera.getViewProj(), gameWindowPos, gameWindowSize);
-            ImGui::End();
-            ImGui::PopStyleColor(1);
-        }
-    }
+    // level script update
+    getLevelScript().update(dt);
 }
 
 void Game::handleInput(float dt)
 {
-    cameraController.handleInput(inputManager, camera);
+    const auto& am = inputManager.getActionMapping();
+    static const auto pauseAction = am.getActionTagHash("Pause");
+    static const auto menuBackAction = am.getActionTagHash("MenuBack");
 
-    const auto& actionMapping = inputManager.getActionMapping();
-    static const auto toggleFreeCameraAction = actionMapping.getActionTagHash("ToggleFreeCamera");
-    if (actionMapping.wasJustPressed(toggleFreeCameraAction)) {
-        orbitCameraAroundSelectedEntity = !orbitCameraAroundSelectedEntity;
+    cameraManager.handleInput(inputManager, camera, dt);
+
+    if (playerInputEnabled) {
+        if (ui.capturesInput()) {
+            ui.handleInput(inputManager, dt);
+
+        } else {
+            // HACK: player input will get handled in the next frame after
+            // the menu closes - ideally this should be handled
+            // by setting some timer which will ignore interactions
+            // for some amount of time
+            if (entityutil::playerExists(registry)) {
+                handlePlayerInput(dt);
+            }
+        }
+
+        // pause menu inputs
+        if (gameState == GameState::Playing && !ui.capturesInput()) {
+            // pause menu enter
+            if (am.wasJustPressed(pauseAction)) {
+                enterPauseMenu();
+            }
+        } else if (gameState == GameState::Paused) {
+            // pause menu exit
+            const auto& am = inputManager.getActionMapping();
+            // can exit pause menu by pressing "Pause" and "MenuBack"
+            if (am.wasJustPressed(pauseAction) || am.wasJustPressed(menuBackAction)) {
+                exitPauseMenu();
+            }
+        }
     }
 
-    static const auto toggleImGuiAction = actionMapping.getActionTagHash("ToggleImGuiVisibility");
-    if (actionMapping.wasJustPressed(toggleImGuiAction)) {
-        drawImGui = !drawImGui;
+    if (isDevEnvironment) {
+        devToolsHandleInput(dt);
     }
 
-    if (orbitCameraAroundSelectedEntity) {
-        handlePlayerInput(dt);
-    }
-
-    const auto& kb = inputManager.getKeyboard();
-    if (kb.wasJustPressed(SDL_SCANCODE_T)) {
-        drawEntityTags = !drawEntityTags;
-    }
-
-    if (kb.wasJustPressed(SDL_SCANCODE_O)) {
-        static std::default_random_engine randEngine(1337);
-        static std::uniform_real_distribution<float> scaleDist(2.f, 3.f);
-        auto ball = entityCreator.createFromPrefab("ball");
-        eu::setPosition(ball, camera.getPosition());
-
-        // random scale
-        const auto scale = scaleDist(randEngine);
-        auto& transform = ball.get<TransformComponent>().transform;
-        transform.setScale(glm::vec3{scale});
-
-        // sync physics
-        physicsSystem->updateTransform(ball.get<PhysicsComponent>().bodyId, transform, true);
-        // set velocity
-        physicsSystem->setVelocity(
-            ball.get<PhysicsComponent>().bodyId, camera.getTransform().getLocalFront() * 20.f);
-    }
+    gamePaused = ui.isInPauseMenu();
+    gamePaused = gamePaused || devPaused;
 }
 
 void Game::handlePlayerInput(float dt)
 {
     const auto& actionMapping = inputManager.getActionMapping();
-    // a bit lazy, better store somewhere
     static const auto horizonalWalkAxis = actionMapping.getActionTagHash("MoveX");
     static const auto verticalWalkAxis = actionMapping.getActionTagHash("MoveY");
 
@@ -364,6 +442,7 @@ void Game::handlePlayerInput(float dt)
         eu::stopRotation(player);
     }
 
+    // handle movement
     static const auto sprintAction = actionMapping.getActionTagHash("Sprint");
     static const auto jumpAction = actionMapping.getActionTagHash("Jump");
     bool jumping = actionMapping.wasJustPressed(jumpAction);
@@ -371,144 +450,41 @@ void Game::handlePlayerInput(float dt)
     bool sprinting = actionMapping.isHeld(sprintAction);
     physicsSystem->handleCharacterInput(dt, moveDir, jumping, jumpHeld, sprinting);
 
+    // handle interaction
     static const auto interactAction = actionMapping.getActionTagHash("PrimaryAction");
-    if (actionMapping.wasJustPressed(interactAction)) {
-        if (interactEntity.entity() != entt::null) {
-            std::cout << "interact with " << (int)interactEntity.entity() << std::endl;
-            if ((int)interactEntity.entity() == 1138) {
-                auto& dialogueBox = ui.getDialogueBox();
-                dialogueBox.setVisible(true);
-                dialogueBox.setSpeakerName("Some dude");
-                dialogueBox.setText("Hello, cato!\nHow is it going?...");
-            }
-        }
+    if (actionMapping.wasJustPressed(interactAction) && interactEntity.entity() != entt::null) {
+        handlePlayerInteraction();
     }
 }
 
-void Game::updateFollowCamera(entt::const_handle followEntity, float dt)
+void Game::handlePlayerInteraction()
 {
-    const auto& tc = followEntity.get<TransformComponent>();
+    const auto& interactEntityName = eu::getMetaName(interactEntity);
+    auto res = getLevelScript().onEntityInteract(interactEntity, interactEntityName);
 
-    bool isPlayer = (followEntity == entityutil::getPlayerEntity(registry));
-    float zOffset = 0.f;
-    if (smoothSmartCamera && isPlayer) {
-        zOffset = calculateSmartZOffset(followEntity, dt);
+    if (std::holds_alternative<LocalizedStringTag>(res)) {
+        const auto& t = std::get<LocalizedStringTag>(res);
+        actionListManager.addActionList(say(t, interactEntity));
+    } else if (std::holds_alternative<std::vector<dialogue::TextToken>>(res)) {
+        const auto& tokens = std::get<std::vector<dialogue::TextToken>>(res);
+        actionListManager.addActionList(say(tokens, interactEntity));
+    } else if (std::holds_alternative<ActionList>(res)) {
+        actionListManager.addActionList(std::move(std::get<ActionList>(res)));
     }
-
-    prevOffsetZ = zOffset;
-
-    float yOffset = cameraYOffset;
-
-    static float timeFalling = 0.f;
-    static float timeJumping = 0.f;
-    if (isPlayer) {
-        if (!physicsSystem->isCharacterOnGround()) {
-            if (followEntity.get<MovementComponent>().effectiveVelocity.y < 0.f) {
-                timeJumping = 0.f;
-                timeFalling += dt;
-                yOffset = cameraYOffset - std::min(timeFalling / 0.5f, 1.f) * cameraYOffset;
-            } else {
-                timeJumping += dt;
-            }
-        } else {
-            timeFalling = 0.f;
-            timeJumping = 0.f;
-        }
-    }
-    const auto orbitTarget = getCameraOrbitTarget(followEntity, yOffset, zOffset);
-
-    if (drawCameraTrackPoint) {
-        Im3d::PushLayerId(Im3dState::WorldNoDepthLayer);
-        Im3d::DrawPoint({orbitTarget.x, orbitTarget.y, orbitTarget.z}, 5.f, Im3d::Color_Green);
-        // Im3dText(orbitTarget, 1.f, RGBColor{255, 255, 255}, std::to_string(zOffset).c_str());
-        Im3d::PopLayerId();
-    }
-
-    if (!smoothCamera) {
-        cameraCurrentTrackPointPos = orbitTarget;
-        auto targetPos =
-            getCameraDesiredPosition(camera, cameraCurrentTrackPointPos, orbitDistance + 2.f);
-        camera.setPosition(targetPos);
-        return;
-    }
-
-    float maxSpeed = cameraMaxSpeed;
-    // when the character moves at full speed, rotation can be too much
-    // so it's better to slow down the camera to catch up slower
-    if (zOffset > 0.5 * maxCameraOffsetFactorRun * cameraZOffset) {
-        maxSpeed *= 0.75f;
-    }
-
-    // TODO: add this when maxSpeed in smoothDamp can be controlled for each axis
-    // to catch up with the falling player
-    /* if (isPlayer && timeFalling > 0.5f) {
-        maxSpeed.y *= 2.f;
-    } */
-
-    cameraCurrentTrackPointPos = util::smoothDamp(
-        cameraCurrentTrackPointPos, orbitTarget, followCameraVelocity, cameraDelay, dt, maxSpeed);
-
-    // change orbit distance based on pitch
-    float orbitDist = orbitDistance;
-    float orbitPitchChange =
-        std::clamp((camera.getPosition().y - cameraCurrentTrackPointPos.y) / testParam, -2.f, 2.f);
-    orbitDist += orbitPitchChange;
-
-    const auto targetPos = getCameraDesiredPosition(camera, cameraCurrentTrackPointPos, orbitDist);
-    camera.setPosition(targetPos);
-}
-
-float Game::calculateSmartZOffset(entt::const_handle followEntity, float dt)
-{
-    bool playerRunning = false;
-    { // TODO: make this prettier?
-        const auto player = eu::getPlayerEntity(registry);
-        const auto& mc = player.get<MovementComponent>();
-        auto velocity = mc.effectiveVelocity;
-        velocity.y = 0.f;
-        const auto velMag = glm::length(velocity);
-        playerRunning = velMag > 1.5f;
-    }
-
-    float desiredOffset = cameraZOffset;
-    if (playerRunning) {
-        desiredOffset = cameraZOffset * maxCameraOffsetFactorRun;
-    }
-
-    if (prevOffsetZ == desiredOffset) {
-        return desiredOffset;
-    }
-
-    // this prevents noise - we wait for at least desiredOffsetChangeDelay
-    // before changing the desired offset
-    if (prevDesiredOffset != desiredOffset) {
-        float delay = (desiredOffset == cameraZOffset) ? desiredOffsetChangeDelayRecenter :
-                                                         desiredOffsetChangeDelayRun;
-        if (desiredOffsetChangeTimer < delay) {
-            desiredOffsetChangeTimer += dt;
-            return prevOffsetZ;
-        } else {
-            desiredOffsetChangeTimer = 0.f;
-        }
-    }
-    prevDesiredOffset = desiredOffset;
-
-    // move from max offset to default offset in cameraMaxOffsetTime
-    float v = (cameraZOffset * maxCameraOffsetFactorRun - cameraZOffset) / cameraMaxOffsetTime;
-    float sign = (prevOffsetZ > desiredOffset) ? -1.f : 1.f;
-    if (sign == -1.f) {
-        // move faster to default position (cameraZOffset)
-        // (otherwise the camera will wait until the player matches with the
-        // center which looks weird)
-        v *= 1.5f;
-    }
-    return std::
-        clamp(prevOffsetZ + sign * v * dt, cameraZOffset, cameraZOffset * maxCameraOffsetFactorRun);
 }
 
 void Game::customCleanup()
 {
+    for (auto entity : registry.view<entt::entity>()) {
+        if (!registry.get<HierarchyComponent>(entity).hasParent()) {
+            destroyEntity({registry, entity}, false);
+        }
+    }
     registry.clear();
+
+    // unsub from physics events
+    eventManager.removeListener<CharacterCollisionStartedEvent>(this);
+    eventManager.removeListener<CharacterCollisionEndedEvent>(this);
 
     animationSoundSystem.cleanup(eventManager);
 
@@ -553,20 +529,40 @@ entt::const_handle Game::findEntityByTag(const std::string& tag) const
     return {};
 }
 
-void Game::setCurrentCamera(entt::const_handle cameraEnt)
+void Game::setCurrentCamera(entt::const_handle cameraEnt, float transitionTime)
 {
     if (cameraEnt.entity() == entt::null) {
         fmt::println("Passed null into setCurrentCamera");
         return;
     }
-    if (auto ncPtr = cameraEnt.try_get<NameComponent>(); ncPtr) {
-        fmt::println("Current camera: {}", ncPtr->name);
-    } else {
-        fmt::println("Current camera: {}", cameraEnt.get<MetaInfoComponent>().sceneNodeName);
-    }
-    auto& tc = cameraEnt.get<TransformComponent>();
-    camera.setPosition(tc.transform.getPosition());
-    camera.setHeading(tc.transform.getHeading());
+    // fmt::println("Current camera: {}", eu::getMetaName(cameraEnt));
+
+    const auto& tc = cameraEnt.get<TransformComponent>();
+    cameraManager.setCamera(tc.transform, camera, transitionTime);
+}
+
+void Game::setCurrentCamera(const std::string& cameraTag, float transitionTime)
+{
+    setCurrentCamera(eu::findCameraByName(registry, cameraTag), transitionTime);
+}
+
+void Game::setFollowCamera(float transitionTime)
+{
+    cameraManager.setController(followCameraControllerTag, camera, transitionTime);
+}
+
+FollowCameraController& Game::getFollowCameraController()
+{
+    return static_cast<FollowCameraController&>(
+        cameraManager.getController(followCameraControllerTag));
+}
+
+void Game::cameraFollowEntity(entt::handle e, bool instantTeleport)
+{
+    auto& fcc = getFollowCameraController();
+    fcc.init(camera);
+    fcc.startFollowingEntity(e, camera, instantTeleport);
+    cameraManager.setController(followCameraControllerTag);
 }
 
 entt::const_handle Game::findDefaultCamera()
@@ -575,16 +571,11 @@ entt::const_handle Game::findDefaultCamera()
     if (cameraEnt.entity() != entt::null) {
         return cameraEnt;
     }
-    return eu::findEntityBySceneNodeName(registry, "Camera");
-}
-
-namespace
-{
-bool shouldCastShadow(const entt::const_handle e)
-{
-    const auto& tag = eu::getTag(e);
-    return !tag.starts_with("GroundTile");
-}
+    // return first camera we can find
+    for (const auto& e : registry.view<CameraComponent>()) {
+        return {registry, e};
+    }
+    return {};
 }
 
 void Game::customDraw()
@@ -596,13 +587,15 @@ void Game::customDraw()
 
     {
         ZoneScopedN("Render");
-        const auto sceneData = GameRenderer::SceneData{
+        auto sceneData = GameRenderer::SceneData{
             .camera = camera,
             .ambientColor = level.getAmbientLightColor(),
             .ambientIntensity = level.getAmbientLightIntensity(),
-            .fogColor = level.getFogColor(),
-            .fogDensity = level.getFogDensity(),
         };
+        if (level.isFogActive()) {
+            sceneData.fogColor = level.getFogColor();
+            sceneData.fogDensity = level.getFogDensity();
+        }
 
         auto cmd = gfxDevice.beginFrame();
         renderer.draw(cmd, camera, sceneData);
@@ -623,6 +616,11 @@ void Game::customDraw()
                 drawImage.getExtent2D(),
                 renderer.getDepthImage().imageView);
             vkutil::cmdEndLabel(cmd);
+        }
+
+        if (!isDevEnvironment) {
+            gameDrawnInWindow = false;
+            drawImGui = false;
         }
 
         const auto endFrameProps = GfxDevice::EndFrameProps{
@@ -680,29 +678,47 @@ void Game::generateDrawList()
 
     renderer.endDrawing();
 
-    spriteRenderer.beginDrawing();
-
-    // draw interact tip
-    const auto& playerPos = physicsSystem->getCharacterPosition();
-    auto uiCtx = GameUI::UIContext{
-        .camera = camera,
-        .screenSize = {params.renderWidth, params.renderHeight},
-        .playerPos = playerPos,
-    };
-
-    if (interactEntity.entity() != entt::null) {
-        const auto& ic = interactEntity.get<InteractComponent>();
-        uiCtx.interactionType = ic.type;
+    // UI
+    {
+        spriteRenderer.beginDrawing();
+        auto uiCtx = GameUI::UIContext{
+            .camera = camera,
+            .screenSize = params.renderSize,
+        };
+        if (eu::playerExists(registry)) {
+            uiCtx.playerPos = physicsSystem->getCharacterPosition();
+            if (interactEntity.entity() != entt::null) {
+                const auto& ic = interactEntity.get<InteractComponent>();
+                uiCtx.interactionType = ic.type;
+            }
+        }
+        ui.draw(spriteRenderer, uiCtx);
+        devToolsDrawUI(spriteRenderer);
+        spriteRenderer.endDrawing();
     }
-
-    ui.draw(spriteRenderer, uiCtx);
-
-    spriteRenderer.endDrawing();
 }
 
 void Game::loadLevel(const std::filesystem::path& path)
 {
-    level.load(path);
+    bool loadedFromModel{false};
+
+    if (std::filesystem::exists(path)) {
+        level.load(path);
+    } else if (isDevEnvironment) {
+        // special level loading mode for dev environment:
+        // load from assets/models/levels/<level>/<level>.gltf
+        // Player will be destroyed and free camera will be enabled
+        // by default
+        auto levelName = path.filename().replace_extension("");
+        const auto modelPath = "assets/models/levels" / levelName / (levelName.string() + ".gltf");
+        fmt::println(
+            "level {} was not found, trying to load model from {}",
+            path.string(),
+            modelPath.string());
+        level.loadFromModel(modelPath);
+        loadedFromModel = true;
+    }
+    level.setName(path.filename().replace_extension("").string());
 
     // load skybox
     if (level.hasSkybox()) {
@@ -714,178 +730,130 @@ void Game::loadLevel(const std::filesystem::path& path)
         renderer.setSkyboxImage(NULL_IMAGE_ID);
     }
 
-    if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
-        audioManager.playMusic(bgmPath);
-    }
+    // spawn entities
+    const auto& scene = sceneCache.loadOrGetScene(level.getSceneModelPath());
+    auto createdEntities = entityCreator.createEntitiesFromScene(scene);
+    (void)createdEntities; // maybe will do something with them later...
+    transformSystemUpdate(registry, 0.f); // this will update worldTransforms to actual state
 
-    loadScene(level.getSceneModelPath(), true);
-}
-
-void Game::loadScene(const std::filesystem::path& path, bool createEntities)
-{
-    const auto& scene = sceneCache.loadOrGetScene(path);
-    if (createEntities) {
-        auto createdEntities = entityCreator.createEntitiesFromScene(scene);
-        // might need do do if children have physics too!
-        // transformSystemUpdate(registry, 0.f);
+    if (loadedFromModel) {
+        destroyEntity(eu::getPlayerEntity(registry));
+        setCurrentCamera(findDefaultCamera());
+        freeCameraMode = true;
+        playerInputEnabled = false;
+        cameraManager.setController(freeCameraControllerTag);
     }
 }
 
-namespace
+void Game::changeLevel(
+    const std::string& levelTag,
+    const std::string& spawnName,
+    LevelTransitionType ltt)
 {
-std::string extractNameFromSceneNodeName(const std::string& sceneNodeName)
-{
-    if (sceneNodeName.empty()) {
-        return {};
-    }
-    const auto dotPos = sceneNodeName.find_last_of(".");
-    if (dotPos == std::string::npos || dotPos == sceneNodeName.length() - 1) {
-        fmt::println(
-            "ERROR: cannot extract name {}: should have format <prefab>.<name>", sceneNodeName);
-    }
-    return sceneNodeName.substr(dotPos + 1, sceneNodeName.size());
-}
-}
-
-void Game::entityPostInit(entt::handle e)
-{
-    // handle skeleton and animation
-    if (auto scPtr = e.try_get<SkeletonComponent>(); scPtr) {
-        auto& sc = *scPtr;
-        assert(sc.skinId != -1);
-
-        auto& mic = e.get<MetaInfoComponent>();
-        const auto& scene = sceneCache.loadOrGetScene(mic.sceneName);
-
-        sc.skeleton = scene.skeletons[sc.skinId];
-        sc.animations = &animationCache.getAnimations(mic.sceneName);
-
-        auto& mc = e.get<MeshComponent>();
-        sc.skinnedMeshes.reserve(mc.meshes.size());
-        for (const auto meshId : mc.meshes) {
-            const auto& mesh = meshCache.getMesh(meshId);
-            SkinnedMesh sm;
-            sm.skinnedVertexBuffer = gfxDevice.createBuffer(
-                mesh.numVertices * sizeof(CPUMesh::Vertex),
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-            sc.skinnedMeshes.push_back(sm);
-        }
-
-        if (sc.animations->contains("Idle")) {
-            sc.skeletonAnimator.setAnimation(sc.skeleton, sc.animations->at("Idle"));
-        }
+    if (actionListManager.isActionListPlaying(levelTransitionListName)) {
+        return;
     }
 
-    // physics
-    if (auto pcPtr = e.try_get<PhysicsComponent>(); pcPtr) {
-        auto& pc = *pcPtr;
-
-        JPH::Ref<JPH::Shape> shape;
-
-        switch (pc.bodyType) {
-        case PhysicsComponent::BodyType::Sphere: {
-            const auto& params = std::get<PhysicsComponent::SphereParams>(pc.bodyParams);
-            shape = new JPH::SphereShape(params.radius);
-        } break;
-        case PhysicsComponent::BodyType::Capsule: {
-            const auto& params = std::get<PhysicsComponent::CapsuleParams>(pc.bodyParams);
-            shape = new JPH::CapsuleShape(params.halfHeight, params.radius);
-            if (pc.originType == PhysicsComponent::OriginType::BottomPlane) {
-                shape = new JPH::RotatedTranslatedShape(
-                    {0.f, params.halfHeight + params.radius, 0.f}, JPH::Quat().sIdentity(), shape);
-            }
-        } break;
-        case PhysicsComponent::BodyType::Cylinder: {
-            const auto& params = std::get<PhysicsComponent::CylinderParams>(pc.bodyParams);
-            shape = new JPH::CylinderShape(params.halfHeight, params.radius);
-            if (pc.originType == PhysicsComponent::OriginType::BottomPlane) {
-                shape = new JPH::RotatedTranslatedShape(
-                    {0.f, params.halfHeight, 0.f}, JPH::Quat().sIdentity(), shape);
-            }
-        } break;
-        case PhysicsComponent::BodyType::AABB: {
-            auto& params = std::get<PhysicsComponent::AABBParams>(pc.bodyParams);
-
-            if (params.min == params.max && params.min == glm::vec3{}) {
-                // need to compute AABB from the mesh if not initialized still
-                const auto& mc = e.get<MeshComponent>();
-                const auto& mic = e.get<MetaInfoComponent>();
-                const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
-                const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
-                params.min = aabb.min;
-                params.max = aabb.max;
-            }
-
-            auto size = glm::abs(params.max - params.min);
-
-            // almost flat
-            bool almostZeroHeight = 0.f;
-            if (size.y < 0.001f) {
-                size.y = 0.1f;
-                almostZeroHeight = true;
-            }
-
-            // for completely flat objects, the origin will be at the center of the object
-            // for objects with height, it will be at the center of the bottom AABB plane
-            shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
-            auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
-            if (pc.originType == PhysicsComponent::OriginType::Center) {
-                offsetY = 0.f;
-            }
-            shape = new JPH::
-                RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
-        } break;
-        case PhysicsComponent::BodyType::TriangleMesh: {
-            const auto& mic = e.get<MetaInfoComponent>();
-            const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
-            std::vector<const CPUMesh*> meshes;
-            const auto& mc = e.get<MeshComponent>();
-            for (const auto& meshId : mc.meshes) {
-                meshes.push_back(&scene.cpuMeshes.at(meshId));
-            }
-            shape = physicsSystem->cacheMeshShape(meshes, mc.meshes, mc.meshTransforms);
-        } break;
-        default:
-            break;
-        }
-
-        if (shape) {
-            bool staticBody = pc.type == PhysicsComponent::Type::Static;
-            assert(pc.type != PhysicsComponent::Type::Kinematic && "TODO");
-            auto bodyId = physicsSystem->createBody(
-                e, e.get<TransformComponent>().transform, shape, staticBody, pc.sensor);
-            pc.bodyId = bodyId;
-        }
-    }
-
-    // extract name from scene node
-    if (e.any_of<PlayerSpawnComponent, CameraComponent, TriggerComponent>()) {
-        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
-        if (sceneNodeName.empty()) { // created manually
-            return;
-        }
-        e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
-    }
-
-    // init children
-    for (const auto& c : e.get<HierarchyComponent>().children) {
-        entityPostInit(c);
-    }
+    // TODO: check that level exists to print error immediately
+    newLevelToLoad = "assets/levels/" + levelTag + ".json";
+    // if spawnName is empty, the default spawn on the level will be used
+    newLevelSpawnName = spawnName;
+    newLevelTransitionType = ltt;
 }
 
-void Game::onTagComponentDestroy(entt::registry& registry, entt::entity entity)
+void Game::doLevelChange()
 {
-    auto& tc = registry.get<TagComponent>(entity);
-    taggedEntities.erase(tc.tag);
+    using namespace actions;
+    const auto levelToLoad = newLevelToLoad;
+    const auto spawnName = newLevelSpawnName;
+
+    auto levelTransition = ActionList(levelTransitionListName);
+
+    bool hasPreviousLevel = !level.getName().empty();
+    if (hasPreviousLevel) {
+        levelTransition.addAction(exitLevel(newLevelTransitionType));
+    }
+
+    levelTransition.addActions(
+        doNamed(
+            "Spawn player",
+            [this, levelToLoad, spawnName] {
+                loadLevel(levelToLoad);
+                // spawn player
+                const auto& spawnPoint =
+                    spawnName.empty() ? level.getDefaultPlayerSpawnerName() : spawnName;
+                lastSpawnName = spawnPoint;
+                eu::spawnPlayer(registry, spawnPoint);
+            }),
+        enterLevel(newLevelTransitionType) // enter
+    );
+
+    // play action list
+    actionListManager.addActionList(std::move(levelTransition));
+
+    newLevelToLoad.clear();
+    newLevelSpawnName.clear();
 }
 
-void Game::onSkeletonComponentDestroy(entt::registry& registry, entt::entity entity)
+ActionList Game::enterLevel(LevelTransitionType ltt)
 {
-    auto& sc = registry.get<SkeletonComponent>(entity);
-    for (const auto& skinnedMesh : sc.skinnedMeshes) {
-        renderer.getGfxDevice().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
-    }
+    using namespace actions;
+    return ActionList(
+        "Enter level",
+        doNamed(
+            "Enter level",
+            [this]() {
+                if (newLevelTransitionType == LevelTransitionType::EnterDoor) {
+                    audioManager.playSound("assets/sounds/door_close.wav");
+                }
+
+                // play music
+                if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
+                    audioManager.playMusic(bgmPath.string());
+                }
+
+                // handle camera
+                const auto& cameraName = level.getDefaultCameraName();
+                if (!cameraName.empty()) {
+                    setCurrentCamera(eu::findCameraByName(registry, cameraName));
+                } else if (eu::playerExists(registry)) {
+                    cameraFollowEntity(eu::getPlayerEntity(registry), true);
+                }
+
+                getLevelScript().onLevelEnter();
+            }),
+        ui.fadeInFromBlackAction(0.5f), //
+        doNamed("Enable player input", [this]() {
+            // this doesn't feel very good, but prevents player from messing things up
+            if (eu::playerExists(registry)) {
+                playerInputEnabled = true;
+            }
+        }));
+}
+
+ActionList Game::exitLevel(LevelTransitionType ltt)
+{
+    using namespace actions;
+    return ActionList(
+        "Exit level", //
+        doNamed(
+            "Exit level",
+            [this, ltt]() {
+                playerInputEnabled = false;
+                if (ltt == LevelTransitionType::EnterDoor) {
+                    audioManager.playSound("assets/sounds/door_open.wav");
+                }
+
+                if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
+                    audioManager.stopMusic(bgmPath.string());
+                }
+
+                getLevelScript().onLevelExit();
+            }),
+        ui.fadeOutToBlackAction(0.5f),
+        doNamed("Stop camera transitions", [this]() { cameraManager.stopCameraTransitions(); }),
+        delay(0.2f),
+        doNamed("Destroy entities", [this]() { destroyNonPersistentEntities(); }));
 }
 
 void Game::initEntityFactory()
@@ -916,101 +884,225 @@ void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
     });
 }
 
-void Game::registerComponents(ComponentFactory& componentFactory)
+void Game::destroyNonPersistentEntities()
 {
-    registry.on_destroy<TagComponent>().connect<&Game::onTagComponentDestroy>(this);
-    registry.on_destroy<SkeletonComponent>().connect<&Game::onSkeletonComponentDestroy>(this);
+    // TODO: move somewhere else?
+    interactEntity = {registry, entt::null};
 
-    componentFactory.registerComponent<TriggerComponent>("trigger");
-    componentFactory.registerComponent<CameraComponent>("camera");
-    componentFactory.registerComponent<PlayerSpawnComponent>("player_spawn");
-    componentFactory.registerComponent<ColliderComponent>("collider");
-
-    componentFactory.registerComponentLoader(
-        "meta", [](entt::handle e, MetaInfoComponent& mic, const JsonDataLoader& loader) {
-            loader.getIfExists("scene", mic.sceneName);
-            loader.getIfExists("node", mic.sceneNodeName);
-        });
-
-    componentFactory.registerComponentLoader(
-        "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {
-            loader.getIfExists("castShadow", mc.castShadow);
-        });
-
-    componentFactory.registerComponentLoader(
-        "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
-            loader.get("maxSpeed", mc.maxSpeed);
-        });
-
-    componentFactory.registerComponentLoader(
-        "physics", [](entt::handle e, PhysicsComponent& pc, const JsonDataLoader& loader) {
-            // type
-            std::string type;
-            loader.getIfExists("type", type);
-            if (type == "static") {
-                pc.type = PhysicsComponent::Type::Static;
-            } else if (type == "dynamic") {
-                pc.type = PhysicsComponent::Type::Dynamic;
-            } else if (type == "kinematic") {
-                pc.type = PhysicsComponent::Type::Kinematic;
-            } else if (!type.empty()) {
-                fmt::println("[error] unknown physics component type '{}'", type);
+    // Note that this will remove persistent entities if they're not parented
+    // to persistent parents!
+    for (auto entity : registry.view<entt::entity>()) {
+        auto e = entt::handle{registry, entity};
+        if (!e.get<HierarchyComponent>().hasParent()) {
+            if (!e.all_of<PersistentComponent>()) {
+                destroyEntity({registry, entity}, true);
             }
+        }
+    }
+}
 
-            // origin type
-            std::string originType;
-            loader.getIfExists("originType", originType);
-            if (originType == "bottom_plane") {
-                pc.originType = PhysicsComponent::OriginType::BottomPlane;
-            } else if (originType == "center") {
-                pc.originType = PhysicsComponent::OriginType::Center;
-            } else if (!originType.empty()) {
-                fmt::println("[error] unknown physics component origin type '{}'", type);
-            }
+void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
+{
+    auto& hc = e.get<HierarchyComponent>();
+    if (hc.hasParent()) {
+        // remove from parent's children list
+        auto& parentHC = hc.parent.get<HierarchyComponent>();
+        std::erase(parentHC.children, e);
+    }
+    // destory children before removing itself
+    for (const auto& child : hc.children) {
+        destroyEntity(child, removeFromRegistry);
+    }
 
-            // sensor
-            loader.getIfExists("sensor", pc.sensor);
+    if (auto tcPtr = e.try_get<TagComponent>(); tcPtr) {
+        if (!tcPtr->getTag().empty()) {
+            taggedEntities.erase(tcPtr->getTag());
+        }
+    }
 
-            // body type + body params
-            std::string bodyType;
-            loader.getIfExists("bodyType", bodyType);
-            if (bodyType == "aabb") {
-                pc.bodyType = PhysicsComponent::BodyType::AABB;
-                pc.bodyParams = PhysicsComponent::AABBParams{};
-            } else if (bodyType == "capsule") {
-                pc.bodyType = PhysicsComponent::BodyType::Capsule;
+    if (auto scPtr = e.try_get<SkeletonComponent>(); scPtr) {
+        for (const auto& skinnedMesh : scPtr->skinnedMeshes) {
+            renderer.getGfxDevice().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+        }
+    }
 
-                const auto bodyLoader = loader.getLoader("bodyParams");
-                auto params = PhysicsComponent::CapsuleParams{};
-                bodyLoader.get("halfHeight", params.halfHeight);
-                bodyLoader.get("radius", params.radius);
+    if (e.all_of<PhysicsComponent>()) {
+        physicsSystem->onEntityDestroyed(e);
+    }
 
-                pc.bodyParams = params;
-            } else if (bodyType == "mesh") {
-                pc.bodyType = PhysicsComponent::BodyType::TriangleMesh;
-            } else if (!bodyType.empty()) {
-                // TODO: load other body types from JSON
-                fmt::println("[error] unknown physics component body type '{}'", bodyType);
-            }
-        });
+    if (removeFromRegistry) {
+        e.destroy();
+    }
+}
 
-    componentFactory.registerComponentLoader(
-        "interact", [](entt::handle e, InteractComponent& ic, const JsonDataLoader& loader) {
-            // type
-            std::string type;
-            loader.getIfExists("type", type);
-            if (type == "examine") {
-                ic.type = InteractComponent::Type::Interact;
-            } else if (type == "talk") {
-                ic.type = InteractComponent::Type::Talk;
-            } else if (!type.empty()) {
-                fmt::println("[error] unknown interact component type '{}'", type);
-            }
-        });
+void Game::onCollisionStarted(const CharacterCollisionStartedEvent& event)
+{
+    if (event.entity.all_of<TriggerComponent>()) {
+        const auto& name = event.entity.get<NameComponent>().name;
+        getLevelScript().onTriggerEnter(event.entity, name);
+    }
+}
 
-    componentFactory.registerComponentLoader(
-        "animation_event_sound",
-        [](entt::handle e, AnimationEventSoundComponent& sc, const JsonDataLoader& loader) {
-            sc.eventSounds = loader.getLoader("events").getKeyValueMapString();
-        });
+void Game::onCollisionEnded(const CharacterCollisionEndedEvent& event)
+{
+    if (event.entity.all_of<TriggerComponent>()) {
+        const auto& name = event.entity.get<NameComponent>().name;
+        getLevelScript().onTriggerExit(event.entity, name);
+    }
+}
+
+MTPSaveFile& Game::getSaveFile()
+{
+    return static_cast<MTPSaveFile&>(saveFileManager.getCurrentSaveFile());
+}
+
+const std::string& Game::getCurrentLevelName() const
+{
+    return level.getName();
+}
+
+const std::string& Game::getLastSpawnName() const
+{
+    return lastSpawnName;
+}
+
+void Game::stopPlayerMovement()
+{
+    auto player = eu::getPlayerEntity(registry);
+    eu::stopRotation(player);
+    physicsSystem->stopCharacterMovement();
+}
+
+void Game::writeSaveFile()
+{
+    saveFileManager.writeCurrentSaveFile();
+}
+
+LevelScript& Game::getLevelScript()
+{
+    auto it = levelScripts.find(level.getName());
+    if (it != levelScripts.end()) {
+        return *it->second;
+    }
+    static LevelScript emptyLevelScript{*this};
+    return emptyLevelScript;
+}
+
+namespace
+{
+LocalizedStringTag getSpeakerName(entt::handle e)
+{
+    if (auto npcc = e.try_get<NPCComponent>(); npcc) {
+        if (!npcc->name.empty()) {
+            return npcc->name;
+        }
+    }
+    return LST{};
+}
+}
+
+ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
+{
+    using namespace actions;
+
+    // speaker name
+    auto speakerName = textToken.name; // has higher precendence than speaker's name
+    if (speakerName.empty() && speaker.entity() != entt::null) {
+        speakerName = getSpeakerName(speaker);
+    }
+
+    auto dialogueDebugName = fmt::format("Dialogue: {}", textToken.text.tag);
+
+    auto l = ActionList(
+        std::move(dialogueDebugName),
+        doNamed(
+            "Open dialogue",
+            [this, textToken, speakerName]() {
+                auto& db = ui.getDialogueBox();
+
+                if (!speakerName.empty()) {
+                    db.setSpeakerName(textManager.getString(speakerName));
+                }
+
+                // text
+                db.setText(textManager.getString(textToken.text));
+
+                // choices
+                if (!textToken.choices.empty()) {
+                    assert(textToken.choices.size() <= DialogueBox::MaxChoices);
+                    for (std::size_t i = 0; i < textToken.choices.size(); ++i) {
+                        db.setChoiceText(i, textManager.getString(textToken.choices[i]));
+                    }
+                }
+
+                // voice
+                if (!textToken.voiceSound.empty()) {
+                    db.setTempVoiceSound(textToken.voiceSound);
+                }
+
+                // open
+                ui.openDialogueBox();
+            }),
+        waitWhile(
+            "Wait dialogue input",
+            [this](float dt) {
+                auto& db = ui.getDialogueBox();
+                return !ui.getDialogueBox().wantsClose();
+            }),
+        doNamed("Close dialogue box", [this]() { ui.closeDialogueBox(); }));
+
+    auto onChoice = textToken.onChoice;
+    if (onChoice) {
+        l.addAction(actions::make("Dialogue choice", [this, onChoice]() {
+            auto lastChoice = ui.getDialogueBox().getLastChoiceSelectionIndex();
+            return actions::doList(onChoice(lastChoice));
+        }));
+    }
+
+    return l;
+}
+
+ActionList Game::say(const std::vector<dialogue::TextToken>& textTokens, entt::handle speaker)
+{
+    auto l = ActionList("interaction");
+    for (const auto& token : textTokens) {
+        l.addAction(say(token, speaker));
+    }
+    return l;
+}
+
+ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
+{
+    const auto textToken = dialogue::TextToken{
+        .text = text,
+    };
+    return say(textToken, speaker);
+}
+
+[[nodiscard]] ActionList Game::saveGameSequence()
+{
+    std::vector<dialogue::TextToken> tokens{
+        {.text = LST{"DO_YOU_WANT_TO_SAVE"},
+         .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
+         .onChoice =
+             [this](std::size_t index) {
+                 if (index == 0) {
+                     writeSaveFile();
+                     return say(LST{"GAME_SAVED"});
+                 }
+                 return actions::doNothingList();
+             }},
+    };
+    return say(tokens);
+}
+
+void Game::playSound(const std::string& soundName)
+{
+    audioManager.playSound(soundName);
+}
+
+void Game::doWithDelay(const std::string& taskName, float delay, std::function<void()> task)
+{
+    assert(!actionListManager.isActionListPlaying(taskName));
+    actionListManager.addActionList(ActionList(taskName, actions::delay(delay), task));
 }

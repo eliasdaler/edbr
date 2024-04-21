@@ -1,9 +1,11 @@
 #include <edbr/GameUI/DialogueBox.h>
 
-#include <edbr/AudioManager.h>
+#include <edbr/Audio/AudioManager.h>
 #include <edbr/Core/JsonFile.h>
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Input/ActionMapping.h>
 
+#include <edbr/UI/ButtonElement.h>
 #include <edbr/UI/ImageElement.h>
 #include <edbr/UI/ListLayoutElement.h>
 #include <edbr/UI/NineSliceElement.h>
@@ -11,9 +13,15 @@
 #include <edbr/UI/TextElement.h>
 #include <edbr/UI/UIRenderer.h>
 
+#include <edbr/DevTools/ImGuiPropertyTable.h>
+#include <imgui.h>
+
+const std::string DialogueBox::DialogueBoxMenuTag{"dialogue_box"};
 const std::string DialogueBox::MenuNameTag{"menu_name"};
 const std::string DialogueBox::MainTextTag{"main_text"};
 const std::string DialogueBox::MoreTextImageTag{"more_text"};
+const std::string DialogueBox::Choice1Tag{"choice1"};
+const std::string DialogueBox::Choice2Tag{"choice2"};
 
 void DialogueBox::init(GfxDevice& gfxDevice, AudioManager& audioManager)
 {
@@ -23,6 +31,19 @@ void DialogueBox::init(GfxDevice& gfxDevice, AudioManager& audioManager)
 
     assert(ok && "font failed to load");
     createUI(gfxDevice);
+}
+
+void DialogueBox::handleInput(const ActionMapping& actionMapping)
+{
+    static const auto interactAction = actionMapping.getActionTagHash("PrimaryAction");
+    if (actionMapping.wasJustPressed(interactAction)) {
+        if (!isWholeTextDisplayed()) {
+            audioManager->playSound("assets/sounds/ui/skip_text.wav");
+            displayWholeText();
+        } else if (!hasChoices) {
+            advanceTextPressed = true;
+        }
+    }
 }
 
 namespace
@@ -36,8 +57,6 @@ bool isPunctuation(char c)
 
 void DialogueBox::update(const glm::vec2& screenSize, float dt)
 {
-    dialogueBoxUI->calculateLayout(screenSize);
-
     if (!isWholeTextDisplayed()) {
         if (currentTextDelay != 0.f) {
             delayValue += dt;
@@ -55,7 +74,7 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             numGlyphsToDraw = static_cast<float>(numberOfGlyphs);
         }
 
-        const auto glyphIdx = static_cast<std::size_t>(std::floor(numGlyphsToDraw) - 1);
+        const auto glyphIdx = static_cast<std::size_t>(std::max(std::floor(numGlyphsToDraw), 1.f) - 1);
         // TODO: should do getGlyph(text, charIdx) here
         const auto lastLetter = glyphIdx > 0 ? text[glyphIdx] : '\0';
         bool punctuation = isPunctuation(lastLetter);
@@ -69,8 +88,8 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             }
             if (textSoundTriggerValue >= textSoundTriggerSpeed) {
                 textSoundTriggerValue -= textSoundTriggerSpeed;
-                if (!muted) {
-                    audioManager->playSound("assets/sounds/ui/text.wav");
+                if (!muted && !voiceSound.empty()) {
+                    audioManager->playSound(voiceSound);
                 }
             }
         }
@@ -82,16 +101,24 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             delaysDone.insert(glyphIdx);
         }
         wasPunctuation = punctuation;
+    }
+    getMainTextElement().numGlyphsToDraw = (int)std::round(numGlyphsToDraw);
 
-        getMainTextElement().numGlyphsToDraw = (int)std::round(numGlyphsToDraw);
+    if (isWholeTextDisplayed() && hasChoices && !choicesDisplayed) {
+        setChoicesDisplayed(true);
+        audioManager->playSound("assets/sounds/ui/menu_open.wav");
     }
 
-    auto& moreTextImage = getMoreTextImageElement();
-    moreTextImage.visible = isWholeTextDisplayed();
-    if (moreTextImage.visible) {
+    if (isWholeTextDisplayed() && !choicesDisplayed) {
+        auto& moreTextImage = getMoreTextImageElement();
+        moreTextImage.visible = true;
+
         moreTextImageBouncer.update(dt);
         moreTextImage.offsetPosition =
             moreTextImageOffsetPosition + glm::vec2{0.f, moreTextImageBouncer.getOffset()};
+    } else {
+        auto& moreTextImage = getMoreTextImageElement();
+        moreTextImage.visible = false;
     }
 }
 
@@ -100,26 +127,43 @@ void DialogueBox::draw(SpriteRenderer& spriteRenderer) const
     ui::drawElement(spriteRenderer, *dialogueBoxUI);
 }
 
-void DialogueBox::setVisible(bool b)
+void DialogueBox::setText(std::string t)
 {
-    dialogueBoxUI->visible = b;
-}
+    advanceTextPressed = false;
 
-bool DialogueBox::isVisible() const
-{
-    return dialogueBoxUI->visible;
-}
-
-void DialogueBox::setText(const std::string t)
-{
     text = std::move(t);
     getMainTextElement().text = text;
 
     // TODO: function to calculate number of glyphs
-    numberOfGlyphs = 0;
+    getMainTextElement().numGlyphsToDraw = (int)std::round(numGlyphsToDraw);
     defaultFont.forEachGlyph(text, [this](const glm::vec2&, const glm::vec2&, const glm::vec2&) {
         ++numberOfGlyphs;
     });
+}
+
+void DialogueBox::resetState()
+{
+    numberOfGlyphs = 0;
+    numGlyphsToDraw = 0;
+    getMoreTextImageElement().visible = false;
+
+    // clear all text inside to be extra safe
+    setText("");
+    setSpeakerName("");
+
+    voiceSound = defaultVoiceSound;
+    textSoundTriggerSpeed = 0.08f;
+
+    // handle choices
+    hasChoices = false;
+    setChoicesDisplayed(false);
+    if (choiceSelectionIndex != -1) {
+        lastChoiceSelection = static_cast<std::size_t>(choiceSelectionIndex);
+    }
+    choiceSelectionIndex = -1;
+    for (std::size_t index = 0; index < MaxChoices; ++index) {
+        getChoiceButton(index).getTextElement().text.clear();
+    }
 }
 
 void DialogueBox::setSpeakerName(const std::string t)
@@ -141,65 +185,116 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
     auto dialogueBox = std::make_unique<ui::NineSliceElement>(nsStyle);
     dialogueBox->autoSize = true;
 
-    // main text
-    auto mainTextElement = std::make_unique<ui::TextElement>(defaultFont, LinearColor::White());
-    mainTextElement->tag = MainTextTag;
-    {
-        // calculate fixed size
-        int maxNumCharsLine = 30;
-        int maxLines = 4;
-        std::string fixedSizeString{};
-        fixedSizeString.reserve(maxNumCharsLine * maxLines + maxLines);
-        for (int y = 0; y < maxLines; ++y) {
-            for (int x = 0; x < maxNumCharsLine; ++x) {
-                fixedSizeString += "W";
+    const auto fontHeight = defaultFont.lineSpacing;
+    { // main text
+        auto mainTextElement = std::make_unique<ui::TextElement>(defaultFont, LinearColor::White());
+        mainTextElement->tag = MainTextTag;
+        { // calculate fixed max size
+            int maxNumCharsLine = 30;
+            int maxLines = 4;
+            std::string fixedSizeString{};
+            fixedSizeString.reserve(maxNumCharsLine * maxLines + maxLines);
+            for (int y = 0; y < maxLines; ++y) {
+                for (int x = 0; x < maxNumCharsLine; ++x) {
+                    fixedSizeString += "W";
+                }
+                if (y != maxLines - 1) {
+                    fixedSizeString += "\n";
+                }
             }
-            if (y != maxLines - 1) {
-                fixedSizeString += "\n";
-            }
+            mainTextElement->setFixedSize(fixedSizeString);
         }
-        mainTextElement->setFixedSize(fixedSizeString);
+
+        // some padding is added on both sides
+        const auto padding = glm::vec2{
+            std::round(fontHeight * 0.6f),
+            std::round(fontHeight * 0.3f),
+        };
+
+        mainTextElement->offsetPosition = padding;
+        mainTextElement->offsetSize = -padding * 2.f;
+        mainTextElement->shadow = true;
+        dialogueBox->addChild(std::move(mainTextElement));
     }
 
-    // (16px, 8px) padding is added on both sides
-    const auto fontHeight = defaultFont.lineSpacing;
-    const auto padding = glm::vec2{
-        std::round(fontHeight * 0.6f),
-        std::round(fontHeight * 0.3f),
-    };
+    { // choices
+        auto listElement = std::make_unique<ui::ListLayoutElement>();
+        listElement->direction = ui::ListLayoutElement::Direction::Vertical;
+        listElement->autoSize = true;
+        // place on bottom-left of the dialogue box
+        listElement->origin = {0.f, 1.f};
+        listElement->relativePosition = {0.f, 1.f};
+        // TODO: don't hardcode in pixels?
+        listElement->offsetPosition = {32.f, -8.f};
+        listElement->offsetSize = {-64.f, -16.f};
 
-    mainTextElement->offsetPosition = padding;
-    mainTextElement->offsetSize = -padding * 2.f;
-    mainTextElement->shadow = true;
-    dialogueBox->addChild(std::move(mainTextElement));
+        const auto buttonPadding = glm::vec2{8.f, 0.f};
+        const auto bs = ui::ButtonStyle{
+            .font = defaultFont,
+            .normalColor = LinearColor{1.f, 1.f, 1.f},
+            .selectedColor = edbr::rgbToLinear(254, 174, 52),
+            .disabledColor = edbr::rgbToLinear(128, 128, 128),
+            .textAlignment = ui::ButtonStyle::TextAlignment::Left,
+            .padding = buttonPadding,
+            .cursorOffset = {0.f, buttonPadding.y + defaultFont.lineSpacing / 2.f},
+        };
 
-    // menu name
-    auto menuName =
-        std::make_unique<ui::TextElement>(defaultFont, LinearColor::FromRGB(254, 214, 124));
-    menuName->tag = MenuNameTag;
-    menuName->offsetPosition = {std::round(fontHeight / 2.f), -fontHeight};
-    menuName->shadow = true;
-    dialogueBox->addChild(std::move(menuName));
+        for (int i = 0; i < 2; ++i) {
+            auto choiceButton = std::make_unique<ui::ButtonElement>(bs, "CHOICE", [this, i]() {
+                audioManager->playSound("assets/sounds/ui/menu_select.wav");
+                choiceSelectionIndex = i;
+            });
+            choiceButton->tag = (i == 0) ? Choice1Tag : Choice2Tag;
+            choiceButton->visible = false;
+            listElement->addChild(std::move(choiceButton));
+        }
 
-    // more text image
-    const auto moreTextImageId = gfxDevice.loadImageFromFile("assets/images/ui/more_text.png");
-    const auto& moreTextImage = gfxDevice.getImage(moreTextImageId);
-    auto moreTextImageElement = std::make_unique<ui::ImageElement>(moreTextImage);
-    moreTextImageElement->tag = MoreTextImageTag;
-    moreTextImageElement->origin = glm::vec2{1.f, 1.f};
-    moreTextImageElement->relativePosition = glm::vec2{1.f, 1.f};
-    // TODO: set based on image/border size?
-    moreTextImageOffsetPosition = {-16.f, -12.f};
-    moreTextImageElement->offsetPosition = moreTextImageOffsetPosition;
-    dialogueBox->addChild(std::move(moreTextImageElement));
+        // manage cursor
+        for (std::size_t i = 0; i < listElement->children.size(); ++i) {
+            const auto prevIndex = (i == 0) ? listElement->children.size() - 1 : i - 1;
+            const auto nextIndex = (i == listElement->children.size() - 1) ? 0 : i + 1;
 
+            auto& button = *listElement->children[i];
+            button.cursorUpElement = listElement->children[prevIndex].get();
+            button.cursorDownElement = listElement->children[nextIndex].get();
+        }
+
+        dialogueBox->addChild(std::move(listElement));
+    }
+
+    { // menu/speaker name
+        auto menuName =
+            std::make_unique<ui::TextElement>(defaultFont, LinearColor::FromRGB(254, 214, 124));
+        menuName->tag = MenuNameTag;
+        menuName->offsetPosition = {std::round(fontHeight / 2.f), -fontHeight};
+        menuName->shadow = true;
+        dialogueBox->addChild(std::move(menuName));
+    }
+
+    { // more text image
+        const auto moreTextImageId = gfxDevice.loadImageFromFile("assets/images/ui/more_text.png");
+        const auto& moreTextImage = gfxDevice.getImage(moreTextImageId);
+        auto moreTextImageElement = std::make_unique<ui::ImageElement>(moreTextImage);
+        moreTextImageElement->tag = MoreTextImageTag;
+        moreTextImageElement->origin = glm::vec2{1.f, 1.f};
+        moreTextImageElement->relativePosition = glm::vec2{1.f, 1.f};
+        // TODO: set based on image/border size?
+        moreTextImageOffsetPosition = {-16.f, -12.f};
+        moreTextImageElement->offsetPosition = moreTextImageOffsetPosition;
+        moreTextImageElement->visible = false;
+        dialogueBox->addChild(std::move(moreTextImageElement));
+
+        moreTextImageBouncer = Bouncer({
+            .maxOffset = 2.f,
+            .moveDuration = 0.5f,
+            .tween = glm::quadraticEaseInOut<float>,
+        });
+    }
+
+    // finish setup
     dialogueBoxUI->addChild(std::move(dialogueBox));
-
-    moreTextImageBouncer = Bouncer({
-        .maxOffset = 2.f,
-        .moveDuration = 0.5f,
-        .tween = glm::quadraticEaseInOut<float>,
-    });
+    dialogueBoxUI->cursorSelectionStartElement = dialogueBoxUI->tryFindElement(Choice1Tag);
+    dialogueBoxUI->tag = DialogueBoxMenuTag;
 }
 
 ui::TextElement& DialogueBox::getMainTextElement()
@@ -212,12 +307,79 @@ ui::TextElement& DialogueBox::getMenuNameTextElement()
     return dialogueBoxUI->findElement<ui::TextElement>(MenuNameTag);
 }
 
+ui::ButtonElement& DialogueBox::getChoiceButton(std::size_t index)
+{
+    assert(index < MaxChoices);
+    const auto& tag = (index == 0) ? Choice1Tag : Choice2Tag;
+    return dialogueBoxUI->findElement<ui::ButtonElement>(tag);
+}
+
 ui::ImageElement& DialogueBox::getMoreTextImageElement()
 {
     return dialogueBoxUI->findElement<ui::ImageElement>(MoreTextImageTag);
 }
 
+void DialogueBox::displayWholeText()
+{
+    numGlyphsToDraw = numberOfGlyphs;
+}
+
 bool DialogueBox::isWholeTextDisplayed() const
 {
     return static_cast<std::size_t>(numGlyphsToDraw) == numberOfGlyphs;
+}
+
+void DialogueBox::setChoicesDisplayed(bool b)
+{
+    choicesDisplayed = b;
+    for (std::size_t index = 0; index < MaxChoices; ++index) {
+        getChoiceButton(index).visible = b;
+    }
+}
+
+void DialogueBox::setChoiceText(std::size_t index, std::string choice)
+{
+    hasChoices = true;
+    getChoiceButton(index).getTextElement().text = std::move(choice);
+}
+
+bool DialogueBox::wantsClose() const
+{
+    return wantsTextAdvance() || madeChoiceSelection();
+}
+
+bool DialogueBox::madeChoiceSelection() const
+{
+    return hasChoices && choicesDisplayed && choiceSelectionIndex != -1;
+}
+
+std::size_t DialogueBox::getLastChoiceSelectionIndex() const
+{
+    return lastChoiceSelection;
+}
+
+void DialogueBox::displayDebugInfo()
+{
+    using namespace devtools;
+    BeginPropertyTable();
+    DisplayProperty("numberOfGlyphs", numberOfGlyphs);
+    DisplayProperty("numGlyphsToDraw", numGlyphsToDraw);
+    DisplayProperty("muted", muted);
+    DisplayProperty("hasChoices", hasChoices);
+    DisplayProperty("choicesDisplayed", choicesDisplayed);
+    DisplayProperty("choiceSelectionIndex", choiceSelectionIndex);
+    DisplayProperty("lastChoiceSelection", lastChoiceSelection);
+    EndPropertyTable();
+}
+
+void DialogueBox::setDefaultVoiceSound(const std::string& soundName)
+{
+    defaultVoiceSound = soundName;
+    voiceSound = defaultVoiceSound;
+}
+
+void DialogueBox::setTempVoiceSound(const std::string& soundName)
+{
+    voiceSound = soundName;
+    textSoundTriggerSpeed = 0.15f;
 }

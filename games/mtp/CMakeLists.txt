@@ -1,16 +1,36 @@
+cmake_minimum_required(VERSION 3.21)
+
+project(
+	mtpgame
+	VERSION 0.1.0
+	LANGUAGES CXX C
+)
+
+if (PROJECT_IS_TOP_LEVEL)
+  set(EDBR_DIR "${CMAKE_CURRENT_LIST_DIR}/../..")
+  add_subdirectory("${EDBR_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/edbr")
+endif()
+
 add_executable(mtpgame
   src/DevTools/CustomEntityTreeView.cpp
 
-  src/EntityUtil.cpp
+  src/AnimationSoundSystem.cpp
   src/EntityCreator.cpp
+  src/EntityUtil.cpp
+  src/FollowCameraController.cpp
+  src/Level.cpp
+  src/PhysicsSystem.cpp
+  src/VirtualCharacterParams.cpp
+
   src/Game.cpp
+  src/GameComponents.cpp
   src/GameComponentDisplayers.cpp
+  src/GameEntityInit.cpp
   src/GameDevTools.cpp
   src/GameUI.cpp
-  src/Level.cpp
+  src/GameLevels.cpp
 
-  src/PhysicsSystem.cpp
-  src/AnimationSoundSystem.cpp
+  src/MTPSaveFile.cpp
 
   src/main.cpp
 )
@@ -28,10 +48,12 @@ target_link_libraries(mtpgame PRIVATE
   edbr::edbr
 )
 
-# copy assets
+# Symlink assets.
+# Symlinking (instead of copying) allows you to change resources and have the
+# changes be instantly visible when reloading the game
 add_custom_command(TARGET mtpgame POST_BUILD
   COMMENT "Copying mtp assets to $<TARGET_FILE_DIR:mtpgame>/assets"
-  COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:mtpgame>/assets"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:mtpgame>/assets"
 )
 
 # build shaders
@@ -74,3 +96,18 @@ if(EDBR_BUILD_TESTING)
   enable_testing()
   add_subdirectory(test)
 endif()
+
+if(WIN32)
+  set_target_properties(mtpgame
+    PROPERTIES 
+      LINK_FLAGS_DEBUG   "/SUBSYSTEM:CONSOLE"
+      LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+  )
+  copy_deps_to_runtime_dir(mtpgame)
+endif()
+
+set_target_properties(mtpgame PROPERTIES
+  INSTALL_RPATH $ORIGIN/lib
+)
+
+include("${CMAKE_CURRENT_LIST_DIR}/MTPInstall.cmake")

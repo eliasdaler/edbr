@@ -165,12 +165,15 @@ option(ALSOFT_BACKEND_SNDIO "Enable SndIO backend" OFF)
 # For some reason these checks pass... TODO: investigate!
 set(PTHREAD_SETNAME_NP_ONE_PARAM OFF CACHE BOOL "...")
 set(PTHREAD_SETNAME_NP_THREE_PARAMS OFF CACHE BOOL "...")
-if (NOT BUILD_SHARED_LIBS)
+if (NOT MSVC AND NOT BUILD_SHARED_LIBS)
   # FIXME: for some reason when building static libs, we can't link
   # to OpenAL-soft dynamically anymore - need to fix this
   set(LIBTYPE "STATIC")
 endif()
 add_subdirectory(openal-soft)
+if (MSVC)
+  target_compile_definitions(OpenAL PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+endif()
 
 ## ogg
 option(INSTALL_DOCS "Install documentation" OFF)
@@ -195,5 +198,12 @@ if(EDBR_BUILD_TESTING)
   endif()
 
   add_subdirectory(googletest)
+  if (MSVC)
+    target_compile_definitions(gtest PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+    target_compile_definitions(gtest_main PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+    target_compile_definitions(gmock PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
+  endif()
 endif()
 
+## CLI11
+add_subdirectory(CLI11)

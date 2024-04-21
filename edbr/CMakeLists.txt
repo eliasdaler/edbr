@@ -8,6 +8,7 @@ add_library(edbr
   src/Core/JsonGraphics.cpp
 
   # DevTools
+  src/DevTools/ActionListInspector.cpp
   src/DevTools/EntityInfoDisplayer.cpp
   src/DevTools/EntityTreeView.cpp
   src/DevTools/Im3dState.cpp
@@ -76,10 +77,16 @@ add_library(edbr
   src/Graphics/GameRenderer.cpp
   src/Graphics/SpriteRenderer.cpp
 
+  # Text
+  src/Text/TextManager.cpp
+
   # Util
+  src/Util/CameraUtil.cpp
   src/Util/GltfLoader.cpp
-  src/Util/InputUtil.cpp
+  src/Util/Im3dUtil.cpp
   src/Util/ImGuiUtil.cpp
+  src/Util/InputUtil.cpp
+  src/Util/MetaUtil.cpp
   src/Util/OSUtil.cpp
   src/Util/Palette.cpp
   src/Util/StringUtil.cpp
@@ -93,6 +100,7 @@ add_library(edbr
   src/Input/MouseState.cpp
 
   # Audio
+  src/Audio/AudioManager.cpp
   src/Audio/Music.cpp
   src/Audio/OpenALUtil.cpp
   src/Audio/Sound.cpp
@@ -100,11 +108,11 @@ add_library(edbr
   src/Audio/SoundDevice.cpp
   src/Audio/WavLoader.cpp
 
-  src/AudioManager.cpp
-
   # UI
+  src/UI/ButtonElement.cpp
   src/UI/Element.cpp
   src/UI/ImageElement.cpp
+  src/UI/InputEvent.cpp
   src/UI/ListLayoutElement.cpp
   src/UI/NineSlice.cpp
   src/UI/NineSliceElement.cpp
@@ -113,10 +121,33 @@ add_library(edbr
   src/UI/UIRenderer.cpp
 
   # Game UI
+  src/GameUI/Cursor.cpp
   src/GameUI/DialogueBox.cpp
+  src/GameUI/MenuStack.cpp
+
+  # ActionList
+  src/ActionList/ActionList.cpp
+  src/ActionList/ActionListManager.cpp
+  src/ActionList/ActionWrappers.cpp
+  # ActionList - default actions
+  src/ActionList/Actions/ActionListFinishAction.cpp
+  src/ActionList/Actions/DelayAction.cpp
+  src/ActionList/Actions/DoAction.cpp
+  src/ActionList/Actions/MakeAction.cpp
+  src/ActionList/Actions/ParallelActionListsFinishAction.cpp
+  src/ActionList/Actions/TweenAction.cpp
+  src/ActionList/Actions/WaitWhileAction.cpp
+
+  # Camera
+  src/Camera/FreeCameraController.cpp
+  src/Camera/CameraActions.cpp
+  src/Camera/CameraManager.cpp
+
+  # Save
+  src/Save/SaveFile.cpp
+  src/Save/SaveFileManager.cpp
 
   src/Application.cpp
-  src/FreeCameraController.cpp
   src/SceneCache.cpp
 )
 add_library(edbr::edbr ALIAS edbr)
@@ -152,6 +183,7 @@ target_link_libraries(edbr
     vorbis::vorbis
     vorbis::vorbisfile
 
+    CLI11::CLI11
   PRIVATE
     tinygltf::tinygltf
     stb::image

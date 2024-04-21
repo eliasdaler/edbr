@@ -12,12 +12,23 @@
 
 #include <edbr/ECS/Components/NameComponent.h>
 
+class EventManager;
+
 namespace entityutil
 {
+// allows to send events from any function without carrying event manager around
+void setEventManager(EventManager& eventManager);
+
+void makePersistent(entt::handle e);
+void makeNonPersistent(entt::handle e);
+
 void addChild(entt::handle parent, entt::handle child);
 glm::vec3 getWorldPosition(entt::handle e);
 glm::vec3 getLocalPosition(entt::handle e);
+// can only be called on non-physics entities without parents
 void setPosition(entt::handle e, const glm::vec3& pos);
+// call this, will sync physics automatically
+void teleportEntity(entt::handle e, const glm::vec3& pos);
 void setRotation(entt::handle e, const glm::quat& rotation);
 void rotateSmoothlyTo(entt::handle e, const glm::quat& targetHeading, float rotationTime);
 void stopRotation(entt::handle e);
@@ -30,6 +41,7 @@ entt::handle findPlayerSpawnByName(entt::registry& registry, const std::string& 
 entt::handle findCameraByName(entt::registry& registry, const std::string& name);
 
 entt::handle getPlayerEntity(entt::registry& registry);
+bool playerExists(entt::registry& registry);
 void spawnPlayer(entt::registry& registry, const std::string& spawnName);
 
 template<typename ComponentType>
@@ -45,5 +57,11 @@ entt::handle findEntityByName(entt::registry& registry, const std::string& name)
 }
 
 const std::string& getTag(entt::const_handle e);
+
+// returns names (if they exist) in this order
+// 1. tag
+// 2. name from NameComponent
+// 3. scene node name
+const std::string& getMetaName(entt::const_handle e);
 
 }

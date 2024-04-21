@@ -7,20 +7,20 @@
 #include <entt/entity/registry.hpp>
 
 #include <edbr/Application.h>
-#include <edbr/ECS/EntityFactory.h>
 
+#include <edbr/Camera/CameraManager.h>
+#include <edbr/ECS/EntityFactory.h>
 #include <edbr/Graphics/Camera.h>
-#include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/GameRenderer.h>
 #include <edbr/Graphics/MaterialCache.h>
 #include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/Scene.h>
-#include <edbr/Graphics/SpriteRenderer.h>
-
-#include <edbr/FreeCameraController.h>
 #include <edbr/Graphics/SkeletalAnimationCache.h>
+#include <edbr/Graphics/SpriteRenderer.h>
+#include <edbr/Save/SaveFileManager.h>
 #include <edbr/SceneCache.h>
 
+#include <edbr/DevTools/ActionListInspector.h>
 #include <edbr/DevTools/EntityInfoDisplayer.h>
 #include <edbr/DevTools/Im3dState.h>
 #include <edbr/DevTools/ResourcesInspector.h>
@@ -32,37 +32,104 @@
 #include "Level.h"
 
 #include "AnimationSoundSystem.h"
+#include "LevelScript.h"
 #include "PhysicsSystem.h"
 
 class ComponentFactory;
+class FollowCameraController;
+
+class MTPSaveFile;
 
 class Game : public Application {
 public:
+    enum class GameState {
+        Invalid,
+        MainMenu,
+        Playing,
+        Cutscene,
+        Paused,
+    };
+
+    enum class LevelTransitionType {
+        Teleport, // no sounds played on transition
+        EnterDoor, // door open/close sounds played on transition
+    };
+
+public:
     Game();
+
+    void defineCLIArgs() override;
+    void loadAppSettings() override;
 
     void customInit() override;
     void customUpdate(float dt) override;
     void customDraw() override;
     void customCleanup() override;
 
-private:
+    void registerLevels();
     void initUI();
     void loadLevel(const std::filesystem::path& path);
-    void loadScene(const std::filesystem::path& path, bool createEntities = false);
+    void changeLevel(
+        const std::string& levelTag,
+        const std::string& spawnName = {},
+        LevelTransitionType ltt = LevelTransitionType::Teleport);
+    void doLevelChange();
+    ActionList enterLevel(LevelTransitionType ltt);
+    ActionList exitLevel(LevelTransitionType ltt);
 
     void handleInput(float dt);
     void handlePlayerInput(float dt);
-
-    void updateDevTools(float dt);
+    void handlePlayerInteraction();
 
     void setEntityTag(entt::handle entity, const std::string& tag);
     entt::handle findEntityByTag(const std::string& tag);
     entt::const_handle findEntityByTag(const std::string& tag) const;
 
     entt::const_handle findDefaultCamera();
-    void setCurrentCamera(entt::const_handle camera);
+    void setCurrentCamera(entt::const_handle camera, float transitionTime = 0.f);
+    void setCurrentCamera(const std::string& cameraTag, float transitionTime = 0.f);
+    void setFollowCamera(float transitionTime = 0.f);
+    FollowCameraController& getFollowCameraController();
+    void cameraFollowEntity(entt::handle e, bool instantTeleport = true);
 
     void generateDrawList();
+
+    MTPSaveFile& getSaveFile();
+    const std::string& getCurrentLevelName() const;
+    const std::string& getLastSpawnName() const;
+
+    entt::registry& getEntityRegistry() { return registry; }
+    void stopPlayerMovement();
+    void writeSaveFile();
+
+    [[nodiscard]] ActionList say(const LocalizedStringTag& text, entt::handle speaker = {});
+    [[nodiscard]] ActionList say(const dialogue::TextToken& textToken, entt::handle speaker = {});
+
+    [[nodiscard]] ActionList say(
+        const std::vector<dialogue::TextToken>& textTokens,
+        entt::handle speaker = {});
+
+    [[nodiscard]] ActionList saveGameSequence();
+    void playSound(const std::string& soundName);
+
+    // Do task with some delay. The taskName should be unique for each task
+    void doWithDelay(const std::string& taskName, float delay, std::function<void()> task);
+
+    const TextManager& getTextManager() const { return textManager; }
+
+public:
+    // game states
+    void enterMainMenu();
+    void startNewGame();
+    void startLoadedGame();
+    void exitGame();
+    void startGameplay();
+    void enterPauseMenu();
+    void exitPauseMenu();
+    void exitToTitle();
+
+    const std::size_t NumSaveFiles = 3;
+    bool hasAnySaveFile() const;
 
 private:
     void initEntityFactory();
@@ -70,13 +137,33 @@ private:
     void registerComponents(ComponentFactory& componentFactory);
     void registerComponentDisplayers();
 
-    void updateFollowCamera(entt::const_handle followEntity, float dt);
-    float calculateSmartZOffset(entt::const_handle followEntity, float dt);
+    template<typename T>
+    void registerLevelScript(std::string name)
+    {
+        auto [it, inserted] = levelScripts.emplace(std::move(name), std::make_unique<T>(*this));
+        assert(inserted);
+    }
+    LevelScript& getLevelScript();
 
-    void onTagComponentDestroy(entt::registry& registry, entt::entity entity);
-    void onSkeletonComponentDestroy(entt::registry& registry, entt::entity entity);
+    void handleSaveFiles();
+
+    glm::ivec2 getGameScreenSize() const;
+    glm::vec2 getMouseGameScreenCoord() const;
+    void updateGameLogic(float dt);
 
     void entityPostInit(entt::handle e);
+    void initEntityAnimation(entt::handle e);
+
+    void destroyNonPersistentEntities();
+    void destroyEntity(entt::handle e, bool removeFromRegistry = true);
+
+    void onCollisionStarted(const CharacterCollisionStartedEvent& event);
+    void onCollisionEnded(const CharacterCollisionEndedEvent& event);
+
+    void devToolsHandleInput(float dt);
+    void devToolsNewFrame(float dt);
+    void devToolsUpdate(float dt);
+    void devToolsDrawUI(SpriteRenderer& spriteRenderer);
 
 private:
     MeshCache meshCache;
@@ -84,61 +171,60 @@ private:
     GameRenderer renderer;
     SpriteRenderer spriteRenderer;
 
-    SkeletalAnimationCache animationCache;
+    GameState gameState{GameState::Invalid};
+    // position and size of where the game is rendered in the window
+    glm::ivec2 gameWindowPos;
+    glm::ivec2 gameWindowSize;
+
+    SaveFileManager saveFileManager;
+
     SceneCache sceneCache;
+    SkeletalAnimationCache animationCache;
 
     entt::registry registry;
     std::unordered_map<std::string, entt::entity> taggedEntities;
     EntityFactory entityFactory;
-
     EntityCreator entityCreator;
 
     std::unique_ptr<PhysicsSystem> physicsSystem;
     AnimationSoundSystem animationSoundSystem;
 
-    entt::handle interactEntity;
-
-    Level level;
     std::filesystem::path skyboxDir;
 
+    Level level;
+    std::unordered_map<std::string, std::unique_ptr<LevelScript>> levelScripts;
+    std::string newLevelToLoad; // if set, will load this new level during the end of update
+    std::string newLevelSpawnName;
+    std::string lastSpawnName;
+    std::string levelTransitionListName{"level_transition"};
+    LevelTransitionType newLevelTransitionType{LevelTransitionType::Teleport};
+
+    entt::handle interactEntity;
+
+    CameraManager cameraManager;
     Camera camera;
-    FreeCameraController cameraController;
+    std::string previousCameraControllerTag;
+    Transform previousCameraTransform;
+    std::string freeCameraControllerTag{"free"};
+    std::string followCameraControllerTag{"follow"};
     float cameraNear{1.f};
     float cameraFar{200.f};
     float cameraFovX{glm::radians(45.f)};
 
-    bool orbitCameraAroundSelectedEntity{false};
-    bool smoothCamera{true};
-    bool smoothSmartCamera{true};
-    float cameraDelay{0.3f};
-    float orbitDistance{6.5f};
-    float cameraMaxSpeed{6.5f};
-    float cameraYOffset{1.5f};
-    float cameraZOffset{0.25f};
-    float testParam{0.4f};
-
-    glm::vec3 followCameraVelocity;
-    glm::vec3 cameraCurrentTrackPointPos;
-    float prevOffsetZ{cameraZOffset};
-    float cameraMaxOffsetTime{2.f}; // when time reaches maximum offset
-    float maxCameraOffsetFactorRun{7.5f};
-    bool drawCameraTrackPoint{false};
-
-    float prevDesiredOffset{cameraZOffset};
-    float desiredOffsetChangeTimer{0.25f};
-    float desiredOffsetChangeDelayRun{1.25f};
-    float desiredOffsetChangeDelayRecenter{1.f};
-
-    // position and size of where the game is rendered in the window
-    glm::ivec2 gameWindowPos;
-    glm::ivec2 gameWindowSize;
+    bool playerInputEnabled{true};
 
     GameUI ui;
 
     // DEV
+    bool orbitCameraAroundSelectedEntity{false};
+    bool freeCameraMode{false};
+    std::string devLevelToLoad;
+    std::string devStartSpawnPoint;
+
     CustomEntityTreeView entityTreeView;
     EntityInfoDisplayer entityInfoDisplayer;
     ResourcesInspector resourcesInspector;
+    ActionListInspector actionListInspector;
 
     // only display update FPS every 1 seconds, otherwise it's too noisy
     float displayedFPS{0.f};
@@ -150,6 +236,9 @@ private:
     bool drawEntityHeading{false};
     bool drawImGui{true};
     bool drawGizmos{false};
+
+    bool devPaused{false};
+    bool devResumeForOneFrame{false};
 
     Im3dState im3d;
 };

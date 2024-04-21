@@ -1,4 +1,4 @@
-#include <edbr/FreeCameraController.h>
+#include <edbr/Camera/FreeCameraController.h>
 
 #include <edbr/Graphics/Camera.h>
 #include <edbr/Input/InputManager.h>
@@ -6,7 +6,7 @@
 
 #include <fmt/printf.h>
 
-void FreeCameraController::handleInput(const InputManager& im, const Camera& camera)
+void FreeCameraController::handleInput(const InputManager& im, const Camera& camera, float dt)
 {
     const auto& actionMapping = im.getActionMapping();
     static const auto moveXAxis = actionMapping.getActionTagHash("CameraMoveX");

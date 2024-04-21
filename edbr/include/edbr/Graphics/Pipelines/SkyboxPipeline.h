@@ -27,7 +27,7 @@ private:
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
 
-    ImageId skyboxTextureId;
+    ImageId skyboxTextureId{NULL_IMAGE_ID};
 
     struct SkyboxPushConstants {
         glm::mat4 invViewProj;

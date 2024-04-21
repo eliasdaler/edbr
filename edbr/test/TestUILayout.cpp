@@ -32,7 +32,7 @@ TEST(UILayout, TestAutoSizingBasic)
     element.calculateLayout(screenSize);
 
     EXPECT_EQ(element.children[0]->absoluteSize, childSize);
-    EXPECT_EQ(element.children[0]->absolutePosition, (glm::vec2{288, 224}));
+    EXPECT_EQ(element.children[0]->absolutePosition, (glm::vec2{256, 208}));
 
     EXPECT_EQ(element.absoluteSize, childSize);
     EXPECT_EQ(element.absolutePosition, screenSize / 2.f - childSize / 2.f);
@@ -62,7 +62,7 @@ TEST(UILayout, TestAutoSizingRelativePositionAndSize)
     element.calculateLayout(screenSize);
 
     EXPECT_EQ(element.children[0]->absoluteSize, childSize);
-    EXPECT_EQ(element.children[0]->absolutePosition, (glm::vec2{288, 224}));
+    EXPECT_EQ(element.children[0]->absolutePosition, (glm::vec2{256, 208}));
 
     EXPECT_EQ(element.absoluteSize, childSize * 2.f);
     EXPECT_EQ(element.absolutePosition, (glm::vec2{256, 208}));
@@ -96,7 +96,7 @@ TEST(UILayout, TestAutoSizingOffsetPositionAndSize)
     element.calculateLayout(screenSize);
 
     EXPECT_EQ(element.children[0]->absoluteSize, childSize);
-    EXPECT_EQ(element.children[0]->absolutePosition, (glm::vec2{288, 224}));
+    EXPECT_EQ(element.children[0]->absolutePosition, (glm::vec2{264, 212}));
 
     EXPECT_EQ(element.absoluteSize, (childSize * 2.f + glm::vec2{32.f, 16.f}));
     EXPECT_EQ(element.absolutePosition, (glm::vec2{240, 200}));

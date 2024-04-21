@@ -97,14 +97,12 @@ inline void skeletonAnimationSystemUpdate(entt::registry& registry, EventManager
 }
 
 // TODO: do this in state machine instead
-inline void playerAnimationSystem(
-    entt::registry& registry,
+inline void playerAnimationSystemUpdate(
+    entt::handle player,
     const PhysicsSystem& physicsSystem,
     float dt)
 {
     namespace eu = entityutil;
-    auto player = eu::getPlayerEntity(registry);
-
     auto& mc = player.get<MovementComponent>();
     auto velocity = mc.effectiveVelocity;
     velocity.y = 0.f;

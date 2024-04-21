@@ -13,7 +13,7 @@
       "radius": 3.0
     }
   },
-  "interact": {
-    "type": "talk"
+  "npc": {
+    "name": "DUDE_NAME"
   }
 }

@@ -12,9 +12,28 @@ void EntityInfoDisplayer::displayEntityInfo(entt::const_handle e, float dt)
         if (!displayer.componentExists(e)) {
             continue;
         }
-        util::ImGuiTextColored(componentNameColor, "%s", displayer.componentName.c_str());
-        if (displayer.displayFunc) {
-            displayer.displayFunc(e);
+        switch (displayer.style) {
+        case DisplayStyle::Default:
+            util::ImGuiTextColored(componentNameColor, "%s", displayer.componentName.c_str());
+            if (displayer.displayFunc) {
+                displayer.displayFunc(e);
+            }
+            break;
+        case DisplayStyle::CollapsedByDefault:
+            util::ImGuiPushTextStyleColor(componentNameColor);
+            if (ImGui::TreeNode(displayer.componentName.c_str())) {
+                ImGui::PopStyleColor();
+                if (displayer.displayFunc) {
+                    displayer.displayFunc(e);
+                }
+                ImGui::TreePop();
+            } else {
+                ImGui::PopStyleColor();
+            }
+            break;
+        default:
+            assert(false);
+            break;
         }
     }
 }

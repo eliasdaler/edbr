@@ -5,6 +5,10 @@
 #include <edbr/Graphics/Vulkan/Init.h>
 #include <edbr/Graphics/Vulkan/Util.h>
 
+#include <fmt/printf.h>
+
+#include <vulkan/vk_enum_string_helper.h>
+
 namespace
 {
 static constexpr auto NO_TIMEOUT = std::numeric_limits<std::uint64_t>::max();
@@ -37,17 +41,24 @@ void Swapchain::create(
 {
     assert(swapchainFormat == VK_FORMAT_B8G8R8A8_SRGB && "TODO: test other formats");
     // vSync = false;
-    swapchain = vkb::SwapchainBuilder{device}
-                    .set_desired_format(VkSurfaceFormatKHR{
-                        .format = swapchainFormat,
-                        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-                    })
-                    .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-                    .set_desired_present_mode(
-                        vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)
-                    .set_desired_extent(width, height)
-                    .build()
-                    .value();
+
+    auto res = vkb::SwapchainBuilder{device}
+                   .set_desired_format(VkSurfaceFormatKHR{
+                       .format = swapchainFormat,
+                       .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+                   })
+                   .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                   .set_desired_present_mode(
+                       vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)
+                   .set_desired_extent(width, height)
+                   .build();
+    if (!res.has_value()) {
+        throw std::runtime_error(fmt::format(
+            "failed to create swapchain: error = {}, vk result = {}",
+            res.full_error().type.message(),
+            string_VkResult(res.full_error().vk_result)));
+    }
+    swapchain = res.value();
     extent = VkExtent2D{.width = width, .height = height};
 
     images = swapchain.get_images().value();
@@ -55,6 +66,44 @@ void Swapchain::create(
 
     // TODO: if re-creation of swapchain is supported, don't forget to call
     // vkutil::initSwapchainViews here.
+}
+
+void Swapchain::recreate(
+    const vkb::Device& device,
+    VkFormat swapchainFormat,
+    std::uint32_t width,
+    std::uint32_t height,
+    bool vSync)
+{
+    assert(swapchain);
+
+    assert(swapchainFormat == VK_FORMAT_B8G8R8A8_SRGB && "TODO: test other formats");
+    auto res = vkb::SwapchainBuilder{device}
+                   .set_old_swapchain(swapchain)
+                   .set_desired_format(VkSurfaceFormatKHR{
+                       .format = swapchainFormat,
+                       .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+                   })
+                   .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                   .set_desired_present_mode(
+                       vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR)
+                   .set_desired_extent(width, height)
+                   .build();
+    if (!res.has_value()) {
+        throw std::runtime_error(fmt::format(
+            "failed to create swapchain: error = {}, vk result = {}",
+            res.full_error().type.message(),
+            string_VkResult(res.full_error().vk_result)));
+    }
+    vkb::destroy_swapchain(swapchain);
+
+    swapchain = res.value();
+    extent = VkExtent2D{.width = width, .height = height};
+
+    images = swapchain.get_images().value();
+    imageViews = swapchain.get_image_views().value();
+
+    dirty = false;
 }
 
 void Swapchain::cleanup(VkDevice device)
@@ -79,20 +128,31 @@ void Swapchain::beginFrame(VkDevice device, std::size_t frameIndex) const
 {
     auto& frame = frames[frameIndex];
     VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, NO_TIMEOUT));
+}
+
+void Swapchain::resetFences(VkDevice device, std::size_t frameIndex) const
+{
+    auto& frame = frames[frameIndex];
     VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
 }
 
 std::pair<VkImage, std::uint32_t> Swapchain::acquireImage(VkDevice device, std::size_t frameIndex)
-    const
 {
     std::uint32_t swapchainImageIndex{};
-    VK_CHECK(vkAcquireNextImageKHR(
+    const auto result = vkAcquireNextImageKHR(
         device,
         swapchain,
         NO_TIMEOUT,
         frames[frameIndex].swapchainSemaphore,
         VK_NULL_HANDLE,
-        &swapchainImageIndex));
+        &swapchainImageIndex);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        dirty = true;
+        return {VK_NULL_HANDLE, 0};
+    } else if (result != VK_SUCCESS) {
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
     return {images[swapchainImageIndex], swapchainImageIndex};
 }
 
@@ -100,7 +160,7 @@ void Swapchain::submitAndPresent(
     VkCommandBuffer cmd,
     VkQueue graphicsQueue,
     std::size_t frameIndex,
-    std::uint32_t swapchainImageIndex) const
+    std::uint32_t swapchainImageIndex)
 {
     const auto& frame = frames[frameIndex];
 
@@ -128,6 +188,10 @@ void Swapchain::submitAndPresent(
             .pImageIndices = &swapchainImageIndex,
         };
 
-        VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
+        auto res = vkQueuePresentKHR(graphicsQueue, &presentInfo);
+        if (res != VK_SUCCESS) {
+            fmt::println("failed to present: {}", string_VkResult(res));
+            dirty = true;
+        }
     }
 }

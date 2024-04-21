@@ -22,6 +22,11 @@ ImVec4 toImVec4(const RGBColor& c)
     };
 }
 
+void ImGuiPushTextStyleColor(const RGBColor& c)
+{
+    ImGui::PushStyleColor(ImGuiCol_Text, toImVec4(c));
+}
+
 void ImGuiTextColored(const RGBColor& c, const char* fmt, ...)
 {
     va_list args;

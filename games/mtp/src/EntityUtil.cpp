@@ -1,12 +1,32 @@
 #include "EntityUtil.h"
 
 #include "Components.h"
+#include "Events.h"
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/Event/EventManager.h>
 
 namespace entityutil
 {
+
+EventManager* eventManager{nullptr};
+
+void setEventManager(EventManager& em)
+{
+    eventManager = &em;
+}
+
+void makePersistent(entt::handle e)
+{
+    e.emplace<PersistentComponent>();
+}
+
+void makeNonPersistent(entt::handle e)
+{
+    e.erase<PersistentComponent>();
+}
 
 void addChild(entt::handle parent, entt::handle child)
 {
@@ -42,10 +62,26 @@ glm::vec3 getLocalPosition(entt::handle e)
 
 void setPosition(entt::handle e, const glm::vec3& pos)
 {
-    assert(!e.get<HierarchyComponent>().hasParent());
+    assert(!e.get<HierarchyComponent>().hasParent() && "can't set position on parented entity");
+    assert(!e.all_of<PhysicsComponent>() && "call teleportEntity instead");
+
     auto& tc = e.get<TransformComponent>();
     tc.transform.setPosition(pos);
     tc.worldTransform = tc.transform.asMatrix();
+}
+
+void teleportEntity(entt::handle e, const glm::vec3& pos)
+{
+    assert(!e.get<HierarchyComponent>().hasParent() && "can't set position on parented entity");
+    assert(e.all_of<PhysicsComponent>() && "call setPosition instead");
+    auto& tc = e.get<TransformComponent>();
+    tc.transform.setPosition(pos);
+    tc.worldTransform = tc.transform.asMatrix();
+
+    assert(eventManager);
+    EntityTeleportedEvent event;
+    event.entity = e;
+    eventManager->triggerEvent(event);
 }
 
 void setRotation(entt::handle e, const glm::quat& rotation)
@@ -112,8 +148,12 @@ entt::handle getPlayerEntity(entt::registry& registry)
     for (const auto& e : registry.view<PlayerComponent>()) {
         return {registry, e};
     }
-    fmt::println("Player was not found");
     return {};
+}
+
+bool playerExists(entt::registry& registry)
+{
+    return getPlayerEntity(registry).entity() != entt::null;
 }
 
 void spawnPlayer(entt::registry& registry, const std::string& spawnName)
@@ -125,17 +165,18 @@ void spawnPlayer(entt::registry& registry, const std::string& spawnName)
 
     const auto spawn = findPlayerSpawnByName(registry, spawnName);
     if (spawn.entity() == entt::null) {
+        fmt::println("[error]: spawn '{}' was not found", spawnName);
         return;
     }
 
     auto& playerTC = player.get<TransformComponent>();
     const auto& spawnTC = spawn.get<TransformComponent>();
 
-    // copy position and heading (don't copy scale)
-    playerTC.transform.setPosition(spawnTC.transform.getPosition());
+    // copy heading (don't copy scale)
     playerTC.transform.setHeading(spawnTC.transform.getHeading());
-    assert(!player.get<HierarchyComponent>().hasParent());
-    playerTC.worldTransform = playerTC.transform.asMatrix();
+
+    // teleport
+    teleportEntity(player, spawnTC.transform.getPosition());
 }
 
 const std::string& getTag(entt::const_handle e)
@@ -145,6 +186,23 @@ const std::string& getTag(entt::const_handle e)
         return tcPtr->getTag();
     }
     return emptyString;
+}
+
+const std::string& getMetaName(entt::const_handle e)
+{
+    // try tag first
+    auto& tag = getTag(e);
+    if (!tag.empty()) {
+        return tag;
+    }
+
+    // then, try name component
+    if (auto ncPtr = e.try_get<NameComponent>(); ncPtr && !ncPtr->name.empty()) {
+        return ncPtr->name;
+    }
+
+    // if everything failed - use scene node name
+    return e.get<MetaInfoComponent>().sceneNodeName;
 }
 
 }

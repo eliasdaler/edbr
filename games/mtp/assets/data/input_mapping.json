@@ -10,8 +10,8 @@
       "CursorRight": [ "D", "Right" ],
       "CursorUp": [ "W", "Up" ],
       "CursorDown": [ "S", "Down" ],
-      "CursorConfirm": [ "F", "Return" ],
-      "MenuExit": [ "Escape" ],
+      "MenuConfirm": [ "F", "Return" ],
+      "MenuBack": [ "Escape" ],
       "CameraMoveFast": [ "LShift" ],
       "ToggleFreeCamera": [ "C" ],
       "ToggleImGuiVisibility": [ "Tab" ]
@@ -100,8 +100,8 @@
       "CursorRight": [ "DPadRight", "LeftX+" ],
       "CursorUp": [ "DPadUp", "LeftY-" ],
       "CursorDown": [ "DPadDown", "LeftY+" ],
-      "CursorConfirm": [ "A" ],
-      "MenuExit": [ "B" ],
+      "MenuConfirm": [ "A" ],
+      "MenuBack": [ "B" ],
       "CameraMoveFast": [ "B" ],
       "ToggleFreeCamera": [ "RightStick" ],
       "ToggleImGuiVisibility": [ "LeftStick" ]

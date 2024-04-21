@@ -71,6 +71,9 @@ void loadPhysicsComponent(
             .halfHeight = aabbSize.y / 2.f,
         };
     }
+    if (util::stringContains(nodeName, ".Convex")) {
+        pc.bodyType = PhysicsComponent::BodyType::ConvexHull;
+    }
 }
 
 } // end of namespace util

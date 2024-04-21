@@ -8,7 +8,7 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 
-void EntityTreeView::update(const entt::registry& registry, float dt)
+void EntityTreeView::update(entt::registry& registry, float dt)
 {
     displayExtraFilters();
     filter.Draw("search##name_filter");
@@ -17,7 +17,7 @@ void EntityTreeView::update(const entt::registry& registry, float dt)
     ImGui::BeginChild("##entities");
     for (const auto&& [e, hc] : registry.view<HierarchyComponent>().each()) {
         if (!hc.hasParent()) { // start from root nodes
-            updateEntityTreeUI(entt::const_handle{registry, e});
+            updateEntityTreeUI(entt::handle{registry, e});
         }
     }
     ImGui::EndChild();
@@ -29,7 +29,7 @@ const std::string& EntityTreeView::getEntityDisplayName(entt::const_handle e) co
     return !mic.sceneNodeName.empty() ? mic.sceneNodeName : mic.prefabName;
 }
 
-void EntityTreeView::updateEntityTreeUI(entt::const_handle e)
+void EntityTreeView::updateEntityTreeUI(entt::handle e)
 {
     const auto label =
         fmt::format("{} (id={})", getEntityDisplayName(e), (std::uint32_t)e.entity());
@@ -63,7 +63,7 @@ void EntityTreeView::updateEntityTreeUI(entt::const_handle e)
             selectedEntity = e;
         }
         for (const auto& child : hc.children) {
-            updateEntityTreeUI(entt::const_handle{*e.registry(), child});
+            updateEntityTreeUI(child);
         }
         ImGui::TreePop();
     }

@@ -3,13 +3,15 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
+#include <edbr/Camera/CameraController.h>
+
 class Camera;
 class InputManager;
 
-class FreeCameraController {
+class FreeCameraController : public CameraController {
 public:
-    void handleInput(const InputManager& im, const Camera& camera);
-    void update(Camera& camera, float dt);
+    void handleInput(const InputManager& im, const Camera& camera, float dt) override;
+    void update(Camera& camera, float dt) override;
 
     float rotateYawSpeed{1.75f};
     float rotatePitchSpeed{1.5f};

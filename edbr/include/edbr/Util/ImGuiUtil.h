@@ -17,6 +17,7 @@ namespace util
 {
 ImVec4 toImVec4(const glm::vec4& v);
 ImVec4 toImVec4(const RGBColor& c);
+void ImGuiPushTextStyleColor(const RGBColor& c);
 void ImGuiTextColored(const RGBColor& c, const char* fmt, ...);
 bool ImGuiColorEdit3(const char* name, LinearColor& c);
 

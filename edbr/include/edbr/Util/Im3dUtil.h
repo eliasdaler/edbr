@@ -9,6 +9,8 @@
 #include <edbr/Graphics/Color.h>
 #include <edbr/Math/Rect.h>
 
+class Camera;
+
 inline Im3d::Color edbr2im3d(const RGBColor& c)
 {
     return {
@@ -113,3 +115,5 @@ inline void Im3dRectFilled(const math::FloatRect& rect, const RGBColor& fillColo
     Im3d::DrawQuadFilled(a, d, c, b);
     Im3d::PopDrawState();
 }
+
+void Im3dDrawFrustum(const Camera& camera);

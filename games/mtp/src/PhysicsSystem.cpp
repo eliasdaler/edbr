@@ -5,20 +5,26 @@
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
+
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
+
 #include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -28,20 +34,24 @@
 
 #include <cstdarg>
 #include <iostream>
+#include <set>
 
 #include <edbr/DevTools/Im3dState.h>
+#include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/CPUMesh.h>
 #include <edbr/Input/InputManager.h>
+#include <edbr/SceneCache.h>
 #include <edbr/Util/Im3dUtil.h>
 #include <edbr/Util/JoltUtil.h>
 
-#include <im3d.h>
+#include "Components.h"
+#include "Events.h"
 
+#include <im3d.h>
 #include <imgui.h>
 
-#include <set>
-
-#include "Components.h"
+#include <fmt/format.h>
 
 namespace
 {
@@ -137,6 +147,9 @@ void PhysicsSystem::InitStaticObjects()
     JPH::RegisterTypes();
 }
 
+PhysicsSystem::PhysicsSystem(EventManager& eventManager) : eventManager(eventManager)
+{}
+
 void PhysicsSystem::init()
 {
     tempAllocator = std::make_unique<JPH::TempAllocatorImpl>(10 * 1024 * 1024);
@@ -177,38 +190,70 @@ void PhysicsSystem::init()
         bodyInterface.AddBody(floor->GetID(), JPH::EActivation::DontActivate);
     }
 
-    createCharacter(characterParams);
-}
-
-namespace
-{
-struct DrawOnlySensorsFilter : JPH::BodyDrawFilter {
-    bool ShouldDraw(const JPH::Body& inBody) const { return inBody.IsSensor(); };
-};
-static DrawOnlySensorsFilter drawOnlySensorsFilter;
+    eventManager.addListener(this, &PhysicsSystem::onEntityTeleported);
 }
 
 void PhysicsSystem::drawDebugShapes(const Camera& camera)
 {
     debugRenderer.setCamera(camera);
+    drawBodies(camera);
+}
 
-    const auto filter = drawSensorsOnly ? &drawOnlySensorsFilter : nullptr;
-    physicsSystem.DrawBodies(debugRenderer.bodyDrawSettings, &debugRenderer, filter);
+void PhysicsSystem::drawBodies(const Camera& camera)
+{
+    if (!debugRenderer.bodyDrawSettings.mDrawShape) {
+        return;
+    }
 
-    if (debugRenderer.bodyDrawSettings.mDrawShape) {
-        // draw character
+    static JPH::BodyIDVector body_ids; // store as static to not realloc each frame
+    body_ids.clear();
+    physicsSystem.GetBodies(body_ids);
+
+    auto& lockInterface = physicsSystem.GetBodyLockInterfaceNoLock();
+    for (const auto id : body_ids) {
+        JPH::BodyLockRead lock(lockInterface, id);
+        if (!lock.Succeeded()) {
+            continue;
+        }
+
+        const auto& body = lock.GetBody();
+        if (!body.IsSensor() && drawSensorsOnly) {
+            continue;
+        }
+
+        if (body.IsSensor()) {
+            body.GetShape()->Draw(
+                &debugRenderer,
+                body.GetCenterOfMassTransform(),
+                JPH::Vec3::sReplicate(1.0f),
+                JPH::Color::sGetDistinctColor(body.GetID().GetIndex()),
+                false,
+                false);
+            // shape of triggers is more understandable with wireframes
+            body.GetShape()->Draw(
+                &debugRenderer,
+                body.GetCenterOfMassTransform(),
+                JPH::Vec3::sReplicate(1.0f),
+                JPH::Color::sGetDistinctColor(body.GetID().GetIndex()),
+                false,
+                true);
+        } else {
+            body.GetShape()->Draw(
+                &debugRenderer,
+                body.GetCenterOfMassTransform(),
+                JPH::Vec3::sReplicate(1.0f),
+                JPH::Color::sGetDistinctColor(body.GetID().GetIndex()),
+                false,
+                debugRenderer.bodyDrawSettings.mDrawShapeWireframe);
+        }
+    }
+
+    // draw character
+    if (drawCharacterShape) {
         const auto com = character->GetCenterOfMassTransform();
         const auto worldTransform = character->GetWorldTransform();
         character->GetShape()->Draw(
             &debugRenderer, com, JPH::Vec3::sReplicate(1.0f), JPH::Color::sGreen, false, true);
-        // draw character's shape
-        debugRenderer.DrawCapsule(
-            com,
-            0.5f * characterParams.characterHeight,
-            characterParams.characterRadius + character->GetCharacterPadding(),
-            JPH::Color::sGrey,
-            JPH::DebugRenderer::ECastShadow::Off,
-            JPH::DebugRenderer::EDrawMode::Wireframe);
     }
 }
 
@@ -225,10 +270,9 @@ void PhysicsSystem::handleCharacterInput(
         characterParams.controlMovementDuringJump || character->IsSupported();
 
     if (playerControlsHorizontalVelocity) {
-        auto charSpeed =
-            running ? characterParams.characterSpeedRun : characterParams.characterSpeedWalk;
+        auto charSpeed = running ? characterParams.runSpeed : characterParams.walkSpeed;
         if (character->GetGroundState() == JPH::CharacterVirtual::EGroundState::InAir) {
-            charSpeed = characterParams.characterSpeedRun * 0.8f;
+            charSpeed = characterParams.runSpeed * 0.8f;
         }
         // Smooth the player input (if uses inertia)
         characterDesiredVelocity =
@@ -289,13 +333,20 @@ void PhysicsSystem::handleCharacterInput(
 
     // Update character velocity
     character->SetLinearVelocity(newVelocity);
+
+    handledPlayerInputThisFrame = true;
 }
 
 void PhysicsSystem::update(float dt, const glm::quat& characterRotation)
 {
-    characterContactListener.startFrame();
-
-    characterPreUpdate(dt, characterRotation);
+    if (character) {
+        if (!handledPlayerInputThisFrame) {
+            handleCharacterInput(dt, {}, false, false, false);
+        }
+        handledPlayerInputThisFrame = false;
+        characterContactListener.startFrame();
+        characterPreUpdate(dt, characterRotation);
+    }
 
     static const auto defaultStep = 1 / 60.f;
     const auto collisionSteps = (int)std::ceil(defaultStep / dt);
@@ -306,7 +357,9 @@ void PhysicsSystem::update(float dt, const glm::quat& characterRotation)
         physicsSystem.Update(dt, collisionSteps, tempAllocator.get(), &job_system);
     }
 
-    collectInteractableEntities(characterRotation);
+    if (character) {
+        collectInteractableEntities(characterRotation);
+    }
 
     sendCollisionEvents();
 }
@@ -351,40 +404,30 @@ void PhysicsSystem::collectInteractableEntities(const glm::quat& characterRotati
         JPH::RVec3(),
         collector);
 
-    if (drawCollisionShapes) {
-        debugRenderer.DrawSphere(
-            sphereCenterPos,
-            interactionSphereRadius,
-            JPH::Color::sBlue,
-            JPH::DebugRenderer::ECastShadow::Off,
-            drawCollisionShapesWireframe ? JPH::DebugRenderer::EDrawMode::Wireframe :
-                                           JPH::DebugRenderer::EDrawMode::Solid);
+    if (drawCharacterShape) {
+        debugRenderer.DrawWireSphere(sphereCenterPos, interactionSphereRadius, JPH::Color::sBlue);
     }
 
-    bool had_hit = !collector.mHits.empty();
-    if (had_hit) {
-        // Draw results
-        for (const auto& hit : collector.mHits) {
-            JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), hit.mBodyID2);
-            if (lock.Succeeded()) {
-                const JPH::Body& hit_body = lock.GetBody();
+    for (const auto& hit : collector.mHits) {
+        JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), hit.mBodyID2);
+        if (!lock.Succeeded()) {
+            continue;
+        }
 
-                auto it = bodyIDToEntity.find(hit_body.GetID().GetIndex());
-                if (it != bodyIDToEntity.end()) {
-                    const auto& e = it->second;
-                    if (e.all_of<InteractComponent>()) {
-                        interactableEntities.push_back(e);
+        const JPH::Body& hit_body = lock.GetBody();
+        auto it = bodyIDToEntity.find(hit_body.GetID().GetIndex());
+        if (it != bodyIDToEntity.end()) {
+            const auto& e = it->second;
+            if (e.all_of<InteractComponent>()) {
+                interactableEntities.push_back(e);
 
-                        // Draw bounding box
-                        if (drawCollisionShapes) {
-                            JPH::Color color =
-                                hit_body.IsDynamic() ? JPH::Color::sRed : JPH::Color::sGreen;
-                            debugRenderer.DrawWireBox(
-                                hit_body.GetCenterOfMassTransform(),
-                                hit_body.GetShape()->GetLocalBounds(),
-                                color);
-                        }
-                    }
+                if (drawCharacterShape) {
+                    // Draw bounding box of hit entity
+                    JPH::Color color = hit_body.IsDynamic() ? JPH::Color::sRed : JPH::Color::sCyan;
+                    debugRenderer.DrawWireBox(
+                        hit_body.GetCenterOfMassTransform(),
+                        hit_body.GetShape()->GetLocalBounds(),
+                        color);
                 }
             }
         }
@@ -399,6 +442,9 @@ void PhysicsSystem::sendCollisionEvents()
             auto e = getEntityByBodyID(bodyID);
             if (e.entity() != entt::null) {
                 //  printf("entity: %d\n", (int)e.entity());
+                CharacterCollisionStartedEvent event;
+                event.entity = e;
+                eventManager.triggerEvent(event);
             }
         }
     }
@@ -409,6 +455,9 @@ void PhysicsSystem::sendCollisionEvents()
             auto e = getEntityByBodyID(bodyID);
             if (e.entity() != entt::null) {
                 // printf("entity: %d\n", (int)e.entity());
+                CharacterCollisionEndedEvent event;
+                event.entity = e;
+                eventManager.triggerEvent(event);
             }
         }
     }
@@ -461,8 +510,10 @@ JPH::Ref<JPH::Shape> createCharacterShape(float capsuleHeight, float capsuleRadi
 }
 }
 
-void PhysicsSystem::createCharacter(const CharacterParams& cp)
+void PhysicsSystem::createCharacter(entt::handle e, const VirtualCharacterParams& cp)
 {
+    characterEntity = e;
+
     JPH::Ref<JPH::CharacterVirtualSettings> settings = new JPH::CharacterVirtualSettings();
     settings->mMaxSlopeAngle = cp.maxSlopeAngle;
     settings->mMaxStrength = cp.maxStrength;
@@ -483,6 +534,11 @@ void PhysicsSystem::createCharacter(const CharacterParams& cp)
     characterInteractionShape = new JPH::SphereShape(interactionSphereRadius);
 
     character->SetListener(&characterContactListener);
+}
+
+void PhysicsSystem::stopCharacterMovement()
+{
+    character->SetLinearVelocity({});
 }
 
 void PhysicsSystem::setCharacterPosition(const glm::vec3 pos)
@@ -509,6 +565,8 @@ bool PhysicsSystem::isCharacterOnGround() const
 
 void PhysicsSystem::cleanup()
 {
+    eventManager.removeListener<EntityTeleportedEvent>(this);
+
     JPH::BodyInterface& body_interface = physicsSystem.GetBodyInterface();
 
     body_interface.RemoveBody(floor->GetID());
@@ -520,6 +578,109 @@ void PhysicsSystem::cleanup()
 
     delete JPH::Factory::sInstance;
     JPH::Factory::sInstance = nullptr;
+}
+
+void PhysicsSystem::addEntity(entt::handle e, SceneCache& sceneCache)
+{
+    auto& pc = e.get<PhysicsComponent>();
+    assert(pc.bodyId.IsInvalid() && "entity was already to physics system before");
+
+    JPH::Ref<JPH::Shape> shape;
+
+    switch (pc.bodyType) {
+    case PhysicsComponent::BodyType::Sphere: {
+        const auto& params = std::get<PhysicsComponent::SphereParams>(pc.bodyParams);
+        shape = new JPH::SphereShape(params.radius);
+    } break;
+    case PhysicsComponent::BodyType::Capsule: {
+        const auto& params = std::get<PhysicsComponent::CapsuleParams>(pc.bodyParams);
+        shape = new JPH::CapsuleShape(params.halfHeight, params.radius);
+        if (pc.originType == PhysicsComponent::OriginType::BottomPlane) {
+            shape = new JPH::RotatedTranslatedShape(
+                {0.f, params.halfHeight + params.radius, 0.f}, JPH::Quat().sIdentity(), shape);
+        }
+    } break;
+    case PhysicsComponent::BodyType::Cylinder: {
+        const auto& params = std::get<PhysicsComponent::CylinderParams>(pc.bodyParams);
+        shape = new JPH::CylinderShape(params.halfHeight, params.radius);
+        if (pc.originType == PhysicsComponent::OriginType::BottomPlane) {
+            shape = new JPH::RotatedTranslatedShape(
+                {0.f, params.halfHeight, 0.f}, JPH::Quat().sIdentity(), shape);
+        }
+    } break;
+    case PhysicsComponent::BodyType::AABB: {
+        auto& params = std::get<PhysicsComponent::AABBParams>(pc.bodyParams);
+
+        // need to compute AABB from the mesh if not initialized still
+        if (params.min == params.max && params.min == glm::vec3{}) {
+            const auto& mc = e.get<MeshComponent>();
+            const auto& mic = e.get<MetaInfoComponent>();
+            const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+            const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
+            params.min = aabb.min;
+            params.max = aabb.max;
+        }
+
+        auto size = glm::abs(params.max - params.min);
+        // almost flat - needs some height to be valid
+        bool almostZeroHeight = 0.f;
+        if (size.y < 0.001f) {
+            size.y = 0.1f;
+            almostZeroHeight = true;
+        }
+
+        // for completely flat objects, the origin will be at the center of the object
+        // for objects with height, it will be at the center of the bottom AABB plane
+        shape = new JPH::BoxShape(util::glmToJolt(size / 2.f), 0.f);
+        auto offsetY = almostZeroHeight ? -size.y / 2.f : size.y / 2.f;
+        if (pc.originType == PhysicsComponent::OriginType::Center) {
+            offsetY = 0.f;
+        }
+        shape =
+            new JPH::RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
+    } break;
+    case PhysicsComponent::BodyType::ConvexHull: {
+        const auto& mic = e.get<MetaInfoComponent>();
+        const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+        const auto& mc = e.get<MeshComponent>();
+        assert(mc.meshes.size() == 1 && "TODO: support multiple meshes");
+        const auto& mesh = scene.cpuMeshes.at(mc.meshes[0]);
+        JPH::Array<JPH::Vec3> vertices(mesh.vertices.size());
+        for (const auto& v : mesh.vertices) {
+            vertices.push_back(util::glmToJolt(v.position));
+        }
+        auto res = JPH::ConvexHullShapeSettings(vertices).Create();
+        if (res.HasError()) {
+            fmt::println("failed to make convex hull shape: {}", res.GetError());
+            return;
+        }
+        shape = res.Get();
+    } break;
+    case PhysicsComponent::BodyType::TriangleMesh: {
+        const auto& mic = e.get<MetaInfoComponent>();
+        const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+        std::vector<const CPUMesh*> meshes;
+        const auto& mc = e.get<MeshComponent>();
+        for (const auto& meshId : mc.meshes) {
+            meshes.push_back(&scene.cpuMeshes.at(meshId));
+        }
+        shape = cacheMeshShape(meshes, mc.meshes, mc.meshTransforms);
+    } break;
+    case PhysicsComponent::BodyType::VirtualCharacter: {
+        characterParams = std::get<VirtualCharacterParams>(pc.bodyParams);
+        createCharacter(e, characterParams);
+        return;
+    } break;
+    default:
+        break;
+    }
+
+    assert(shape);
+
+    bool staticBody = pc.type == PhysicsComponent::Type::Static;
+    assert(pc.type != PhysicsComponent::Type::Kinematic && "TODO");
+    pc.bodyId = createBody(e, e.get<TransformComponent>().transform, shape, staticBody, pc.sensor);
+    assert(!pc.bodyId.IsInvalid());
 }
 
 JPH::Ref<JPH::Shape> PhysicsSystem::cacheMeshShape(
@@ -551,7 +712,7 @@ JPH::Ref<JPH::Shape> PhysicsSystem::cacheMeshShape(
             auto pos = util::glmToJoltFloat3(v.position);
             meshSettings.mTriangleVertices.push_back(std::move(pos));
         }
-        // meshSettings.Sanitize();
+        meshSettings.Sanitize();
 
         auto shapeRes = meshSettings.Create();
         if (!shapeRes.IsValid()) {
@@ -565,8 +726,9 @@ JPH::Ref<JPH::Shape> PhysicsSystem::cacheMeshShape(
             util::glmToJolt(transform.getHeading()),
             scaledShape);
     }
-    auto compoundShape = compoundShapeSettings.Create();
+    assert(!compoundShapeSettings.mSubShapes.empty());
 
+    auto compoundShape = compoundShapeSettings.Create();
     if (compoundShape.IsValid()) {
         cachedMeshShapes.push_back(CachedMeshShape{
             .meshIds = meshIds,
@@ -602,6 +764,7 @@ JPH::BodyID PhysicsSystem::createBody(
         settings, staticBody ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
     auto [it, inserted] = bodyIDToEntity.emplace(bodyID.GetIndex(), e);
     assert(inserted);
+
     return bodyID;
 }
 
@@ -631,6 +794,15 @@ void PhysicsSystem::setVelocity(JPH::BodyID id, const glm::vec3& velocity)
 {
     auto& body_interface = physicsSystem.GetBodyInterface();
     body_interface.SetLinearVelocity(id, util::glmToJolt(velocity));
+}
+
+void PhysicsSystem::syncCharacterTransform()
+{
+    if (character) {
+        assert(characterEntity.valid());
+        auto& tc = characterEntity.get<TransformComponent>();
+        tc.transform.setPosition(getCharacterPosition());
+    }
 }
 
 void PhysicsSystem::syncVisibleTransform(JPH::BodyID id, Transform& transform)
@@ -666,21 +838,19 @@ void PhysicsSystem::doForBody(JPH::BodyID id, std::function<void(const JPH::Body
 
 void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
 {
-    if (im.getKeyboard().wasJustPressed(SDL_SCANCODE_B)) {
-        drawCollisionShapes = !drawCollisionShapes;
-    }
-
     if (ImGui::Begin("Physics")) {
         ImGui::Checkbox("Draw collision lines with depth", &drawCollisionLinesWithDepth);
         ImGui::Checkbox("Draw collision shapes", &drawCollisionShapes);
         ImGui::Checkbox("Draw collision wireframe", &drawCollisionShapesWireframe);
         ImGui::Checkbox("Draw collision BB", &drawCollisionShapeBoundingBox);
         ImGui::Checkbox("Draw sensors only", &drawSensorsOnly);
+        ImGui::Checkbox("Draw character shape", &drawCharacterShape);
         ImGui::DragFloat("Solid shape alpha", &debugRenderer.solidShapeAlpha, 0.01f, 0.f, 1.f);
 
         if (ImGui::CollapsingHeader("Character")) {
             bool creationParamChanged = false;
 
+            ImGui::Text("Entity: %d", (int)characterEntity.entity());
             float slopeAngleDeg = glm::degrees(characterParams.maxSlopeAngle);
             if (ImGui::DragFloat("Max slope angle", &slopeAngleDeg, 0.01f, 0.f, 90.f)) {
                 characterParams.maxSlopeAngle = glm::radians(slopeAngleDeg);
@@ -716,8 +886,8 @@ void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
             ImGui::Checkbox("Walk stairs", &characterParams.enableWalkStairs);
             ImGui::Checkbox("Stick to ground", &characterParams.enableStickToFloor);
             ImGui::Checkbox("Inertia", &characterParams.enableCharacterInertia);
-            ImGui::DragFloat("Run speed", &characterParams.characterSpeedRun, 0.1f);
-            ImGui::DragFloat("Walk speed", &characterParams.characterSpeedWalk, 0.1f);
+            ImGui::DragFloat("Run speed", &characterParams.runSpeed, 0.1f);
+            ImGui::DragFloat("Walk speed", &characterParams.walkSpeed, 0.1f);
             ImGui::DragFloat("Jump speed", &characterParams.jumpSpeed, 0.1f);
             ImGui::Checkbox("Control during jump", &characterParams.controlMovementDuringJump);
             ImGui::DragFloat("Gravity factor", &characterParams.gravityFactor, 0.1f, 0.5f, 5.f);
@@ -726,7 +896,7 @@ void PhysicsSystem::updateDevUI(const InputManager& im, float dt)
 
             if (creationParamChanged) {
                 const auto prevPos = character->GetPosition();
-                createCharacter(characterParams);
+                createCharacter(characterEntity, characterParams);
                 character->SetPosition(prevPos);
             }
         }
@@ -746,4 +916,42 @@ entt::handle PhysicsSystem::getEntityByBodyID(const JPH::BodyID& bodyID) const
         return it->second;
     }
     return {};
+}
+
+void PhysicsSystem::onEntityTeleported(const EntityTeleportedEvent& event)
+{
+    const auto entity = event.entity;
+    if (character && entity == characterEntity) {
+        setCharacterPosition(entity.get<TransformComponent>().transform.getPosition());
+    } else {
+        auto& pc = entity.get<PhysicsComponent>();
+        updateTransform(pc.bodyId, entity.get<TransformComponent>().transform, false);
+    }
+}
+
+void PhysicsSystem::onEntityDestroyed(entt::handle e)
+{
+    auto& pc = e.get<PhysicsComponent>();
+
+    if (pc.bodyType == PhysicsComponent::BodyType::VirtualCharacter) {
+        character = nullptr;
+        characterEntity = {};
+        return;
+    }
+
+    assert(!pc.bodyId.IsInvalid());
+
+    // remove from bodyIDToEntity
+    const auto it = bodyIDToEntity.find(pc.bodyId.GetIndex());
+    assert(it != bodyIDToEntity.end());
+    bodyIDToEntity.erase(it);
+
+    // remove from simulation
+    auto& bodyInterface = physicsSystem.GetBodyInterfaceNoLock();
+
+    bodyInterface.RemoveBody(pc.bodyId);
+    bodyInterface.DestroyBody(pc.bodyId);
+
+    // reset body id
+    pc.bodyId = JPH::BodyID{};
 }

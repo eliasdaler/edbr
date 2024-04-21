@@ -58,3 +58,6 @@
 [submodule "edbr/third_party/googletest"]
 	path = edbr/third_party/googletest
 	url = https://github.com/google/googletest
+[submodule "edbr/third_party/CLI11"]
+	path = edbr/third_party/CLI11
+	url = https://github.com/CLIUtils/CLI11

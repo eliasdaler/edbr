@@ -1,5 +1,7 @@
 #include <edbr/Application.h>
 
+#include <edbr/Core/JsonFile.h>
+
 #include <chrono>
 
 #include <SDL2/SDL.h>
@@ -34,13 +36,22 @@ void operator delete(void* ptr, std::size_t) noexcept
 }
 #endif
 
+void Application::defineCLIArgs()
+{
+    cliApp.add_flag("-p,--prod", prodMode, "Run in prod mode (even when dev path is set)");
+}
+void Application::parseCLIArgs(int argc, char** argv)
+{
+    try {
+        cliApp.parse(argc, argv);
+    } catch (const CLI::ParseError& e) {
+        std::exit(cliApp.exit(e));
+    }
+}
+
 void Application::init(const Params& ps)
 {
     params = ps;
-    if (params.renderWidth == 0 && params.renderHeight == 0) {
-        params.renderWidth = params.windowWidth;
-        params.renderHeight = params.windowHeight;
-    }
 
 #ifdef _WIN32
     // This won't be needed in SDL 3.0.
@@ -56,24 +67,73 @@ void Application::init(const Params& ps)
         std::exit(1);
     }
 
+    if (!prodMode) {
+        // Set EDBR_DEV_PATH to a path containing dev_settings.json to enable dev mode
+        if (auto* devSettingsPath = std::getenv("EDBR_DEV_PATH"); devSettingsPath) {
+            isDevEnvironment = true;
+            const auto configPath = std::filesystem::path{devSettingsPath};
+            devDirPath = configPath.parent_path();
+            loadDevSettings(std::filesystem::path{devSettingsPath});
+        }
+    }
+
+    loadAppSettings();
+
+    if (params.windowSize == glm::ivec2{}) {
+        assert(params.renderSize != glm::ivec2{});
+        params.windowSize = params.renderSize;
+    }
+
+    if (params.renderSize == glm::ivec2{}) {
+        assert(params.windowSize != glm::ivec2{});
+        params.renderSize = params.windowSize;
+    }
+
+    if (params.windowTitle.empty()) {
+        params.windowTitle = params.appName;
+    }
+
     window = SDL_CreateWindow(
-        ps.title,
+        params.windowTitle.c_str(),
         // pos
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
         // size
-        ps.windowWidth,
-        ps.windowHeight,
+        params.windowSize.x,
+        params.windowSize.y,
         SDL_WINDOW_VULKAN);
+
+    // SDL_SetWindowResizable(window, SDL_TRUE);
 
     if (!window) {
         printf("Failed to create window. SDL Error: %s\n", SDL_GetError());
         std::exit(1);
     }
 
-    gfxDevice.init(window, ps.title, vSync);
+    gfxDevice.init(window, params.appName.c_str(), params.version, vSync);
+
+    if (!devDirPath.empty()) {
+        imguiIniPath = (devDirPath / "imgui.ini").string();
+        ImGui::GetIO().IniFilename = imguiIniPath.c_str();
+        fmt::println("ImGui ini path: {}, {}", devDirPath.string(), ImGui::GetIO().IniFilename);
+    } else {
+        // don't write imgui.ini
+        ImGui::GetIO().IniFilename = nullptr;
+    }
 
     customInit();
+}
+
+void Application::loadDevSettings(const std::filesystem::path& configPath)
+{
+    JsonFile file(configPath);
+    if (!file.isGood()) {
+        fmt::println("failed to load dev settings from {}", configPath.string());
+        return;
+    }
+
+    const auto loader = file.getLoader();
+    loader.getIfExists("window", params.windowSize);
 }
 
 void Application::run()
@@ -90,7 +150,7 @@ void Application::run()
         const auto newTime = std::chrono::high_resolution_clock::now();
         frameTime = std::chrono::duration<float>(newTime - prevTime).count();
 
-        if (frameTime > 0.07f) {
+        if (frameTime > 0.07f && frameTime < 5.f) { // if >=5.f - debugging?
             printf("frame drop, time: %.4f\n", frameTime);
         }
 
@@ -119,9 +179,24 @@ void Application::run()
                         isRunning = false;
                         return;
                     }
+                    if (event.type == SDL_WINDOWEVENT) {
+                        switch (event.window.event) {
+                        case SDL_WINDOWEVENT_SIZE_CHANGED:
+                            /* fallthrough */
+                        case SDL_WINDOWEVENT_RESIZED:
+                            fmt::println(
+                                "window resized: {}x{}", event.window.data1, event.window.data2);
+                            params.windowSize = {event.window.data1, event.window.data2};
+                            break;
+                        }
+                    }
                     inputManager.handleEvent(event);
                     ImGui_ImplSDL2_ProcessEvent(&event);
                 }
+            }
+
+            if (gfxDevice.needsSwapchainRecreate()) {
+                gfxDevice.recreateSwapchain(params.windowSize.x, params.windowSize.y);
             }
 
             // ImGui_ImplVulkan_NewFrame();
@@ -132,6 +207,7 @@ void Application::run()
             inputManager.update(dt);
             customUpdate(dt);
 
+            actionListManager.update(dt, gamePaused);
             eventManager.update();
             audioManager.update();
 
@@ -140,7 +216,9 @@ void Application::run()
             ImGui::Render();
         }
 
-        customDraw();
+        if (!gfxDevice.needsSwapchainRecreate()) {
+            customDraw();
+        }
         FrameMark;
 
         if (frameLimit) {
