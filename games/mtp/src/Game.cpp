@@ -124,7 +124,11 @@ void Game::customInit()
         enterMainMenu();
     } else {
         audioManager.setMuted(true);
-        startLoadedGame();
+        if (!saveFileManager.saveFileExists(0)) {
+            startNewGame();
+        } else {
+            startLoadedGame();
+        }
     }
 }
 
@@ -144,7 +148,9 @@ void Game::startLoadedGame()
     // TODO "load game" screen
     assert(saveFileManager.saveFileExists(0));
     saveFileManager.setCurrentSaveIndex(0);
-    saveFileManager.loadCurrentSaveFile();
+    if (saveFileManager.saveFileExists(0)) {
+        saveFileManager.loadCurrentSaveFile();
+    }
 
     startGameplay();
 }

@@ -16,3 +16,10 @@ Zip build/mtp_release/install/mtpgame (in Git Bash, 7-zip should be installed):
 ```sh
 /c/Program\ Files/7-Zip/7z.exe a build/mtp_release/mtp_win32.zip ./build/mtp_release/install/mtpgame
 ```
+
+## Linux
+
+```sh
+cmake --build build/mtp_release --target install
+./scripts/mtp_linux_release.sh
+```
