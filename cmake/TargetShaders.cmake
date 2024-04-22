@@ -16,6 +16,8 @@ function (target_shaders target shaders)
     set(SHADERS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/shaders")
   endif()
 
+  file(MAKE_DIRECTORY "${SHADERS_BUILD_DIR}")
+
   foreach (SHADER_PATH ${SHADERS})
     get_filename_component(SHADER_FILENAME "${SHADER_PATH}" NAME)
     set(SHADER_SPIRV_PATH "${SHADERS_BUILD_DIR}/${SHADER_FILENAME}.spv")

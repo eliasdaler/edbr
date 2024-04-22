@@ -13,7 +13,7 @@ Dependencies:
 Configure CMake (only needs to be done once)
 ```sh
 # start from repo's root
-cmake -B build/mtp_release -S games/mtp -DCMAKE_INSTALL_PREFIX=build/mtp_release/install -DBUILD_SHARED_LIBS=OFF
+cmake -B build/mtp_release -S games/mtp -DCMAKE_INSTALL_PREFIX=build/mtp_release/install -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
 ```
 
 ## Windows
