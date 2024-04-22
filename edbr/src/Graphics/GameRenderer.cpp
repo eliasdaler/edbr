@@ -365,8 +365,9 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
 
         vkCmdBeginRendering(cmd, &renderInfo.renderingInfo);
         if (isMultisamplingEnabled()) {
+            const auto& resolveDepthImage = gfxDevice.getImage(resolveDepthImageId);
             postFXPipeline
-                .draw(cmd, gfxDevice, resolveImage, depthImage, sceneDataBuffer.getBuffer());
+                .draw(cmd, gfxDevice, resolveImage, resolveDepthImage, sceneDataBuffer.getBuffer());
         } else {
             postFXPipeline.draw(cmd, gfxDevice, drawImage, depthImage, sceneDataBuffer.getBuffer());
         }

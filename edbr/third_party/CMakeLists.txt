@@ -172,6 +172,7 @@ if (NOT MSVC AND NOT BUILD_SHARED_LIBS)
 endif()
 add_subdirectory(openal-soft)
 if (MSVC)
+  target_compile_definitions(alcommon PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
   target_compile_definitions(OpenAL PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
 endif()
 
