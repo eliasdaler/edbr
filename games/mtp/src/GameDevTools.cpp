@@ -258,6 +258,7 @@ void Game::devToolsUpdate(float dt)
             auto fogDensity = level.getFogDensity();
             if (ImGui::DragFloat("Fog density", &fogDensity, 1.f, 0.f, 1.f)) {
                 level.setFogDensity(fogDensity);
+                level.setFogActive(fogDensity != 0.f);
             }
         }
 

@@ -1,0 +1,13 @@
+{
+  "model": "assets/models/levels/creepy_corridor/creepy_corridor.gltf",
+  "default_camera": "Default",
+  "ambient": {
+    "color": { "rgb": [11, 33, 33] },
+    "intensity": 1.0
+  },
+  "fog": {
+    "color": { "rgb": [193, 180, 180] },
+    "density": 0.08
+  }
+}
+
