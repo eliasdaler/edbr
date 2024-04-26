@@ -1,0 +1,16 @@
+{
+  "model": "assets/models/levels/castle/castle.gltf",
+  "skybox": "distant_sunset",
+  "default_camera": "Default",
+  "default_spawn": "Default",
+  "ambient": {
+    "color": { "rgb": [52, 52, 23] },
+    "intensity": 1.0
+  },
+  "fog": {
+    "color": { "rgb": [113, 162, 157] },
+    "density": 0.03
+  },
+  "bgm": "assets/music/forest_birds_ambient.ogg"
+}
+

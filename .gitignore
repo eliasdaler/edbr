@@ -3,3 +3,4 @@ build/
 build-release/
 build-static/
 .cache/
+*.blend1
