@@ -49,9 +49,11 @@ void copyImageToImage(
     VkImage source,
     VkImage destination,
     VkExtent2D srcSize,
-    VkExtent2D dstSize)
+    VkExtent2D dstSize,
+    VkFilter filter)
 {
-    copyImageToImage(cmd, source, destination, srcSize, 0, 0, dstSize.width, dstSize.height);
+    copyImageToImage(
+        cmd, source, destination, srcSize, 0, 0, dstSize.width, dstSize.height, filter);
 }
 
 void copyImageToImage(
@@ -62,7 +64,8 @@ void copyImageToImage(
     int destX,
     int destY,
     int destW,
-    int destH)
+    int destH,
+    VkFilter filter)
 {
     const auto blitRegion = VkImageBlit2{
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
@@ -100,7 +103,7 @@ void copyImageToImage(
         .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         .regionCount = 1,
         .pRegions = &blitRegion,
-        .filter = VK_FILTER_LINEAR, // TODO: allow to specify
+        .filter = filter,
     };
 
     vkCmdBlitImage2(cmd, &blitInfo);
@@ -265,6 +268,20 @@ RenderInfo createRenderingInfo(const RenderingInfoParams& params)
     };
 
     return ri;
+}
+
+void clearColorImage(
+    VkCommandBuffer cmd,
+    VkExtent2D colorImageExtent,
+    VkImageView colorImageView,
+    const glm::vec4& clearColor)
+{
+    auto ri = createRenderingInfo(
+        {.renderExtent = colorImageExtent,
+         .colorImageView = colorImageView,
+         .colorImageClearValue = clearColor});
+    vkCmdBeginRendering(cmd, &ri.renderingInfo);
+    vkCmdEndRendering(cmd);
 }
 
 int sampleCountToInt(VkSampleCountFlagBits count)

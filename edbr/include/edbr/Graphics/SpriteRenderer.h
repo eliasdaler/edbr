@@ -79,6 +79,7 @@ public:
 
 private:
     GfxDevice& gfxDevice;
+    bool initialized{false};
 
     SpriteDrawingPipeline uiDrawingPipeline;
 

@@ -21,6 +21,7 @@ void SpriteRenderer::init(VkFormat drawImageFormat)
 {
     spriteDrawCommands.reserve(MAX_SPRITES);
     uiDrawingPipeline.init(gfxDevice, drawImageFormat, MAX_SPRITES);
+    initialized = true;
 }
 
 void SpriteRenderer::cleanup()
@@ -30,6 +31,7 @@ void SpriteRenderer::cleanup()
 
 void SpriteRenderer::beginDrawing()
 {
+    assert(initialized && "SpriteRenderer::init not called");
     spriteDrawCommands.clear();
 }
 
@@ -40,6 +42,9 @@ void SpriteRenderer::endDrawing()
 
 void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage)
 {
+    assert(initialized && "SpriteRenderer::init not called");
+    // TODO: check that begin/endFrame are called
+
     TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Sprite renderer", tracy::Color::Purple);
 
     const auto drawImageExtent = drawImage.getExtent2D();

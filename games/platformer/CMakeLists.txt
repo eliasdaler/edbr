@@ -12,6 +12,8 @@ if (PROJECT_IS_TOP_LEVEL)
 endif()
 
 add_executable(platformer
+  src/Game.cpp
+
   src/main.cpp
 )
 

@@ -83,7 +83,7 @@ void GfxDevice::initVulkan(SDL_Window* window, const char* appName, const Versio
     instance = vkb::InstanceBuilder{}
                    .set_app_name(appName)
                    .set_app_version(appVersion.major, appVersion.major, appVersion.patch)
-                   // .request_validation_layers()
+                   .request_validation_layers()
                    .use_default_debug_messenger()
                    .require_api_version(1, 3, 0)
                    .build()
@@ -262,6 +262,7 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
             cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         swapchainLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
+        const auto filter = props.drawImageLinearBlit ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
         if (props.drawImageBlitRect != glm::ivec4{}) {
             vkutil::copyImageToImage(
                 cmd,
@@ -271,7 +272,8 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
                 props.drawImageBlitRect.x,
                 props.drawImageBlitRect.y,
                 props.drawImageBlitRect.z,
-                props.drawImageBlitRect.w);
+                props.drawImageBlitRect.w,
+                filter);
         } else {
             // will stretch image to swapchain
             vkutil::copyImageToImage(
@@ -279,7 +281,8 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
                 drawImage.image,
                 swapchainImage,
                 drawImage.getExtent2D(),
-                getSwapchainExtent());
+                getSwapchainExtent(),
+                filter);
         }
     }
 

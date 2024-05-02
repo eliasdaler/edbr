@@ -1,6 +1,19 @@
-#include <iostream>
+#include <edbr/Util/OSUtil.h>
 
-int main()
+#include "Game.h"
+
+int main(int argc, char** argv)
 {
-    std::cout << "Hello, world\n";
+    util::setCurrentDirToExeDir();
+
+    Game game{};
+
+    game.defineCLIArgs();
+    game.parseCLIArgs(argc, argv);
+
+    game.init({
+        .appName = "Platformer",
+    });
+    game.run();
+    game.cleanup();
 }

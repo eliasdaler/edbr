@@ -132,6 +132,32 @@ void Game::customInit()
     }
 }
 
+void Game::customCleanup()
+{
+    for (auto entity : registry.view<entt::entity>()) {
+        if (!registry.get<HierarchyComponent>(entity).hasParent()) {
+            destroyEntity({registry, entity}, false);
+        }
+    }
+    registry.clear();
+
+    // unsub from physics events
+    eventManager.removeListener<CharacterCollisionStartedEvent>(this);
+    eventManager.removeListener<CharacterCollisionEndedEvent>(this);
+
+    animationSoundSystem.cleanup(eventManager);
+
+    physicsSystem->cleanup();
+    physicsSystem.reset();
+
+    gfxDevice.waitIdle();
+    im3d.cleanup(gfxDevice);
+    spriteRenderer.cleanup();
+    renderer.cleanup();
+    materialCache.cleanup(gfxDevice);
+    meshCache.cleanup(gfxDevice);
+}
+
 void Game::startNewGame()
 {
     saveFileManager.setCurrentSaveIndex(0);
@@ -477,32 +503,6 @@ void Game::handlePlayerInteraction()
     } else if (std::holds_alternative<ActionList>(res)) {
         actionListManager.addActionList(std::move(std::get<ActionList>(res)));
     }
-}
-
-void Game::customCleanup()
-{
-    for (auto entity : registry.view<entt::entity>()) {
-        if (!registry.get<HierarchyComponent>(entity).hasParent()) {
-            destroyEntity({registry, entity}, false);
-        }
-    }
-    registry.clear();
-
-    // unsub from physics events
-    eventManager.removeListener<CharacterCollisionStartedEvent>(this);
-    eventManager.removeListener<CharacterCollisionEndedEvent>(this);
-
-    animationSoundSystem.cleanup(eventManager);
-
-    physicsSystem->cleanup();
-    physicsSystem.reset();
-
-    gfxDevice.waitIdle();
-    im3d.cleanup(gfxDevice);
-    spriteRenderer.cleanup();
-    renderer.cleanup();
-    materialCache.cleanup(gfxDevice);
-    meshCache.cleanup(gfxDevice);
 }
 
 void Game::setEntityTag(entt::handle e, const std::string& tag)

@@ -55,6 +55,7 @@ public:
         const LinearColor clearColor{0.f, 0.f, 0.f, 1.f};
         bool copyImageIntoSwapchain{true};
         glm::ivec4 drawImageBlitRect{}; // where to blit draw image to
+        bool drawImageLinearBlit{true}; // if false - nearest filter will be used
         bool drawImGui{true};
     };
     void endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const EndFrameProps& props);
