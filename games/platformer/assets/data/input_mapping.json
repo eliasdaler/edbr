@@ -33,22 +33,22 @@
 				"scale": 1.0
 			},
 			{
-				"key": "J",
+				"key": "A",
 				"tag": "CameraMoveX",
 				"scale": -1.0
 			},
 			{
-				"key": "L",
+				"key": "D",
 				"tag": "CameraMoveX",
 				"scale": 1.0
 			},
 			{
-				"key": "I",
+				"key": "W",
 				"tag": "CameraMoveY",
 				"scale": -1.0
 			},
 			{
-				"key": "K",
+				"key": "S",
 				"tag": "CameraMoveY",
 				"scale": 1.0
 			},

@@ -1,0 +1,44 @@
+{
+	"tilesets/Tileset.png": [
+		{
+			"frames": [7, 27],
+			"time": "200ms"
+		},
+		{
+			"frames": [369, 370],
+			"time": "300ms"
+		},
+		{
+			"frames": [400, 401, 402],
+			"time": "300ms"
+		},
+		{
+			"frames": [287, 327],
+			"time": "150ms"
+		},
+		{
+			"frames": [288, 328],
+			"time": "150ms"
+		},
+		{
+			"frames": [307, 347],
+			"time": "150ms"
+		},
+		{
+			"frames": [308, 348],
+			"time": "150ms"
+		},
+		{
+			"frames": [326, 346],
+			"time": "300ms"
+		},
+		{
+			"frames": [426, 427, 428, 429],
+			"time": "300ms"
+		},
+		{
+			"frames": [453, 454, 455],
+			"time": "300ms"
+		}
+	]
+}

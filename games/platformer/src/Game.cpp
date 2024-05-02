@@ -3,22 +3,33 @@
 #include <edbr/Core/JsonFile.h>
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Vulkan/Util.h>
+#include <edbr/Util/InputUtil.h>
 
+#include <edbr/Util/ImGuiUtil.h>
 #include <imgui.h>
 
-Game::Game() : spriteRenderer(gfxDevice)
+Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
 {}
 
 void Game::customInit()
 {
+    inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
+    inputManager.loadMapping("assets/data/input_mapping.json");
+
     createDrawImage(params.renderSize);
     spriteRenderer.init(drawImageFormat);
+    uiRenderer.init(drawImageFormat);
+
     defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
+
+    level.load("assets/levels/LevelTown.json", gfxDevice);
 
     const auto playerImageId = gfxDevice.loadImageFromFile("assets/images/player.png");
     const auto& playerImage = gfxDevice.getImage(playerImageId);
     playerSprite.setTexture(playerImage);
-    playerSprite.setTextureRect({48, 64, 16, 16});
+    playerSprite.setTextureRect({80, 48, 16, 16});
+
+    playerPos = {433.f, 224.f};
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -68,10 +79,13 @@ void Game::customCleanup()
 {
     gfxDevice.waitIdle();
     spriteRenderer.cleanup();
+    uiRenderer.cleanup();
 }
 
 void Game::customUpdate(float dt)
 {
+    handleInput(dt);
+
     if (!gameDrawnInWindow) {
         const auto blitRect =
             util::calculateLetterbox(params.renderSize, gfxDevice.getSwapchainSize(), true);
@@ -79,19 +93,65 @@ void Game::customUpdate(float dt)
         gameWindowSize = {blitRect.z, blitRect.w};
     }
 
+    if (!freeCamera) {
+        cameraPos = playerPos - static_cast<glm::vec2>(params.renderSize) / 2.f;
+    }
+
     if (ImGui::Begin("Hello, world")) {
-        ImGui::TextUnformatted("This works");
+        ImGui::Drag("playerPos", &playerPos);
         ImGui::End();
     }
+}
+
+void Game::handleInput(float dt)
+{
+    if (!freeCamera) {
+        handlePlayerInput(dt);
+    } else {
+        handleFreeCameraInput(dt);
+    }
+
+    if (inputManager.getKeyboard().wasJustPressed(SDL_SCANCODE_C)) {
+        freeCamera = !freeCamera;
+    }
+}
+
+void Game::handlePlayerInput(float dt)
+{
+    const auto& actionMapping = inputManager.getActionMapping();
+    static const auto horizonalWalkAxis = actionMapping.getActionTagHash("MoveX");
+    static const auto verticalWalkAxis = actionMapping.getActionTagHash("MoveY");
+
+    const auto moveStickState =
+        util::getStickState(actionMapping, horizonalWalkAxis, verticalWalkAxis);
+
+    const auto playerMoveSpeed = glm::vec2{60.f, 60.f};
+    auto velocity = moveStickState * playerMoveSpeed;
+    playerPos += velocity * dt;
+}
+
+void Game::handleFreeCameraInput(float dt)
+{
+    const auto& actionMapping = inputManager.getActionMapping();
+    static const auto moveXAxis = actionMapping.getActionTagHash("CameraMoveX");
+    static const auto moveYAxis = actionMapping.getActionTagHash("CameraMoveY");
+
+    const auto moveStickState = util::getStickState(actionMapping, moveXAxis, moveYAxis);
+    const auto cameraMoveSpeed = glm::vec2{120.f, 120.f};
+    auto velocity = moveStickState * cameraMoveSpeed;
+    if (inputManager.getKeyboard().isHeld(SDL_SCANCODE_LSHIFT)) {
+        velocity *= 2.f;
+    }
+    cameraPos += velocity * dt;
 }
 
 void Game::customDraw()
 {
     auto cmd = gfxDevice.beginFrame();
 
+    const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
     const auto endFrameProps = GfxDevice::EndFrameProps{
-        .clearColor =
-            gameDrawnInWindow ? edbr::rgbToLinear(97, 120, 159) : LinearColor{0.f, 0.f, 0.f, 1.f},
+        .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
         .copyImageIntoSwapchain = !gameDrawnInWindow,
         .drawImageBlitRect = {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
         .drawImageLinearBlit = false,
@@ -105,11 +165,45 @@ void Game::customDraw()
         cmd, drawImage.getExtent2D(), drawImage.imageView, glm::vec4{1.f, 0.f, 1.f, 1.f});
 
     spriteRenderer.beginDrawing();
-    spriteRenderer.drawSprite(playerSprite, glm::vec2{32.f, 32.f});
-    spriteRenderer.drawText(defaultFont, "Hello, world", glm::vec2{100.f, 100.f}, {});
+    drawWorld();
     spriteRenderer.endDrawing();
+    spriteRenderer.draw(cmd, drawImage, cameraPos);
 
-    spriteRenderer.draw(cmd, drawImage);
+    uiRenderer.beginDrawing();
+    drawUI();
+    uiRenderer.endDrawing();
+    uiRenderer.draw(cmd, drawImage);
 
     gfxDevice.endFrame(cmd, drawImage, endFrameProps);
+}
+
+void Game::drawWorld()
+{
+    const auto& tileMap = level.getTileMap();
+    const auto minZ = tileMap.getMinLayerZ();
+    const auto maxZ = tileMap.getMaxLayerZ();
+    assert(maxZ >= minZ);
+
+    bool drewObjects = false;
+    for (int z = minZ; z <= maxZ; ++z) {
+        tileMapRenderer.drawTileMapLayer(gfxDevice, spriteRenderer, tileMap, z);
+        if (z == 0) {
+            drawGameObjects();
+            drewObjects = true;
+        }
+    }
+
+    if (!drewObjects) {
+        drawGameObjects();
+    }
+}
+
+void Game::drawGameObjects()
+{
+    spriteRenderer.drawSprite(playerSprite, playerPos);
+}
+
+void Game::drawUI()
+{
+    uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
 }

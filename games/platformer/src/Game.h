@@ -9,6 +9,9 @@
 #include <edbr/Graphics/IdTypes.h>
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Graphics/SpriteRenderer.h>
+#include <edbr/TileMap/TileMapRenderer.h>
+
+#include "Level.h"
 
 class Game : public Application {
 public:
@@ -22,6 +25,14 @@ public:
     void customDraw() override;
 
 private:
+    void handleInput(float dt);
+    void handlePlayerInput(float dt);
+    void handleFreeCameraInput(float dt);
+
+    void drawWorld();
+    void drawGameObjects();
+    void drawUI();
+
     void createDrawImage(const glm::ivec2& drawImageSize);
 
     glm::vec2 gameWindowPos;
@@ -29,11 +40,19 @@ private:
 
     VkFormat drawImageFormat{VK_FORMAT_R16G16B16A16_SFLOAT};
     ImageId drawImageId{NULL_IMAGE_ID};
+
     SpriteRenderer spriteRenderer;
+    SpriteRenderer uiRenderer;
+    TileMapRenderer tileMapRenderer;
+
+    glm::vec2 cameraPos;
+    glm::vec2 playerPos;
 
     Sprite playerSprite;
     Font defaultFont;
+    Level level;
 
     bool gameDrawnInWindow{false};
     bool drawImGui{true};
+    bool freeCamera{false};
 };

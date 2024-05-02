@@ -40,7 +40,10 @@ void SpriteRenderer::endDrawing()
     // do nothing
 }
 
-void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage)
+void SpriteRenderer::draw(
+    VkCommandBuffer cmd,
+    const GPUImage& drawImage,
+    const glm::vec2& cameraPos)
 {
     assert(initialized && "SpriteRenderer::init not called");
     // TODO: check that begin/endFrame are called
@@ -52,8 +55,9 @@ void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage)
 
     Camera uiCamera;
     uiCamera.initOrtho2D(drawSize);
-    const auto vp = uiCamera.getViewProj();
+    uiCamera.setPosition({cameraPos.x, cameraPos.y, 0.f});
 
+    const auto vp = uiCamera.getViewProj();
     uiDrawingPipeline.draw(cmd, gfxDevice, drawImage, vp, spriteDrawCommands);
 }
 

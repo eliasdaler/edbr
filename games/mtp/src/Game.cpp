@@ -629,9 +629,9 @@ void Game::customDraw()
             drawImGui = false;
         }
 
+        const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
         const auto endFrameProps = GfxDevice::EndFrameProps{
-            .clearColor = gameDrawnInWindow ? edbr::rgbToLinear(97, 120, 159) :
-                                              LinearColor{0.f, 0.f, 0.f, 1.f},
+            .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
             .copyImageIntoSwapchain = !gameDrawnInWindow,
             .drawImageBlitRect =
                 {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},

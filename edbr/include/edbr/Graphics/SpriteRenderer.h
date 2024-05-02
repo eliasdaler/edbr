@@ -23,7 +23,7 @@ public:
     void cleanup();
 
     void beginDrawing();
-    void draw(VkCommandBuffer cmd, const GPUImage& drawImage);
+    void draw(VkCommandBuffer cmd, const GPUImage& drawImage, const glm::vec2& cameraPos = {});
     void endDrawing();
 
     void drawSprite(

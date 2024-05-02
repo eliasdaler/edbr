@@ -27,6 +27,7 @@ add_library(edbr
   src/ECS/EntityFactory.cpp
 
   # Math
+  src/Math/IndexRange2.cpp
   src/Math/Transform.cpp
   src/Math/Util.cpp
 
@@ -146,6 +147,10 @@ add_library(edbr
   # Save
   src/Save/SaveFile.cpp
   src/Save/SaveFileManager.cpp
+
+  # TileMap
+  src/TileMap/TileMap.cpp
+  src/TileMap/TileMapRenderer.cpp
 
   src/Application.cpp
   src/SceneCache.cpp
