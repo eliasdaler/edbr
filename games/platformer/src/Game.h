@@ -8,6 +8,8 @@
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/IdTypes.h>
 #include <edbr/Graphics/Sprite.h>
+#include <edbr/Graphics/SpriteAnimationData.h>
+#include <edbr/Graphics/SpriteAnimator.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/TileMap/TileMapRenderer.h>
 
@@ -25,6 +27,8 @@ public:
     void customDraw() override;
 
 private:
+    void loadAnimations(const std::filesystem::path& animationsDir);
+
     void handleInput(float dt);
     void handlePlayerInput(float dt);
     void handleFreeCameraInput(float dt);
@@ -48,6 +52,8 @@ private:
     glm::vec2 cameraPos;
     glm::vec2 playerPos;
 
+    SpriteAnimator playerSpriteAnimator;
+
     Sprite playerSprite;
     Font defaultFont;
     Level level;
@@ -55,4 +61,6 @@ private:
     bool gameDrawnInWindow{false};
     bool drawImGui{true};
     bool freeCamera{false};
+
+    std::unordered_map<std::string, SpriteAnimationData> animationsData;
 };

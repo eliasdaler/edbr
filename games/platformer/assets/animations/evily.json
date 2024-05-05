@@ -1,0 +1,1 @@
+{"animations":{"idle":{"endFrame":1,"frameDuration":0.1,"origin":[8,16],"startFrame":1},"talk":{"endFrame":3,"frameDuration":0.1,"origin":[8,16],"startFrame":2}},"spriteSheet":[{"frame":[0,0,16,16],"frameNum":1},{"frame":[16,0,16,16],"frameNum":2},{"frame":[0,16,16,16],"frameNum":3}]}

@@ -1,0 +1,1 @@
+{"animations":{"heart_empty":{"endFrame":2,"frameDuration":0.1,"origin":[8,16],"startFrame":2},"heart_filled":{"endFrame":1,"frameDuration":0.1,"origin":[8,16],"startFrame":1}},"spriteSheet":[{"frame":[0,0,16,16],"frameNum":1},{"frame":[16,0,16,16],"frameNum":2}]}

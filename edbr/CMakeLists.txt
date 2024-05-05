@@ -64,6 +64,8 @@ add_library(edbr
   src/Graphics/SkeletalAnimation.cpp
   src/Graphics/SkeletalAnimationCache.cpp
   src/Graphics/Sprite.cpp
+  src/Graphics/SpriteAnimator.cpp
+  src/Graphics/SpriteAnimationData.cpp
 
   # Graphics/Pipeline
   src/Graphics/Pipelines/CSMPipeline.cpp

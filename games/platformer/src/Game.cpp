@@ -3,10 +3,25 @@
 #include <edbr/Core/JsonFile.h>
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Vulkan/Util.h>
+#include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
 
 #include <edbr/Util/ImGuiUtil.h>
 #include <imgui.h>
+
+namespace
+{
+void setSpriteAnimation(
+    Sprite& sprite,
+    SpriteAnimator& animator,
+    const std::unordered_map<std::string, SpriteAnimationData>& animationsData,
+    const std::string& animsTag,
+    const std::string& animName)
+{
+    animator.setAnimation(animationsData.at(animsTag).getAnimation(animName), animName);
+    animator.animate(sprite, animationsData.at(animsTag).getSpriteSheet());
+}
+}
 
 Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
 {}
@@ -22,6 +37,8 @@ void Game::customInit()
 
     defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
 
+    loadAnimations("assets/animations");
+
     level.load("assets/levels/LevelTown.json", gfxDevice);
 
     const auto playerImageId = gfxDevice.loadImageFromFile("assets/images/player.png");
@@ -30,6 +47,19 @@ void Game::customInit()
     playerSprite.setTextureRect({80, 48, 16, 16});
 
     playerPos = {433.f, 224.f};
+
+    setSpriteAnimation(playerSprite, playerSpriteAnimator, animationsData, "player", "run");
+}
+
+void Game::loadAnimations(const std::filesystem::path& animationsDir)
+{
+    // Automatically load all prefabs from the directory
+    // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
+    util::foreachFileInDir(animationsDir, [this, &animationsDir](const std::filesystem::path& p) {
+        auto relPath = p.lexically_relative(animationsDir);
+        const auto animsTag = relPath.replace_extension("").string();
+        animationsData[animsTag].load(p);
+    });
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -92,6 +122,9 @@ void Game::customUpdate(float dt)
         gameWindowPos = {blitRect.x, blitRect.y};
         gameWindowSize = {blitRect.z, blitRect.w};
     }
+
+    playerSpriteAnimator.update(dt);
+    playerSpriteAnimator.animate(playerSprite, animationsData.at("player").getSpriteSheet());
 
     if (!freeCamera) {
         cameraPos = playerPos - static_cast<glm::vec2>(params.renderSize) / 2.f;
