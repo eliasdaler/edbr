@@ -8,9 +8,15 @@
 
 #include <edbr/ActionList/ActionWrappers.h>
 #include <edbr/Camera/FreeCameraController.h>
+
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+
+#include <edbr/ECS/Systems/MovementSystem.h>
+#include <edbr/ECS/Systems/TransformSystem.h>
+
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
@@ -355,7 +361,7 @@ glm::vec2 Game::getMouseGameScreenCoord() const
 void Game::updateGameLogic(float dt)
 {
     // movement
-    movementSystemUpdate(registry, dt);
+    edbr::ecs::movementSystemUpdate(registry, dt);
 
     { // physics
         // get player heading (if player exist)
@@ -387,8 +393,8 @@ void Game::updateGameLogic(float dt)
         }
     }
 
-    transformSystemUpdate(registry, dt);
-    movementSystemPostPhysicsUpdate(registry, dt);
+    edbr::ecs::transformSystemUpdate(registry, dt);
+    edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
     if (auto player = entityutil::getPlayerEntity(registry); player.entity() != entt::null) {
         playerAnimationSystemUpdate(player, *physicsSystem, dt);
     }
@@ -740,7 +746,9 @@ void Game::loadLevel(const std::filesystem::path& path)
     const auto& scene = sceneCache.loadOrGetScene(level.getSceneModelPath());
     auto createdEntities = entityCreator.createEntitiesFromScene(scene);
     (void)createdEntities; // maybe will do something with them later...
-    transformSystemUpdate(registry, 0.f); // this will update worldTransforms to actual state
+
+    // this will update worldTransforms to actual state
+    edbr::ecs::transformSystemUpdate(registry, 0.f);
 
     if (loadedFromModel) {
         destroyEntity(eu::getPlayerEntity(registry));

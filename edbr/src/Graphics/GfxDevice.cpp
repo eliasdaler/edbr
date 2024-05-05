@@ -53,7 +53,7 @@ void GfxDevice::init(SDL_Window* window, const char* appName, const Version& ver
 
     { // create white texture
         std::uint32_t pixel = 0xFFFFFFFF;
-        whiteTextureID = createImage(
+        whiteImageId = createImage(
             {
                 .format = VK_FORMAT_R8G8B8A8_UNORM,
                 .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -61,6 +61,22 @@ void GfxDevice::init(SDL_Window* window, const char* appName, const Version& ver
             },
             "white texture",
             &pixel);
+    }
+
+    { // create error texture (black/magenta checker)
+        const auto black = 0xFF000000;
+        const auto magenta = 0xFFFF00FF;
+
+        std::array<std::uint32_t, 4> pixels{black, magenta, magenta, black};
+        errorImageId = createImage(
+            {
+                .format = VK_FORMAT_R8G8B8A8_UNORM,
+                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                .extent = VkExtent3D{2, 2, 1},
+            },
+            "error texture",
+            pixels.data());
+        imageCache.setErrorImageId(errorImageId);
     }
 
     // Dear ImGui
@@ -642,7 +658,10 @@ GPUImage GfxDevice::loadImageFromFileRaw(
     bool mipMap) const
 {
     auto data = util::loadImage(path);
-    assert(data.pixels);
+    if (!data.pixels) {
+        fmt::println("[error] failed to load image from '{}'", path.string());
+        return getImage(errorImageId);
+    }
 
     auto image = createImageRaw({
         .format = format,

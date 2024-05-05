@@ -99,7 +99,7 @@ public:
 
     void uploadImageData(const GPUImage& image, void* pixelData, std::uint32_t layer = 0) const;
 
-    ImageId getWhiteTextureID() { return whiteTextureID; }
+    ImageId getWhiteTextureID() { return whiteImageId; }
 
     // createImageRaw is mostly intended for low level usage. In most cases,
     // createImage should be preferred as it will automatically
@@ -168,7 +168,8 @@ private: // data
 
     ImageCache imageCache;
 
-    ImageId whiteTextureID;
+    ImageId whiteImageId{NULL_IMAGE_ID};
+    ImageId errorImageId{NULL_IMAGE_ID};
 
     bool vSync{true};
 };

@@ -1,38 +1,40 @@
 #include "Game.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
 
 namespace
 {
 void loadPhysicsComponent(entt::handle e, PhysicsComponent& pc, const JsonDataLoader& loader);
 }
 
-void Game::registerComponents(ComponentFactory& componentFactory)
+void Game::registerComponents(ComponentFactory& cf)
 {
-    componentFactory.registerComponent<TriggerComponent>("trigger");
-    componentFactory.registerComponent<CameraComponent>("camera");
-    componentFactory.registerComponent<PlayerSpawnComponent>("player_spawn");
-    componentFactory.registerComponent<ColliderComponent>("collider");
+    cf.registerComponent<TriggerComponent>("trigger");
+    cf.registerComponent<CameraComponent>("camera");
+    cf.registerComponent<PlayerSpawnComponent>("player_spawn");
+    cf.registerComponent<ColliderComponent>("collider");
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "meta", [](entt::handle e, MetaInfoComponent& mic, const JsonDataLoader& loader) {
             loader.getIfExists("scene", mic.sceneName);
             loader.getIfExists("node", mic.sceneNodeName);
         });
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {
             loader.getIfExists("castShadow", mc.castShadow);
         });
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
             loader.get("maxSpeed", mc.maxSpeed);
         });
 
-    componentFactory.registerComponentLoader("physics", loadPhysicsComponent);
+    cf.registerComponentLoader("physics", loadPhysicsComponent);
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "interact", [](entt::handle e, InteractComponent& ic, const JsonDataLoader& loader) {
             // type
             std::string type;
@@ -46,7 +48,7 @@ void Game::registerComponents(ComponentFactory& componentFactory)
             }
         });
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "npc", [this](entt::handle e, NPCComponent& npcc, const JsonDataLoader& loader) {
             // type
             loader.getIfExists("name", npcc.name.tag);
@@ -55,7 +57,7 @@ void Game::registerComponents(ComponentFactory& componentFactory)
             }
         });
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "animation_event_sound",
         [](entt::handle e, AnimationEventSoundComponent& sc, const JsonDataLoader& loader) {
             sc.eventSounds = loader.getLoader("events").getKeyValueMapString();

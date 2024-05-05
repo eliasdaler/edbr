@@ -1,6 +1,7 @@
 #include "EntityCreator.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/ECS/EntityFactory.h>
 #include <edbr/SceneCache.h>
 #include <edbr/Util/StringUtil.h>

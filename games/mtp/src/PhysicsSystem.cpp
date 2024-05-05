@@ -38,6 +38,7 @@
 
 #include <edbr/DevTools/Im3dState.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/CPUMesh.h>
 #include <edbr/Input/InputManager.h>

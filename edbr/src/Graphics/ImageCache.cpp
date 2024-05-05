@@ -22,8 +22,12 @@ ImageId ImageCache::loadImageFromFile(
         }
     }
 
-    const auto id = getFreeImageId();
     auto image = gfxDevice.loadImageFromFileRaw(path, format, usage, mipMap);
+    if (image.isInitialized() && image.getBindlessId() == errorImageId) {
+        return errorImageId;
+    }
+
+    const auto id = getFreeImageId();
     addImage(id, std::move(image));
 
     loadedImagesInfo.emplace(
@@ -34,7 +38,6 @@ ImageId ImageCache::loadImageFromFile(
             .usage = usage,
             .mipMap = mipMap,
         });
-
     return id;
 }
 

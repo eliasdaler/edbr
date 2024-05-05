@@ -5,8 +5,10 @@
 #include "Components.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
 
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
@@ -61,14 +63,16 @@ void Game::registerComponentDisplayers()
         [](entt::const_handle e, const MovementComponent& mc) {
             BeginPropertyTable();
             {
-                DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
                 DisplayProperty("MaxSpeed", mc.maxSpeed);
+                DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
                 // don't display for now: too noisy
                 // DisplayProperty("Velocity (effective)", mc.effectiveVelocity);
-                DisplayProperty("Start heading", mc.startHeading);
-                DisplayProperty("Target heading", mc.targetHeading);
-                DisplayProperty("Rotation progress", mc.rotationProgress);
-                DisplayProperty("Rotation time", mc.rotationTime);
+                if (mc.rotationTime != 0.f) {
+                    DisplayProperty("Start heading", mc.startHeading);
+                    DisplayProperty("Target heading", mc.targetHeading);
+                    DisplayProperty("Rotation progress", mc.rotationProgress);
+                    DisplayProperty("Rotation time", mc.rotationTime);
+                }
             }
             EndPropertyTable();
         },

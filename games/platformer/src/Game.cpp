@@ -1,27 +1,24 @@
 #include "Game.h"
 
 #include <edbr/Core/JsonFile.h>
+
+#include <edbr/ECS/Components/HierarchyComponent.h>
+#include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+#include <edbr/ECS/Systems/MovementSystem.h>
+#include <edbr/ECS/Systems/TransformSystem.h>
+
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Vulkan/Util.h>
 #include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
 
+#include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/Util/ImGuiUtil.h>
 #include <imgui.h>
 
-namespace
-{
-void setSpriteAnimation(
-    Sprite& sprite,
-    SpriteAnimator& animator,
-    const std::unordered_map<std::string, SpriteAnimationData>& animationsData,
-    const std::string& animsTag,
-    const std::string& animName)
-{
-    animator.setAnimation(animationsData.at(animsTag).getAnimation(animName), animName);
-    animator.animate(sprite, animationsData.at(animsTag).getSpriteSheet());
-}
-}
+#include "Components.h"
+#include "EntityUtil.h"
 
 Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
 {}
@@ -38,28 +35,23 @@ void Game::customInit()
     defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
 
     loadAnimations("assets/animations");
+    initEntityFactory();
+    registerComponents(entityFactory.getComponentFactory());
+    registerComponentDisplayers();
 
     level.load("assets/levels/LevelTown.json", gfxDevice);
 
-    const auto playerImageId = gfxDevice.loadImageFromFile("assets/images/player.png");
-    const auto& playerImage = gfxDevice.getImage(playerImageId);
-    playerSprite.setTexture(playerImage);
-    playerSprite.setTextureRect({80, 48, 16, 16});
+    const auto playerPos = glm::vec2{433.f, 240.f};
+    auto player = createEntityFromPrefab("player", playerPos);
+    player.emplace<PlayerComponent>();
 
-    playerPos = {433.f, 224.f};
-
-    setSpriteAnimation(playerSprite, playerSpriteAnimator, animationsData, "player", "run");
-}
-
-void Game::loadAnimations(const std::filesystem::path& animationsDir)
-{
-    // Automatically load all prefabs from the directory
-    // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
-    util::foreachFileInDir(animationsDir, [this, &animationsDir](const std::filesystem::path& p) {
-        auto relPath = p.lexically_relative(animationsDir);
-        const auto animsTag = relPath.replace_extension("").string();
-        animationsData[animsTag].load(p);
-    });
+    for (const auto& spawner : level.getSpawners()) {
+        if (entityFactory.prefabExists(spawner.prefabName)) {
+            createEntityFromPrefab(spawner.prefabName, spawner.position);
+        } else {
+            fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
+        }
+    }
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -76,11 +68,10 @@ void Game::createDrawImage(const glm::ivec2& drawImageSize)
     usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     usages |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    auto createImageInfo = vkutil::CreateImageInfo{
+    const auto createImageInfo = vkutil::CreateImageInfo{
         .format = drawImageFormat,
         .usage = usages,
         .extent = drawImageExtent,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
     };
     drawImageId = gfxDevice.createImage(createImageInfo, "draw image", nullptr, drawImageId);
 }
@@ -123,16 +114,63 @@ void Game::customUpdate(float dt)
         gameWindowSize = {blitRect.z, blitRect.w};
     }
 
-    playerSpriteAnimator.update(dt);
-    playerSpriteAnimator.animate(playerSprite, animationsData.at("player").getSpriteSheet());
+    edbr::ecs::movementSystemUpdate(registry, dt);
+    edbr::ecs::transformSystemUpdate(registry, dt);
+    edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
+
+    // set direction based on velocity
+    for (auto&& [e, tc, mc] : registry.view<TransformComponent, MovementComponent>().each()) {
+        if (mc.effectiveVelocity.x != 0.f || mc.effectiveVelocity.y != 0.f) {
+            entityutil::setHeading2D({registry, e}, glm::vec2{mc.effectiveVelocity});
+        }
+    }
+
+    { // TODO: do this in state machine
+        auto player = entityutil::getPlayerEntity(registry);
+        auto& mc = player.get<MovementComponent>();
+        if (mc.effectiveVelocity.x != 0.f || mc.effectiveVelocity.y != 0.f) {
+            entityutil::setSpriteAnimation(player, "run");
+        } else {
+            entityutil::setSpriteAnimation(player, "idle");
+        }
+    }
+
+    // animation system
+    for (const auto&& [e, tc, sc, ac] :
+         registry.view<TransformComponent, SpriteComponent, SpriteAnimationComponent>().each()) {
+        ac.animator.update(dt);
+        ac.animator.animate(sc.sprite, ac.animationsData->getSpriteSheet());
+
+        // flip on X if looking left
+        // TODO: check if animation has is direction
+        if (entityutil::getHeading2D({registry, e}).x < 0.f) {
+            std::swap(sc.sprite.uv0.x, sc.sprite.uv1.x);
+        }
+    }
 
     if (!freeCamera) {
-        cameraPos = playerPos - static_cast<glm::vec2>(params.renderSize) / 2.f;
+        auto player = entityutil::getPlayerEntity(registry);
+        cameraPos = glm::vec2{player.get<TransformComponent>().transform.getPosition()} -
+                    static_cast<glm::vec2>(params.renderSize) / 2.f;
     }
 
     if (ImGui::Begin("Hello, world")) {
-        ImGui::Drag("playerPos", &playerPos);
+        using namespace devtools;
+        BeginPropertyTable();
+        EndPropertyTable();
         ImGui::End();
+    }
+
+    if (ImGui::Begin("Entities")) {
+        entityTreeView.update(registry, dt);
+        ImGui::End();
+    }
+
+    if (entityTreeView.hasSelectedEntity()) {
+        if (ImGui::Begin("Selected entity")) {
+            entityInfoDisplayer.displayEntityInfo(entityTreeView.getSelectedEntity(), dt);
+            ImGui::End();
+        }
     }
 }
 
@@ -158,9 +196,9 @@ void Game::handlePlayerInput(float dt)
     const auto moveStickState =
         util::getStickState(actionMapping, horizonalWalkAxis, verticalWalkAxis);
 
-    const auto playerMoveSpeed = glm::vec2{60.f, 60.f};
-    auto velocity = moveStickState * playerMoveSpeed;
-    playerPos += velocity * dt;
+    auto player = entityutil::getPlayerEntity(registry);
+    auto& mc = player.get<MovementComponent>();
+    mc.kinematicVelocity = glm::vec3{moveStickState * glm::vec2{mc.maxSpeed}, 0.f};
 }
 
 void Game::handleFreeCameraInput(float dt)
@@ -233,10 +271,62 @@ void Game::drawWorld()
 
 void Game::drawGameObjects()
 {
-    spriteRenderer.drawSprite(playerSprite, playerPos);
+    for (const auto&& [e, tc, sc] : registry.view<TransformComponent, SpriteComponent>().each()) {
+        const auto spritePos = glm::vec2{tc.worldTransform[3]};
+        spriteRenderer.drawSprite(sc.sprite, spritePos);
+    }
 }
 
 void Game::drawUI()
 {
     uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
+}
+
+void Game::initEntityFactory()
+{
+    entityFactory.setCreateDefaultEntityFunc([](entt::registry& registry) {
+        auto e = registry.create();
+        registry.emplace<TransformComponent>(e);
+        registry.emplace<HierarchyComponent>(e);
+        return entt::handle(registry, e);
+    });
+
+    const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
+    loadPrefabs(prefabsDir);
+}
+
+void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
+{
+    // Automatically load all prefabs from the directory
+    // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
+    util::foreachFileInDir(prefabsDir, [this, &prefabsDir](const std::filesystem::path& p) {
+        auto relPath = p.lexically_relative(prefabsDir);
+        const auto prefabName = relPath.replace_extension("").string();
+        entityFactory.registerPrefab(prefabName, p);
+    });
+}
+
+void Game::loadAnimations(const std::filesystem::path& animationsDir)
+{
+    // Automatically load all animations from the directory
+    // Animations from "assets/animations/npc/guy.json" is named "npc/guy"
+    util::foreachFileInDir(animationsDir, [this, &animationsDir](const std::filesystem::path& p) {
+        auto relPath = p.lexically_relative(animationsDir);
+        const auto animsTag = relPath.replace_extension("").string();
+        animationsData[animsTag].load(p);
+    });
+}
+
+entt::handle Game::createEntityFromPrefab(const std::string& prefabName, const glm::vec2& spawnPos)
+
+{
+    try {
+        auto e = entityFactory.createEntity(registry, prefabName);
+        entityPostInit(e);
+        entityutil::setWorldPosition2D(e, spawnPos);
+        return e;
+    } catch (const std::exception& e) {
+        throw std::runtime_error(
+            fmt::format("failed to create prefab '{}': {}", prefabName, e.what()));
+    }
 }

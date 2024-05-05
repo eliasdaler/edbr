@@ -5,7 +5,10 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+
 #include <edbr/Event/EventManager.h>
 
 namespace entityutil
@@ -72,7 +75,9 @@ void setPosition(entt::handle e, const glm::vec3& pos)
 
 void teleportEntity(entt::handle e, const glm::vec3& pos)
 {
-    assert(!e.get<HierarchyComponent>().hasParent() && "can't set position on parented entity");
+    assert(
+        !e.get<HierarchyComponent>().hasParent() &&
+        "can't set position on an entity with a parent");
     assert(e.all_of<PhysicsComponent>() && "call setPosition instead");
     auto& tc = e.get<TransformComponent>();
     tc.transform.setPosition(pos);

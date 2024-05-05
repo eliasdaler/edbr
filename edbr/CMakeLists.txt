@@ -25,6 +25,8 @@ add_library(edbr
   # ECS
   src/ECS/ComponentFactory.cpp
   src/ECS/EntityFactory.cpp
+  src/ECS/Systems/MovementSystem.cpp
+  src/ECS/Systems/TransformSystem.cpp
 
   # Math
   src/Math/IndexRange2.cpp

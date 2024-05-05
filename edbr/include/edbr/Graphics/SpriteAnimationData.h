@@ -16,6 +16,8 @@ public:
         return animations.at(animName);
     }
 
+    bool hasAnimation(const std::string& animName) const { return animations.contains(animName); }
+
     const SpriteSheet& getSpriteSheet() const { return spriteSheet; }
 
 private:

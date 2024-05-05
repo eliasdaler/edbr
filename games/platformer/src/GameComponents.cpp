@@ -1,0 +1,34 @@
+#include "Game.h"
+
+#include "Components.h"
+
+#include <edbr/ECS/Components/MovementComponent.h>
+
+void Game::registerComponents(ComponentFactory& cf)
+{
+    cf.registerComponentLoader(
+        "sprite", [](entt::handle e, SpriteComponent& sc, const JsonDataLoader& loader) {
+            loader.get("texture", sc.spritePath);
+            loader.get("z", sc.z, 0);
+        });
+
+    cf.registerComponentLoader(
+        "animation",
+        [this](entt::handle e, SpriteAnimationComponent& ac, const JsonDataLoader& loader) {
+            loader.get("data", ac.animationsDataTag);
+
+            auto it = animationsData.find(ac.animationsDataTag);
+            if (it == animationsData.end()) {
+                throw std::runtime_error(
+                    fmt::format("animations data '{}' was not loaded", ac.animationsDataTag));
+            }
+            ac.animationsData = &it->second;
+
+            loader.getIfExists("default_animation", ac.defaultAnimationName);
+        });
+
+    cf.registerComponentLoader(
+        "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
+            loader.get("maxSpeed", mc.maxSpeed);
+        });
+}

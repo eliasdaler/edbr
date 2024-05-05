@@ -33,6 +33,8 @@ public:
 
     BindlessSetManager bindlessSetManager;
 
+    void setErrorImageId(ImageId id) { errorImageId = id; }
+
 private:
     std::vector<GPUImage> images;
     GfxDevice& gfxDevice;
@@ -44,4 +46,5 @@ private:
         bool mipMap;
     };
     std::unordered_map<ImageId, LoadedImageInfo> loadedImagesInfo;
+    ImageId errorImageId{NULL_IMAGE_ID};
 };

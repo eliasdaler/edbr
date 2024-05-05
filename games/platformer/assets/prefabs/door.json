@@ -1,0 +1,25 @@
+{
+  "collision": {
+      "group": "NPC",
+      "size": [16, 16]
+  },
+  "animation": {
+    "data": "door",
+    "default_animation": "closed"
+  },
+  "sprite": {
+    "texture": "assets/images/door.png",
+    "z": -1
+  },
+  "interaction": { "type": "GoInside" },
+  "state_machine": {
+      "FSM": "door"
+  },
+  "teleport": {},
+  "sound": {
+      "sounds": {
+          "open": "door_open",
+          "close": "door_close"
+      }
+  }
+}

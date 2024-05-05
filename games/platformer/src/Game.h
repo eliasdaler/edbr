@@ -4,16 +4,22 @@
 
 #include <glm/vec2.hpp>
 
+#include <entt/entity/registry.hpp>
+
 #include <edbr/Application.h>
+#include <edbr/ECS/EntityFactory.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/IdTypes.h>
-#include <edbr/Graphics/Sprite.h>
 #include <edbr/Graphics/SpriteAnimationData.h>
-#include <edbr/Graphics/SpriteAnimator.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/TileMap/TileMapRenderer.h>
 
+#include <edbr/DevTools/EntityInfoDisplayer.h>
+#include <edbr/DevTools/EntityTreeView.h>
+
 #include "Level.h"
+
+class ComponentFactory;
 
 class Game : public Application {
 public:
@@ -28,6 +34,16 @@ public:
 
 private:
     void loadAnimations(const std::filesystem::path& animationsDir);
+
+    void initEntityFactory();
+    void loadPrefabs(const std::filesystem::path& prefabsDir);
+    void registerComponents(ComponentFactory& componentFactory);
+    void registerComponentDisplayers();
+    void entityPostInit(entt::handle e);
+
+    entt::handle createEntityFromPrefab(
+        const std::string& prefabName,
+        const glm::vec2& spawnPos = {});
 
     void handleInput(float dt);
     void handlePlayerInput(float dt);
@@ -50,17 +66,17 @@ private:
     TileMapRenderer tileMapRenderer;
 
     glm::vec2 cameraPos;
-    glm::vec2 playerPos;
 
-    SpriteAnimator playerSpriteAnimator;
-
-    Sprite playerSprite;
     Font defaultFont;
     Level level;
+
+    std::unordered_map<std::string, SpriteAnimationData> animationsData;
+    EntityFactory entityFactory;
+    entt::registry registry;
 
     bool gameDrawnInWindow{false};
     bool drawImGui{true};
     bool freeCamera{false};
-
-    std::unordered_map<std::string, SpriteAnimationData> animationsData;
+    EntityTreeView entityTreeView;
+    EntityInfoDisplayer entityInfoDisplayer;
 };

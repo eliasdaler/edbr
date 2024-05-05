@@ -13,6 +13,10 @@ endif()
 
 add_executable(platformer
   src/Level.cpp
+  src/EntityUtil.cpp
+  src/GameComponents.cpp
+  src/GameComponentDisplayers.cpp
+  src/GameEntityInit.cpp
   src/Game.cpp
 
   src/main.cpp
