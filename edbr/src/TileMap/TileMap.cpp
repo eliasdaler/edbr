@@ -162,9 +162,10 @@ math::IndexRange2 TileMap::getTileIndicesInRect(const math::FloatRect& rect) con
     assert(rect.width >= 0.f && rect.height >= 0.f);
     const auto leftTopTileIndex = GetTileIndex(rect.getTopLeftCorner());
 
-    // substract 1 for edge condition, when rect bottom right is at the br-corner of the tile
+    // substract 0.1 for edge condition, when rect bottom right is at the br-corner of the tile
     // this code is precise up to ~16000000.f
-    const auto rightDownTileIndex = GetTileIndex(rect.getBottomRightCorner() - glm::vec2{1.f, 1.f});
+    const auto rightDownTileIndex =
+        GetTileIndex(rect.getBottomRightCorner() - glm::vec2{0.1f, 0.1f});
     const auto numberOfTiles = (rightDownTileIndex - leftTopTileIndex) + glm::ivec2{1, 1};
 
     return math::IndexRange2(leftTopTileIndex, numberOfTiles);

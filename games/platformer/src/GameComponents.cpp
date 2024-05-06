@@ -37,4 +37,8 @@ void Game::registerComponents(ComponentFactory& cf)
         "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
             loader.get("maxSpeed", mc.maxSpeed);
         });
+
+    cf.registerComponentLoader(
+        "character_controller",
+        [](entt::handle e, CharacterControllerComponent& cc, const JsonDataLoader& loader) {});
 }

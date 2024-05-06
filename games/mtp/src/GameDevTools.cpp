@@ -207,6 +207,7 @@ void Game::devToolsUpdate(float dt)
                 mousePos, gameWindowPos, gameWindowSize, params.renderSize);
             DisplayProperty("Mouse pos", mousePos);
             DisplayProperty("Game screen pos", gameScreenPos);
+            DisplayProperty("Game screen pos", gameScreenPos);
         }
         EndPropertyTable();
 

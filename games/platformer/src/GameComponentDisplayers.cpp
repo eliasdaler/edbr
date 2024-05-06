@@ -71,6 +71,18 @@ void Game::registerComponentDisplayers()
     });
 
     eid.registerDisplayer(
+        "CharacterController", [](entt::const_handle e, const CharacterControllerComponent& cc) {
+            BeginPropertyTable();
+            {
+                DisplayProperty("Gravity", cc.gravity);
+                DisplayProperty("WasOnGround", cc.wasOnGround);
+                DisplayProperty("IsOnGround", cc.isOnGround);
+                DisplayProperty("WantJump", cc.wantJump);
+            }
+            EndPropertyTable();
+        });
+
+    eid.registerDisplayer(
         "Animation", [](entt::const_handle e, const SpriteAnimationComponent& ac) {
             BeginPropertyTable();
             {

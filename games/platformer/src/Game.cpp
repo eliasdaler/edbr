@@ -107,18 +107,23 @@ void Game::customUpdate(float dt)
         gameWindowSize = {blitRect.z, blitRect.w};
     }
 
+    const auto& tileMap = level.getTileMap();
+    characterControlSystemUpdate(registry, dt, tileMap);
     edbr::ecs::movementSystemUpdate(registry, dt);
     edbr::ecs::transformSystemUpdate(registry, dt);
+    tileCollisionSystemUpdate(registry, dt, tileMap);
     edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
     directionSystemUpdate(registry, dt);
-    playerAnimationSystemUpdate(registry, dt);
+    playerAnimationSystemUpdate(registry, dt, tileMap);
     spriteAnimationSystemUpdate(registry, dt);
 
     // update camera
     if (!freeCamera) {
         auto player = entityutil::getPlayerEntity(registry);
+        const auto cameraOffset = glm::vec2{0, 32.f};
         cameraPos = glm::vec2{player.get<TransformComponent>().transform.getPosition()} -
-                    static_cast<glm::vec2>(params.renderSize) / 2.f;
+                    static_cast<glm::vec2>(params.renderSize) / 2.f - cameraOffset;
+        cameraPos = glm::round(cameraPos);
     }
 
     if (isDevEnvironment) {
@@ -150,7 +155,25 @@ void Game::handlePlayerInput(float dt)
 
     auto player = entityutil::getPlayerEntity(registry);
     auto& mc = player.get<MovementComponent>();
-    mc.kinematicVelocity = glm::vec3{moveStickState * glm::vec2{mc.maxSpeed}, 0.f};
+    mc.kinematicVelocity.x = moveStickState.x * mc.maxSpeed.x;
+
+    static const auto jumpAction = actionMapping.getActionTagHash("Jump");
+    auto& cc = player.get<CharacterControllerComponent>();
+    if (actionMapping.isPressed(jumpAction)) {
+        cc.wantJump = true;
+    }
+
+    // "short jump" - if key is not pressed, more gravity is applied,
+    // so the jump becomes shorter
+    const auto playerGravity = 1.f;
+    // ShortJumpFactor is a factor by which gravity is multiplied if player doesn't hold a
+    // jump button.
+    const float ShortJumpFactor = 7.5f;
+    if (mc.kinematicVelocity.y < 0 && !actionMapping.isHeld(jumpAction)) {
+        cc.gravity = playerGravity * (1 + ShortJumpFactor);
+    } else {
+        cc.gravity = playerGravity;
+    }
 }
 
 void Game::handleFreeCameraInput(float dt)
@@ -229,7 +252,7 @@ void Game::drawWorld()
 void Game::drawGameObjects()
 {
     for (const auto&& [e, tc, sc] : registry.view<TransformComponent, SpriteComponent>().each()) {
-        const auto spritePos = glm::vec2{tc.worldTransform[3]};
+        const auto spritePos = glm::round(glm::vec2{tc.worldTransform[3]});
         spriteRenderer.drawSprite(sc.sprite, spritePos);
     }
 }

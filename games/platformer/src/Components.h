@@ -17,6 +17,15 @@ struct CollisionComponent {
     glm::vec2 origin;
 };
 
+struct CharacterControllerComponent {
+public:
+    float gravity{1.f};
+
+    bool wasOnGround{false};
+    bool isOnGround{false};
+    bool wantJump{false};
+};
+
 struct SpriteAnimationComponent {
     SpriteAnimator animator;
 

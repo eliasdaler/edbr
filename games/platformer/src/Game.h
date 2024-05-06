@@ -61,8 +61,8 @@ private:
     void devToolsUpdate(float dt);
     void devToolsDrawInWorldUI();
 
-    glm::vec2 gameWindowPos;
-    glm::vec2 gameWindowSize;
+    glm::ivec2 gameWindowPos;
+    glm::ivec2 gameWindowSize;
 
     VkFormat drawImageFormat{VK_FORMAT_R16G16B16A16_SFLOAT};
     ImageId drawImageId{NULL_IMAGE_ID};

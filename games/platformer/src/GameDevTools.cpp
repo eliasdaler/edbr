@@ -4,6 +4,7 @@
 #include "EntityUtil.h"
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
+#include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
 #include <imgui.h>
 
@@ -33,6 +34,14 @@ void Game::devToolsUpdate(float dt)
     if (ImGui::Begin("Hello, world")) {
         using namespace devtools;
         BeginPropertyTable();
+        const auto& mousePos = inputManager.getMouse().getPosition();
+        const auto& gameScreenPos = edbr::util::
+            getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+        DisplayProperty("Mouse pos", mousePos);
+        DisplayProperty("Game screen pos", gameScreenPos);
+        const auto worldPos = static_cast<glm::vec2>(gameScreenPos) + cameraPos;
+        DisplayProperty("Mouse wolrd pos", worldPos);
+        DisplayProperty("Tile index", TileMap::GetTileIndex(worldPos));
         EndPropertyTable();
         ImGui::End();
     }
