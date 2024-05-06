@@ -13,12 +13,9 @@
 #include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
 
-#include <edbr/DevTools/ImGuiPropertyTable.h>
-#include <edbr/Util/ImGuiUtil.h>
-#include <imgui.h>
-
 #include "Components.h"
 #include "EntityUtil.h"
+#include "Systems.h"
 
 Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
 {}
@@ -31,27 +28,23 @@ void Game::customInit()
     createDrawImage(params.renderSize);
     spriteRenderer.init(drawImageFormat);
     uiRenderer.init(drawImageFormat);
-
     defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
 
     loadAnimations("assets/animations");
+
     initEntityFactory();
     registerComponents(entityFactory.getComponentFactory());
     registerComponentDisplayers();
 
-    level.load("assets/levels/LevelTown.json", gfxDevice);
-
-    const auto playerPos = glm::vec2{433.f, 240.f};
-    auto player = createEntityFromPrefab("player", playerPos);
-    player.emplace<PlayerComponent>();
-
-    for (const auto& spawner : level.getSpawners()) {
-        if (entityFactory.prefabExists(spawner.prefabName)) {
-            createEntityFromPrefab(spawner.prefabName, spawner.position);
-        } else {
-            fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
-        }
+    { // create player
+        const auto playerPos = glm::vec2{433.f, 240.f};
+        auto player = createEntityFromPrefab("player", playerPos);
+        player.emplace<PlayerComponent>();
+        entityutil::makePersistent(player);
     }
+
+    level.load("assets/levels/LevelTown.json", gfxDevice);
+    enterLevel();
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -117,60 +110,19 @@ void Game::customUpdate(float dt)
     edbr::ecs::movementSystemUpdate(registry, dt);
     edbr::ecs::transformSystemUpdate(registry, dt);
     edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
+    directionSystemUpdate(registry, dt);
+    playerAnimationSystemUpdate(registry, dt);
+    spriteAnimationSystemUpdate(registry, dt);
 
-    // set direction based on velocity
-    for (auto&& [e, tc, mc] : registry.view<TransformComponent, MovementComponent>().each()) {
-        if (mc.effectiveVelocity.x != 0.f || mc.effectiveVelocity.y != 0.f) {
-            entityutil::setHeading2D({registry, e}, glm::vec2{mc.effectiveVelocity});
-        }
-    }
-
-    { // TODO: do this in state machine
-        auto player = entityutil::getPlayerEntity(registry);
-        auto& mc = player.get<MovementComponent>();
-        if (mc.effectiveVelocity.x != 0.f || mc.effectiveVelocity.y != 0.f) {
-            entityutil::setSpriteAnimation(player, "run");
-        } else {
-            entityutil::setSpriteAnimation(player, "idle");
-        }
-    }
-
-    // animation system
-    for (const auto&& [e, tc, sc, ac] :
-         registry.view<TransformComponent, SpriteComponent, SpriteAnimationComponent>().each()) {
-        ac.animator.update(dt);
-        ac.animator.animate(sc.sprite, ac.animationsData->getSpriteSheet());
-
-        // flip on X if looking left
-        // TODO: check if animation has is direction
-        if (entityutil::getHeading2D({registry, e}).x < 0.f) {
-            std::swap(sc.sprite.uv0.x, sc.sprite.uv1.x);
-        }
-    }
-
+    // update camera
     if (!freeCamera) {
         auto player = entityutil::getPlayerEntity(registry);
         cameraPos = glm::vec2{player.get<TransformComponent>().transform.getPosition()} -
                     static_cast<glm::vec2>(params.renderSize) / 2.f;
     }
 
-    if (ImGui::Begin("Hello, world")) {
-        using namespace devtools;
-        BeginPropertyTable();
-        EndPropertyTable();
-        ImGui::End();
-    }
-
-    if (ImGui::Begin("Entities")) {
-        entityTreeView.update(registry, dt);
-        ImGui::End();
-    }
-
-    if (entityTreeView.hasSelectedEntity()) {
-        if (ImGui::Begin("Selected entity")) {
-            entityInfoDisplayer.displayEntityInfo(entityTreeView.getSelectedEntity(), dt);
-            ImGui::End();
-        }
+    if (isDevEnvironment) {
+        devToolsUpdate(dt);
     }
 }
 
@@ -182,8 +134,8 @@ void Game::handleInput(float dt)
         handleFreeCameraInput(dt);
     }
 
-    if (inputManager.getKeyboard().wasJustPressed(SDL_SCANCODE_C)) {
-        freeCamera = !freeCamera;
+    if (isDevEnvironment) {
+        devToolsHandleInput(dt);
     }
 }
 
@@ -220,15 +172,6 @@ void Game::customDraw()
 {
     auto cmd = gfxDevice.beginFrame();
 
-    const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
-    const auto endFrameProps = GfxDevice::EndFrameProps{
-        .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
-        .copyImageIntoSwapchain = !gameDrawnInWindow,
-        .drawImageBlitRect = {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
-        .drawImageLinearBlit = false,
-        .drawImGui = drawImGui,
-    };
-
     const auto& drawImage = gfxDevice.getImage(drawImageId);
     vkutil::transitionImage(
         cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -244,6 +187,15 @@ void Game::customDraw()
     drawUI();
     uiRenderer.endDrawing();
     uiRenderer.draw(cmd, drawImage);
+
+    const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
+    const auto endFrameProps = GfxDevice::EndFrameProps{
+        .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
+        .copyImageIntoSwapchain = !gameDrawnInWindow,
+        .drawImageBlitRect = {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
+        .drawImageLinearBlit = false,
+        .drawImGui = drawImGui,
+    };
 
     gfxDevice.endFrame(cmd, drawImage, endFrameProps);
 }
@@ -315,6 +267,22 @@ void Game::loadAnimations(const std::filesystem::path& animationsDir)
         const auto animsTag = relPath.replace_extension("").string();
         animationsData[animsTag].load(p);
     });
+}
+
+void Game::enterLevel()
+{
+    spawnLevelEntities();
+}
+
+void Game::spawnLevelEntities()
+{
+    for (const auto& spawner : level.getSpawners()) {
+        if (entityFactory.prefabExists(spawner.prefabName)) {
+            createEntityFromPrefab(spawner.prefabName, spawner.position);
+        } else {
+            fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
+        }
+    }
 }
 
 entt::handle Game::createEntityFromPrefab(const std::string& prefabName, const glm::vec2& spawnPos)

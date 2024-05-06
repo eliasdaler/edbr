@@ -2,6 +2,7 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include "Components.h"
@@ -38,6 +39,16 @@ glm::vec2 getHeading2D(entt::const_handle e)
 {
     const auto& tc = e.get<TransformComponent>();
     return glm::vec2{tc.transform.getHeading() * glm::vec3{1.f, 0.f, 0.f}};
+}
+
+void makePersistent(entt::handle e)
+{
+    e.emplace<PersistentComponent>();
+}
+
+void makeNonPersistent(entt::handle e)
+{
+    e.erase<PersistentComponent>();
 }
 
 void setSpriteAnimation(entt::handle e, const std::string& animName)

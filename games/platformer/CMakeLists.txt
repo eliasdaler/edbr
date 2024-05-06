@@ -16,6 +16,7 @@ add_executable(platformer
   src/EntityUtil.cpp
   src/GameComponents.cpp
   src/GameComponentDisplayers.cpp
+  src/GameDevTools.cpp
   src/GameEntityInit.cpp
   src/Game.cpp
 

@@ -41,6 +41,8 @@ private:
     void registerComponentDisplayers();
     void entityPostInit(entt::handle e);
 
+    void enterLevel();
+    void spawnLevelEntities();
     entt::handle createEntityFromPrefab(
         const std::string& prefabName,
         const glm::vec2& spawnPos = {});
@@ -54,6 +56,9 @@ private:
     void drawUI();
 
     void createDrawImage(const glm::ivec2& drawImageSize);
+
+    void devToolsHandleInput(float dt);
+    void devToolsUpdate(float dt);
 
     glm::vec2 gameWindowPos;
     glm::vec2 gameWindowSize;
