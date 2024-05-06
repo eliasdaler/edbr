@@ -37,7 +37,7 @@ void Game::customInit()
     registerComponentDisplayers();
 
     { // create player
-        const auto playerPos = glm::vec2{433.f, 240.f};
+        const auto playerPos = glm::vec2{640, 192};
         auto player = createEntityFromPrefab("player", playerPos);
         player.emplace<PlayerComponent>();
         entityutil::makePersistent(player);
@@ -278,7 +278,8 @@ void Game::spawnLevelEntities()
 {
     for (const auto& spawner : level.getSpawners()) {
         if (entityFactory.prefabExists(spawner.prefabName)) {
-            createEntityFromPrefab(spawner.prefabName, spawner.position);
+            auto e = createEntityFromPrefab(spawner.prefabName, spawner.position);
+            entityutil::setHeading2D(e, spawner.heading);
         } else {
             fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
         }
