@@ -43,9 +43,7 @@ private:
 
     void enterLevel();
     void spawnLevelEntities();
-    entt::handle createEntityFromPrefab(
-        const std::string& prefabName,
-        const glm::vec2& spawnPos = {});
+    entt::handle createEntityFromPrefab(const std::string& prefabName);
 
     void handleInput(float dt);
     void handlePlayerInput(float dt);

@@ -37,9 +37,11 @@ void Game::customInit()
     registerComponentDisplayers();
 
     { // create player
-        const auto playerPos = glm::vec2{640, 192};
-        auto player = createEntityFromPrefab("player", playerPos);
+        auto player = createEntityFromPrefab("player");
         player.emplace<PlayerComponent>();
+
+        const auto playerPos = glm::vec2{640, 192};
+        entityutil::setWorldPosition2D(player, playerPos);
         entityutil::makePersistent(player);
     }
 
@@ -306,7 +308,8 @@ void Game::spawnLevelEntities()
 {
     for (const auto& spawner : level.getSpawners()) {
         if (entityFactory.prefabExists(spawner.prefabName)) {
-            auto e = createEntityFromPrefab(spawner.prefabName, spawner.position);
+            auto e = createEntityFromPrefab(spawner.prefabName);
+            entityutil::setWorldPosition2D(e, spawner.position);
             entityutil::setHeading2D(e, spawner.heading);
         } else {
             fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
@@ -314,13 +317,12 @@ void Game::spawnLevelEntities()
     }
 }
 
-entt::handle Game::createEntityFromPrefab(const std::string& prefabName, const glm::vec2& spawnPos)
+entt::handle Game::createEntityFromPrefab(const std::string& prefabName)
 
 {
     try {
         auto e = entityFactory.createEntity(registry, prefabName);
         entityPostInit(e);
-        entityutil::setWorldPosition2D(e, spawnPos);
         return e;
     } catch (const std::exception& e) {
         throw std::runtime_error(
