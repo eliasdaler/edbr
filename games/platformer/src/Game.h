@@ -59,6 +59,7 @@ private:
 
     void devToolsHandleInput(float dt);
     void devToolsUpdate(float dt);
+    void devToolsDrawInWorldUI();
 
     glm::vec2 gameWindowPos;
     glm::vec2 gameWindowSize;
@@ -79,9 +80,10 @@ private:
     EntityFactory entityFactory;
     entt::registry registry;
 
+    EntityTreeView entityTreeView;
+    EntityInfoDisplayer entityInfoDisplayer;
     bool gameDrawnInWindow{false};
     bool drawImGui{true};
     bool freeCamera{false};
-    EntityTreeView entityTreeView;
-    EntityInfoDisplayer entityInfoDisplayer;
+    bool drawCollisionShapes{false};
 };

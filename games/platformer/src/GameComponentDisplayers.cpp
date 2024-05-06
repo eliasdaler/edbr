@@ -61,6 +61,15 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
+    eid.registerDisplayer("Collision", [](entt::const_handle e, const CollisionComponent& cc) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("Size", cc.size);
+            DisplayProperty("Origin", cc.origin);
+        }
+        EndPropertyTable();
+    });
+
     eid.registerDisplayer(
         "Animation", [](entt::const_handle e, const SpriteAnimationComponent& ac) {
             BeginPropertyTable();

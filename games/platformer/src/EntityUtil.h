@@ -4,6 +4,8 @@
 
 #include <entt/entity/fwd.hpp>
 
+#include <edbr/Math/Rect.h>
+
 namespace entityutil
 {
 // transform
@@ -12,9 +14,15 @@ glm::vec2 getWorldPosition2D(entt::const_handle e);
 void setHeading2D(entt::handle e, const glm::vec2& u);
 glm::vec2 getHeading2D(entt::const_handle e);
 
+// collision
+math::FloatRect getAABB(entt::const_handle e);
+
 // persistency
 void makePersistent(entt::handle e);
 void makeNonPersistent(entt::handle e);
+
+// graphics
+math::FloatRect getSpriteWorldRect(entt::const_handle e);
 
 // animation
 void setSpriteAnimation(entt::handle e, const std::string& animName);

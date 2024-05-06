@@ -13,6 +13,12 @@ void Game::registerComponents(ComponentFactory& cf)
         });
 
     cf.registerComponentLoader(
+        "collision", [](entt::handle e, CollisionComponent& cc, const JsonDataLoader& loader) {
+            loader.getIfExists("size", cc.size);
+            loader.getIfExists("origin", cc.origin);
+        });
+
+    cf.registerComponentLoader(
         "animation",
         [this](entt::handle e, SpriteAnimationComponent& ac, const JsonDataLoader& loader) {
             loader.get("data", ac.animationsDataTag);

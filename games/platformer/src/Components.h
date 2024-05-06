@@ -12,6 +12,11 @@ struct SpriteComponent {
     std::filesystem::path spritePath;
 };
 
+struct CollisionComponent {
+    glm::vec2 size;
+    glm::vec2 origin;
+};
+
 struct SpriteAnimationComponent {
     SpriteAnimator animator;
 

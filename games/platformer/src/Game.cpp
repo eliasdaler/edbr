@@ -179,7 +179,12 @@ void Game::customDraw()
         cmd, drawImage.getExtent2D(), drawImage.imageView, glm::vec4{1.f, 0.f, 1.f, 1.f});
 
     spriteRenderer.beginDrawing();
-    drawWorld();
+    {
+        drawWorld();
+        if (isDevEnvironment) {
+            devToolsDrawInWorldUI();
+        }
+    }
     spriteRenderer.endDrawing();
     spriteRenderer.draw(cmd, drawImage, cameraPos);
 
@@ -209,7 +214,7 @@ void Game::drawWorld()
 
     bool drewObjects = false;
     for (int z = minZ; z <= maxZ; ++z) {
-        tileMapRenderer.drawTileMapLayer(gfxDevice, spriteRenderer, tileMap, z);
+        tileMapRenderer.drawTileMapLayers(gfxDevice, spriteRenderer, tileMap, z);
         if (z == 0) {
             drawGameObjects();
             drewObjects = true;

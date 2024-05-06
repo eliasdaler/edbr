@@ -41,6 +41,18 @@ glm::vec2 getHeading2D(entt::const_handle e)
     return glm::vec2{tc.transform.getHeading() * glm::vec3{1.f, 0.f, 0.f}};
 }
 
+math::FloatRect getAABB(entt::const_handle e)
+{
+    auto& cc = e.get<CollisionComponent>();
+    auto origin = cc.origin;
+    if (origin == glm::vec2{}) {
+        origin = {-cc.size.x / 2.f, -cc.size.y};
+    }
+    const auto pos = getWorldPosition2D(e);
+    const auto tl = pos + origin;
+    return {tl, cc.size};
+}
+
 void makePersistent(entt::handle e)
 {
     e.emplace<PersistentComponent>();
@@ -49,6 +61,15 @@ void makePersistent(entt::handle e)
 void makeNonPersistent(entt::handle e)
 {
     e.erase<PersistentComponent>();
+}
+
+math::FloatRect getSpriteWorldRect(entt::const_handle e)
+{
+    // this assumes that entity/sprite doesn't have scale
+    const auto& gc = e.get<SpriteComponent>();
+    const auto ss = glm::abs(gc.sprite.uv1 - gc.sprite.uv0) * gc.sprite.textureSize;
+    const auto pos2D = getWorldPosition2D(e);
+    return math::FloatRect(pos2D - gc.sprite.pivot * ss, ss);
 }
 
 void setSpriteAnimation(entt::handle e, const std::string& animName)
