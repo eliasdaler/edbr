@@ -25,17 +25,44 @@ const std::string DialogueBox::Choice2Tag{"choice2"};
 
 void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 {
+    positionAndSize.load(loader.getLoader("positionAndSize"));
     nineSliceStyle.load(loader.getLoader("nineSliceStyle"), gfxDevice);
-    loader.get("maxNumCharsLine", maxNumCharsLine);
-    loader.get("maxLines", maxLines);
-    mainTextFontStyle.load(loader.getLoader("mainTextFont"));
-    loader.get("moreTextImage", moreTextImagePath);
-    choiceButtonStyle.load(loader.getLoader("choiceButtonStyle"));
 
-    const auto& soundsLoader = loader.getLoader("sounds");
-    soundsLoader.get("showChoices", showChoicesSoundPath);
-    soundsLoader.get("choiceSelect", choiceSelectSoundPath);
-    soundsLoader.get("skipText", skipTextSoundPath);
+    { // main text
+        const auto& mtLoader = loader.getLoader("mainText");
+        mainTextFontStyle.load(mtLoader.getLoader("font"));
+        mtLoader.get("color", mainTextColor);
+        mtLoader.get("padding", mainTextPadding);
+        mtLoader.get("shadow", mainTextShadow);
+        mtLoader.get("maxNumCharsLine", mainTextMaxNumCharsLine);
+        mtLoader.get("maxLines", mainTextMaxLines);
+    }
+
+    { // speaker name
+        const auto& snLoader = loader.getLoader("speakerNameText");
+        snLoader.get("color", speakerNameTextColor);
+        snLoader.get("offset", speakerNameTextOffset);
+        snLoader.getIfExists("shadow", speakerNameTextShadow);
+    }
+
+    { // choices
+        choiceButtonStyle.load(loader.getLoader("choiceButtonStyle"));
+        loader.get("choiceButtonsPadding", choiceButtonsPadding);
+    }
+
+    { // more text image
+        const auto& mtLoader = loader.getLoader("moreTextImage");
+        mtLoader.get("image", moreTextImagePath);
+        mtLoader.get("offset", moreTextImageOffset);
+        moreTextImageBouncerParams.load(mtLoader.getLoader("bouncer"));
+    }
+
+    { // sounds
+        const auto& soundsLoader = loader.getLoader("sounds");
+        soundsLoader.get("showChoices", showChoicesSoundPath);
+        soundsLoader.get("choiceSelect", choiceSelectSoundPath);
+        soundsLoader.get("skipText", skipTextSoundPath);
+    }
 }
 
 void DialogueBox::init(
@@ -205,7 +232,9 @@ void DialogueBox::setSpeakerName(const std::string t)
 void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice)
 {
     dialogueBoxUI = std::make_unique<ui::Element>();
-    dialogueBoxUI->relativePosition = {0.075f, 0.1f};
+    dialogueBoxUI->relativePosition = dbStyle.positionAndSize.relativePosition;
+    dialogueBoxUI->offsetPosition = dbStyle.positionAndSize.offsetPosition;
+    dialogueBoxUI->origin = dbStyle.positionAndSize.origin;
     dialogueBoxUI->autoSize = true;
 
     auto dialogueBox = std::make_unique<ui::NineSliceElement>(dbStyle.nineSliceStyle);
@@ -213,11 +242,12 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
 
     const auto fontHeight = defaultFont.lineSpacing;
     { // main text
-        auto mainTextElement = std::make_unique<ui::TextElement>(defaultFont, LinearColor::White());
+        auto mainTextElement =
+            std::make_unique<ui::TextElement>(defaultFont, dbStyle.mainTextColor);
         mainTextElement->tag = MainTextTag;
         { // calculate fixed max size
-            int maxNumCharsLine = dbStyle.maxNumCharsLine;
-            int maxLines = dbStyle.maxLines;
+            int maxNumCharsLine = dbStyle.mainTextMaxNumCharsLine;
+            int maxLines = dbStyle.mainTextMaxLines;
             std::string fixedSizeString{};
             fixedSizeString.reserve(maxNumCharsLine * maxLines + maxLines);
             for (int y = 0; y < maxLines; ++y) {
@@ -232,14 +262,11 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
         }
 
         // some padding is added on both sides
-        const auto padding = glm::vec2{
-            std::round(fontHeight * 0.6f),
-            std::round(fontHeight * 0.3f),
-        };
-
+        const auto& padding = dbStyle.mainTextPadding;
         mainTextElement->offsetPosition = padding;
         mainTextElement->offsetSize = -padding * 2.f;
-        mainTextElement->shadow = true;
+
+        mainTextElement->shadow = dbStyle.mainTextShadow;
         dialogueBox->addChild(std::move(mainTextElement));
     }
 
@@ -250,13 +277,14 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
         // place on bottom-left of the dialogue box
         listElement->origin = {0.f, 1.f};
         listElement->relativePosition = {0.f, 1.f};
-        // TODO: don't hardcode in pixels?
-        listElement->offsetPosition = {32.f, -8.f};
-        listElement->offsetSize = {-64.f, -16.f};
 
-        for (int i = 0; i < 2; ++i) {
+        const auto& padding = dbStyle.choiceButtonsPadding;
+        listElement->offsetPosition = {padding.x, -padding.y};
+        listElement->offsetSize = {-padding.x * 2.f, -padding.y * 2.f};
+
+        for (int i = 0; i < NumChoices; ++i) {
             auto choiceButton = std::make_unique<
-                ui::ButtonElement>(dbStyle.choiceButtonStyle, defaultFont, "CHOICE", [this, i]() {
+                ui::ButtonElement>(dbStyle.choiceButtonStyle, defaultFont, "", [this, i]() {
                 if (!choiceSelectSoundPath.empty()) {
                     audioManager->playSound(choiceSelectSoundPath);
                 }
@@ -282,10 +310,11 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
 
     { // menu/speaker name
         auto menuName =
-            std::make_unique<ui::TextElement>(defaultFont, LinearColor::FromRGB(254, 214, 124));
+            std::make_unique<ui::TextElement>(defaultFont, dbStyle.speakerNameTextColor);
         menuName->tag = MenuNameTag;
-        menuName->offsetPosition = {std::round(fontHeight / 2.f), -fontHeight};
-        menuName->shadow = true;
+        menuName->offsetPosition = dbStyle.speakerNameTextOffset;
+        menuName->shadow = dbStyle.speakerNameTextShadow;
+
         dialogueBox->addChild(std::move(menuName));
     }
 
@@ -294,19 +323,17 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
         const auto& moreTextImage = gfxDevice.getImage(moreTextImageId);
         auto moreTextImageElement = std::make_unique<ui::ImageElement>(moreTextImage);
         moreTextImageElement->tag = MoreTextImageTag;
+
         moreTextImageElement->origin = glm::vec2{1.f, 1.f};
         moreTextImageElement->relativePosition = glm::vec2{1.f, 1.f};
-        // TODO: set based on image/border size?
-        moreTextImageOffsetPosition = {-16.f, -12.f};
+
+        moreTextImageOffsetPosition = dbStyle.moreTextImageOffset;
         moreTextImageElement->offsetPosition = moreTextImageOffsetPosition;
+
         moreTextImageElement->visible = false;
         dialogueBox->addChild(std::move(moreTextImageElement));
 
-        moreTextImageBouncer = Bouncer({
-            .maxOffset = 2.f,
-            .moveDuration = 0.5f,
-            .tween = glm::quadraticEaseInOut<float>,
-        });
+        moreTextImageBouncer = Bouncer(dbStyle.moreTextImageBouncerParams);
     }
 
     // finish setup

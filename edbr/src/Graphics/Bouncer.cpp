@@ -1,6 +1,24 @@
 #include <edbr/Graphics/Bouncer.h>
 
+#include <edbr/Core/JsonDataLoader.h>
+
 #include <fmt/printf.h>
+
+void Bouncer::Params::load(const JsonDataLoader& loader)
+{
+    loader.get("maxOffset", maxOffset);
+    loader.get("moveDuration", moveDuration);
+
+    if (loader.hasKey("tweenType")) {
+        std::string tweenTypeStr;
+        loader.get("tweenType", tweenTypeStr);
+        if (tweenTypeStr == "quadraticEaseInOut") {
+            tween = glm::quadraticEaseIn<float>;
+        } else {
+            throw std::runtime_error(fmt::format("unknown tween type '{}'", tweenTypeStr));
+        }
+    }
+}
 
 Bouncer::Bouncer(Params params) :
     maxOffset(params.maxOffset), moveDuration(params.moveDuration), tween(params.tween)

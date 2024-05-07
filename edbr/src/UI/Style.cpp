@@ -3,6 +3,16 @@
 
 namespace ui
 {
+
+void ElementPositionAndSize::load(const JsonDataLoader& loader)
+{
+    loader.getIfExists("relativePosition", relativePosition);
+    loader.getIfExists("relativeSize", relativeSize);
+    loader.getIfExists("offsetPosition", offsetPosition);
+    loader.getIfExists("offsetSize", offsetSize);
+    loader.getIfExists("origin", origin);
+}
+
 void NineSliceStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 {
     // load texture

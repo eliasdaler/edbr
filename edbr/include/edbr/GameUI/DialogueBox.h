@@ -23,13 +23,30 @@ class ActionMapping;
 struct DialogueBoxStyle {
     void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
 
+    ui::ElementPositionAndSize positionAndSize;
     ui::NineSliceStyle nineSliceStyle;
-    int maxNumCharsLine{30};
-    int maxLines{4};
-    ui::FontStyle mainTextFontStyle;
-    std::filesystem::path moreTextImagePath;
 
+    // main text
+    ui::FontStyle mainTextFontStyle;
+    LinearColor mainTextColor;
+    bool mainTextShadow{false};
+    glm::vec2 mainTextPadding;
+    int mainTextMaxNumCharsLine{};
+    int mainTextMaxLines{};
+
+    // speaker name text
+    LinearColor speakerNameTextColor;
+    glm::vec2 speakerNameTextOffset;
+    bool speakerNameTextShadow{false};
+
+    // choice buttons
     ui::ButtonStyle choiceButtonStyle;
+    glm::vec2 choiceButtonsPadding;
+
+    // more text image
+    std::filesystem::path moreTextImagePath;
+    glm::vec2 moreTextImageOffset; // offset from bottom right corner of dialogue box
+    Bouncer::Params moreTextImageBouncerParams;
 
     // sounds
     std::filesystem::path choiceSelectSoundPath;
@@ -113,6 +130,8 @@ private:
     static const std::string MoreTextImageTag;
     static const std::string Choice1Tag;
     static const std::string Choice2Tag;
+
+    const int NumChoices = 2;
 
     Bouncer moreTextImageBouncer;
     glm::vec2 moreTextImageOffsetPosition;

@@ -10,6 +10,17 @@ struct Font;
 
 namespace ui
 {
+
+struct ElementPositionAndSize {
+    void load(const JsonDataLoader& loader);
+
+    glm::vec2 relativePosition;
+    glm::vec2 relativeSize{1.f};
+    glm::vec2 offsetPosition;
+    glm::vec2 offsetSize;
+    glm::vec2 origin;
+};
+
 struct NineSliceStyle {
     void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
 
