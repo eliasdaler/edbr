@@ -22,7 +22,12 @@ public:
     void addPrefabFile(std::string prefabName, JsonFile file);
 
     entt::handle createDefaultEntity(entt::registry& registry, bool postInit = true) const;
+
     entt::handle createEntity(entt::registry& registry, const std::string& prefabName) const;
+    entt::handle createEntity(
+        entt::registry& registry,
+        const std::string& prefabName,
+        const nlohmann::json& overridePrefabData) const;
 
     bool prefabExists(const std::string& prefabName) const;
 
@@ -35,6 +40,10 @@ private:
     static const std::string emptyString;
 
     JsonDataLoader getPrefabDataLoader(const std::string& prefabName) const;
+    entt::handle createEntity(
+        entt::registry& registry,
+        const std::string& prefabName,
+        const JsonDataLoader& loader) const;
 
     std::function<CreateDefaultEntityFuncType> createDefaultEntityFunc;
     std::function<PostInitEntityFuncType> postInitEntityFunc;

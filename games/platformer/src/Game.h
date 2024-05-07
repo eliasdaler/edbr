@@ -43,12 +43,15 @@ private:
 
     void enterLevel();
     void spawnLevelEntities();
-    entt::handle createEntityFromPrefab(const std::string& prefabName);
+    entt::handle createEntityFromPrefab(
+        const std::string& prefabName,
+        const nlohmann::json& overrideData = {});
 
     void handleInput(float dt);
     void handlePlayerInput(float dt);
     void handleFreeCameraInput(float dt);
 
+    glm::vec2 getMouseGameScreenPos() const;
     glm::vec2 getMouseWorldPos() const;
 
     void drawWorld();

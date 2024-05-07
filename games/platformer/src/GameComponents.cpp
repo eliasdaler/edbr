@@ -43,7 +43,7 @@ void Game::registerComponents(ComponentFactory& cf)
     cf.registerComponentLoader(
         "teleport", [](entt::handle e, TeleportComponent& tc, const JsonDataLoader& loader) {
             loader.getIfExists("to_level", tc.levelTag);
-            loader.getIfExists("to", tc.spawnerTag);
+            loader.getIfExists("to", tc.spawnTag);
         });
 
     cf.registerComponentLoader(

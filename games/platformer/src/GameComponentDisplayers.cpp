@@ -99,4 +99,15 @@ void Game::registerComponentDisplayers()
             }
             EndPropertyTable();
         });
+
+    eid.registerEmptyDisplayer<SpawnerComponent>("Spawner");
+
+    eid.registerDisplayer("Teleport", [](entt::const_handle e, const TeleportComponent& tc) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("Level", tc.levelTag);
+            DisplayProperty("Spawn", tc.spawnTag);
+        }
+        EndPropertyTable();
+    });
 }

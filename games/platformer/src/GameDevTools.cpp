@@ -15,12 +15,22 @@ math::FloatRect getSelectedEntityRect(entt::const_handle e)
     if (e.all_of<SpriteComponent>()) {
         return entityutil::getSpriteWorldRect(e);
     }
+    if (e.all_of<CollisionComponent>()) {
+        return entityutil::getAABB(e);
+    }
     return {};
 }
 
-entt::handle findEntityUnderCursor(entt::registry& registry, const glm::vec2& mouseWorldPos)
+entt::handle findEntityUnderCursor(
+    entt::registry& registry,
+    const glm::vec2& mouseWorldPos,
+    bool includeInvisible)
 {
     for (auto e : registry.view<entt::entity>()) {
+        if (!includeInvisible && !registry.all_of<SpriteComponent>(e)) {
+            continue;
+        }
+
         auto aabb = getSelectedEntityRect({registry, e});
         if (aabb.contains(mouseWorldPos)) {
             return {registry, e};
@@ -48,13 +58,12 @@ void Game::devToolsHandleInput(float dt)
 
     const auto& mouse = inputManager.getMouse();
     if (!ImGui::GetIO().WantCaptureMouse && mouse.wasJustPressed(SDL_BUTTON(1))) {
-        const auto& mousePos = inputManager.getMouse().getPosition();
-        const auto& gameScreenPos = edbr::util::
-            getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+        const auto& gameScreenPos = getMouseGameScreenPos();
         const auto screenRect = math::FloatRect{{}, static_cast<glm::vec2>(params.renderSize)};
         if (screenRect.contains(gameScreenPos)) {
             const auto mouseWorldPos = getMouseWorldPos();
-            auto selected = findEntityUnderCursor(registry, getMouseWorldPos());
+            bool includeInvisible = drawCollisionShapes;
+            auto selected = findEntityUnderCursor(registry, getMouseWorldPos(), includeInvisible);
             entityTreeView.setSelectedEntity(selected);
         }
     }
@@ -116,7 +125,11 @@ void Game::devToolsDrawInWorldUI()
             level.getTileMap().getLayer(TileMap::CollisionLayerName));
         for (const auto&& [e, cc] : registry.view<CollisionComponent>().each()) {
             auto bb = entityutil::getAABB({registry, e});
-            spriteRenderer.drawFilledRect(bb, LinearColor{1.f, 0.f, 0.f, 0.5f});
+            auto collBoxColor = LinearColor{1.f, 0.f, 0.f, 0.5f};
+            if (registry.all_of<TeleportComponent>(e)) {
+                collBoxColor = LinearColor{1.f, 1.f, 0.f, 0.5f};
+            }
+            spriteRenderer.drawFilledRect(bb, collBoxColor);
         }
     }
 

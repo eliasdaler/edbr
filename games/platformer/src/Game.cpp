@@ -195,12 +195,16 @@ void Game::handleFreeCameraInput(float dt)
     cameraPos += velocity * dt;
 }
 
-glm::vec2 Game::getMouseWorldPos() const
+glm::vec2 Game::getMouseGameScreenPos() const
 {
     const auto& mousePos = inputManager.getMouse().getPosition();
-    const auto& gameScreenPos = edbr::util::
+    return edbr::util::
         getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
-    return gameScreenPos + cameraPos;
+}
+
+glm::vec2 Game::getMouseWorldPos() const
+{
+    return getMouseGameScreenPos() + cameraPos;
 }
 
 void Game::customDraw()
@@ -318,7 +322,7 @@ void Game::spawnLevelEntities()
 {
     for (const auto& spawner : level.getSpawners()) {
         if (entityFactory.prefabExists(spawner.prefabName)) {
-            auto e = createEntityFromPrefab(spawner.prefabName);
+            auto e = createEntityFromPrefab(spawner.prefabName, spawner.prefabData);
             entityutil::setWorldPosition2D(e, spawner.position);
             entityutil::setHeading2D(e, spawner.heading);
             if (!spawner.tag.empty()) {
@@ -330,11 +334,15 @@ void Game::spawnLevelEntities()
     }
 }
 
-entt::handle Game::createEntityFromPrefab(const std::string& prefabName)
+entt::handle Game::createEntityFromPrefab(
+    const std::string& prefabName,
+    const nlohmann::json& overrideData)
 
 {
     try {
-        auto e = entityFactory.createEntity(registry, prefabName);
+        auto e = overrideData.empty() ?
+                     entityFactory.createEntity(registry, prefabName) :
+                     entityFactory.createEntity(registry, prefabName, overrideData);
         entityPostInit(e);
         return e;
     } catch (const std::exception& e) {

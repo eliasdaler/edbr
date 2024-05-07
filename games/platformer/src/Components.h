@@ -42,7 +42,7 @@ struct SpawnerComponent {};
 
 struct TeleportComponent {
     std::string levelTag;
-    std::string spawnerTag;
+    std::string spawnTag;
 };
 
 struct PlayerComponent {};
