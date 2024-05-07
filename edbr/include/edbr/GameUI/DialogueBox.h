@@ -34,6 +34,11 @@ struct DialogueBoxStyle {
     int mainTextMaxNumCharsLine{};
     int mainTextMaxLines{};
 
+    // typewriter
+    float charsDisplaySpeed{15.f};
+    float letterSoundSpeed{0.08f};
+    float punctuationDelay{0.1f};
+
     // speaker name text
     LinearColor speakerNameTextColor;
     glm::vec2 speakerNameTextOffset;
@@ -49,6 +54,7 @@ struct DialogueBoxStyle {
     Bouncer::Params moreTextImageBouncerParams;
 
     // sounds
+    std::filesystem::path defaultLetterSoundPath;
     std::filesystem::path choiceSelectSoundPath;
     std::filesystem::path showChoicesSoundPath;
     std::filesystem::path skipTextSoundPath;
@@ -85,8 +91,7 @@ public:
     static const std::string DialogueBoxMenuTag;
     static const std::size_t MaxChoices = 2;
 
-    void setDefaultVoiceSound(const std::string& soundName);
-    void setTempVoiceSound(const std::string& soundName);
+    void setTempVoiceSound(const std::string& soundName, float letterSoundSpeed);
 
 private:
     void createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice);
@@ -102,7 +107,8 @@ private:
 
     std::string text;
 
-    float textSoundTriggerSpeed{0.08f};
+    float defaultLetterSoundSpeed{0.08f};
+    float letterSoundSpeed{0.08f};
     float textSoundTriggerValue{0.f};
 
     float currentTextDelay{0.f};

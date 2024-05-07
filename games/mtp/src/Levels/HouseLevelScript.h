@@ -29,6 +29,7 @@ public:
                 auto tt = dialogue::TextToken{
                     .name = LST{"GLEEBY_DEEBY_NAME"},
                     .voiceSound = "assets/sounds/ui/meow.wav",
+                    .voiceSoundSpeed = 0.15f,
                 };
                 tt.text = (index == 0) ? LST{"TURN_TV_OFF_REACTION"} : LST{"WELCOME_REACTION"};
                 return game.say(tt);

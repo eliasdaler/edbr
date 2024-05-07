@@ -1059,7 +1059,7 @@ ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
 
                 // voice
                 if (!textToken.voiceSound.empty()) {
-                    db.setTempVoiceSound(textToken.voiceSound);
+                    db.setTempVoiceSound(textToken.voiceSound, textToken.voiceSoundSpeed);
                 }
 
                 // open

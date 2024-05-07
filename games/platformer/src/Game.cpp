@@ -36,8 +36,7 @@ void Game::customInit()
     loadAnimations("assets/animations");
 
     { // UI
-        // dialogueBox.init(gfxDevice, audioManager);
-        dialogueBox.setDefaultVoiceSound("assets/sounds/ui/text_letter.wav");
+      // dialogueBox.init(gfxDevice, audioManager);
     }
 
     initEntityFactory();

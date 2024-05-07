@@ -19,6 +19,11 @@
     "maxNumCharsLine": 30,
     "maxLines": 4
   },
+  "typewriter": {
+    "charsSpeed": 15,
+    "letterSoundSpeed": 0.08,
+    "punctuationDelay": 0.1
+  },
   "speakerNameText": {
     "color": { "rgb": [254, 214, 124] },
     "offset": [20, -40],
@@ -43,6 +48,7 @@
     }
   },
   "sounds": {
+    "defaultLetter": "assets/sounds/ui/text.wav",
     "choiceSelect": "assets/sounds/ui/menu_select.wav",
     "showChoices": "assets/sounds/ui/menu_open.wav",
     "skipText": "assets/sounds/ui/skip_text.wav"

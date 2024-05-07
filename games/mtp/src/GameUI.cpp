@@ -105,7 +105,6 @@ void GameUI::init(Game& game, GfxDevice& gfxDevice, const glm::ivec2& screenSize
     dbStyle.load(dbStyleFile.getLoader(), gfxDevice);
 
     dialogueBox.init(dbStyle, gfxDevice, audioManager);
-    dialogueBox.setDefaultVoiceSound("assets/sounds/ui/text.wav");
 }
 
 bool GameUI::isDialogueBoxOpen() const

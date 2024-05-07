@@ -38,6 +38,13 @@ void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
         mtLoader.get("maxLines", mainTextMaxLines);
     }
 
+    { // typewriter
+        const auto& twLoader = loader.getLoader("typewriter");
+        twLoader.get("charsSpeed", charsDisplaySpeed);
+        twLoader.get("letterSoundSpeed", letterSoundSpeed);
+        twLoader.get("punctuationDelay", punctuationDelay);
+    }
+
     { // speaker name
         const auto& snLoader = loader.getLoader("speakerNameText");
         snLoader.get("color", speakerNameTextColor);
@@ -59,9 +66,10 @@ void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 
     { // sounds
         const auto& soundsLoader = loader.getLoader("sounds");
-        soundsLoader.get("showChoices", showChoicesSoundPath);
-        soundsLoader.get("choiceSelect", choiceSelectSoundPath);
-        soundsLoader.get("skipText", skipTextSoundPath);
+        soundsLoader.getIfExists("defaultLetter", defaultLetterSoundPath);
+        soundsLoader.getIfExists("showChoices", showChoicesSoundPath);
+        soundsLoader.getIfExists("choiceSelect", choiceSelectSoundPath);
+        soundsLoader.getIfExists("skipText", skipTextSoundPath);
     }
 }
 
@@ -79,6 +87,13 @@ void DialogueBox::init(
         dbStyle.mainTextFontStyle.antialiasing);
     assert(ok && "font failed to load");
 
+    charsSpeed = dbStyle.charsDisplaySpeed;
+    defaultLetterSoundSpeed = dbStyle.letterSoundSpeed;
+    letterSoundSpeed = defaultLetterSoundSpeed;
+    punctuationDelayTime = dbStyle.punctuationDelay;
+
+    defaultVoiceSound = dbStyle.defaultLetterSoundPath;
+    voiceSound = defaultVoiceSound;
     showChoicesSoundPath = dbStyle.showChoicesSoundPath;
     choiceSelectSoundPath = dbStyle.choiceSelectSoundPath;
     skipTextSoundPath = dbStyle.skipTextSoundPath;
@@ -118,7 +133,7 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             if (delayValue > currentTextDelay) {
                 delayValue = 0.f;
                 currentTextDelay = 0.f;
-                textSoundTriggerValue = textSoundTriggerSpeed;
+                textSoundTriggerValue = letterSoundSpeed;
             } else {
                 return;
             }
@@ -140,10 +155,10 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             textSoundTriggerValue += dt;
             if (wasPunctuation) {
                 // trigger sound immediately if punctuation was previously displayed
-                textSoundTriggerValue = textSoundTriggerSpeed;
+                textSoundTriggerValue = letterSoundSpeed;
             }
-            if (textSoundTriggerValue >= textSoundTriggerSpeed) {
-                textSoundTriggerValue -= textSoundTriggerSpeed;
+            if (textSoundTriggerValue >= letterSoundSpeed) {
+                textSoundTriggerValue -= letterSoundSpeed;
                 if (!muted && !voiceSound.empty()) {
                     audioManager->playSound(voiceSound);
                 }
@@ -210,7 +225,7 @@ void DialogueBox::resetState()
     setSpeakerName("");
 
     voiceSound = defaultVoiceSound;
-    textSoundTriggerSpeed = 0.08f;
+    letterSoundSpeed = defaultLetterSoundSpeed;
 
     // handle choices
     hasChoices = false;
@@ -417,14 +432,8 @@ void DialogueBox::displayDebugInfo()
     EndPropertyTable();
 }
 
-void DialogueBox::setDefaultVoiceSound(const std::string& soundName)
-{
-    defaultVoiceSound = soundName;
-    voiceSound = defaultVoiceSound;
-}
-
-void DialogueBox::setTempVoiceSound(const std::string& soundName)
+void DialogueBox::setTempVoiceSound(const std::string& soundName, float letterSoundSpeed)
 {
     voiceSound = soundName;
-    textSoundTriggerSpeed = 0.15f;
+    this->letterSoundSpeed = letterSoundSpeed != 0 ? letterSoundSpeed : defaultLetterSoundSpeed;
 }
