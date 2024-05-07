@@ -97,7 +97,14 @@ void GameUI::init(Game& game, GfxDevice& gfxDevice, const glm::ivec2& screenSize
     createTitleScreen(game, gfxDevice);
     createMenus(game, gfxDevice);
 
-    dialogueBox.init(gfxDevice, audioManager);
+    std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
+    JsonFile dbStyleFile(dbStylePath);
+    assert(dbStyleFile.isGood());
+
+    DialogueBoxStyle dbStyle;
+    dbStyle.load(dbStyleFile.getLoader(), gfxDevice);
+
+    dialogueBox.init(dbStyle, gfxDevice, audioManager);
     dialogueBox.setDefaultVoiceSound("assets/sounds/ui/text.wav");
 }
 
@@ -514,7 +521,7 @@ std::unique_ptr<ui::ButtonElement> GameUI::makeSimpleButton(
     const std::string& text,
     std::function<void()> onPressed)
 {
-    return std::make_unique<ui::ButtonElement>(buttonStyle, text, [this, onPressed]() {
+    return std::make_unique<ui::ButtonElement>(buttonStyle, defaultFont, text, [this, onPressed]() {
         audioManager.playSound("assets/sounds/ui/menu_select.wav");
         onPressed();
     });
@@ -534,7 +541,6 @@ std::unique_ptr<ui::ListLayoutElement> GameUI::makeSimpleButtonList(
     const auto buttonPadding = glm::vec2{16.f, 8.f};
     const auto bs = ui::ButtonStyle{
         .nineSliceStyle = &nsStyle,
-        .font = defaultFont,
         .normalColor = LinearColor{1.f, 1.f, 1.f},
         .selectedColor = edbr::rgbToLinear(254, 174, 52),
         .disabledColor = edbr::rgbToLinear(128, 128, 128),

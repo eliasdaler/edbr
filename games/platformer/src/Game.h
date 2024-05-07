@@ -14,6 +14,9 @@
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/TileMap/TileMapRenderer.h>
 
+#include <edbr/GameUI/Cursor.h>
+#include <edbr/GameUI/DialogueBox.h>
+
 #include <edbr/DevTools/EntityInfoDisplayer.h>
 #include <edbr/DevTools/EntityTreeView.h>
 
@@ -85,7 +88,6 @@ private:
     glm::vec2 cameraPos;
     entt::handle interactEntity;
 
-    Font defaultFont;
     Level level;
     std::string newLevelToLoad;
     std::string newLevelSpawnName;
@@ -93,6 +95,11 @@ private:
     std::unordered_map<std::string, SpriteAnimationData> animationsData;
     EntityFactory entityFactory;
     entt::registry registry;
+
+    // ui
+    DialogueBox dialogueBox;
+    Font defaultFont;
+    Cursor cursor;
 
     // dev
     Font devToolsFont;

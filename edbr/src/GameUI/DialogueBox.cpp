@@ -23,14 +23,40 @@ const std::string DialogueBox::MoreTextImageTag{"more_text"};
 const std::string DialogueBox::Choice1Tag{"choice1"};
 const std::string DialogueBox::Choice2Tag{"choice2"};
 
-void DialogueBox::init(GfxDevice& gfxDevice, AudioManager& audioManager)
+void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
+{
+    nineSliceStyle.load(loader.getLoader("nineSliceStyle"), gfxDevice);
+    loader.get("maxNumCharsLine", maxNumCharsLine);
+    loader.get("maxLines", maxLines);
+    mainTextFontStyle.load(loader.getLoader("mainTextFont"));
+    loader.get("moreTextImage", moreTextImagePath);
+    choiceButtonStyle.load(loader.getLoader("choiceButtonStyle"));
+
+    const auto& soundsLoader = loader.getLoader("sounds");
+    soundsLoader.get("showChoices", showChoicesSoundPath);
+    soundsLoader.get("choiceSelect", choiceSelectSoundPath);
+    soundsLoader.get("skipText", skipTextSoundPath);
+}
+
+void DialogueBox::init(
+    const DialogueBoxStyle& dbStyle,
+    GfxDevice& gfxDevice,
+    AudioManager& audioManager)
 {
     this->audioManager = &audioManager;
 
-    bool ok = defaultFont.load(gfxDevice, "assets/fonts/JF-Dot-Kappa20B.ttf", 40, false);
-
+    bool ok = defaultFont.load(
+        gfxDevice,
+        dbStyle.mainTextFontStyle.path,
+        dbStyle.mainTextFontStyle.size,
+        dbStyle.mainTextFontStyle.antialiasing);
     assert(ok && "font failed to load");
-    createUI(gfxDevice);
+
+    showChoicesSoundPath = dbStyle.showChoicesSoundPath;
+    choiceSelectSoundPath = dbStyle.choiceSelectSoundPath;
+    skipTextSoundPath = dbStyle.skipTextSoundPath;
+
+    createUI(dbStyle, gfxDevice);
 }
 
 void DialogueBox::handleInput(const ActionMapping& actionMapping)
@@ -38,7 +64,9 @@ void DialogueBox::handleInput(const ActionMapping& actionMapping)
     static const auto interactAction = actionMapping.getActionTagHash("PrimaryAction");
     if (actionMapping.wasJustPressed(interactAction)) {
         if (!isWholeTextDisplayed()) {
-            audioManager->playSound("assets/sounds/ui/skip_text.wav");
+            if (!skipTextSoundPath.empty()) {
+                audioManager->playSound(skipTextSoundPath);
+            }
             displayWholeText();
         } else if (!hasChoices) {
             advanceTextPressed = true;
@@ -74,7 +102,8 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             numGlyphsToDraw = static_cast<float>(numberOfGlyphs);
         }
 
-        const auto glyphIdx = static_cast<std::size_t>(std::max(std::floor(numGlyphsToDraw), 1.f) - 1);
+        const auto glyphIdx =
+            static_cast<std::size_t>(std::max(std::floor(numGlyphsToDraw), 1.f) - 1);
         // TODO: should do getGlyph(text, charIdx) here
         const auto lastLetter = glyphIdx > 0 ? text[glyphIdx] : '\0';
         bool punctuation = isPunctuation(lastLetter);
@@ -106,7 +135,9 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
 
     if (isWholeTextDisplayed() && hasChoices && !choicesDisplayed) {
         setChoicesDisplayed(true);
-        audioManager->playSound("assets/sounds/ui/menu_open.wav");
+        if (!showChoicesSoundPath.empty()) {
+            audioManager->playSound(showChoicesSoundPath);
+        }
     }
 
     if (isWholeTextDisplayed() && !choicesDisplayed) {
@@ -171,18 +202,13 @@ void DialogueBox::setSpeakerName(const std::string t)
     getMenuNameTextElement().text = t;
 }
 
-void DialogueBox::createUI(GfxDevice& gfxDevice)
+void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice)
 {
-    ui::NineSliceStyle nsStyle;
-
-    JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
-    nsStyle.load(file.getLoader(), gfxDevice);
-
     dialogueBoxUI = std::make_unique<ui::Element>();
     dialogueBoxUI->relativePosition = {0.075f, 0.1f};
     dialogueBoxUI->autoSize = true;
 
-    auto dialogueBox = std::make_unique<ui::NineSliceElement>(nsStyle);
+    auto dialogueBox = std::make_unique<ui::NineSliceElement>(dbStyle.nineSliceStyle);
     dialogueBox->autoSize = true;
 
     const auto fontHeight = defaultFont.lineSpacing;
@@ -190,8 +216,8 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
         auto mainTextElement = std::make_unique<ui::TextElement>(defaultFont, LinearColor::White());
         mainTextElement->tag = MainTextTag;
         { // calculate fixed max size
-            int maxNumCharsLine = 30;
-            int maxLines = 4;
+            int maxNumCharsLine = dbStyle.maxNumCharsLine;
+            int maxLines = dbStyle.maxLines;
             std::string fixedSizeString{};
             fixedSizeString.reserve(maxNumCharsLine * maxLines + maxLines);
             for (int y = 0; y < maxLines; ++y) {
@@ -228,20 +254,12 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
         listElement->offsetPosition = {32.f, -8.f};
         listElement->offsetSize = {-64.f, -16.f};
 
-        const auto buttonPadding = glm::vec2{8.f, 0.f};
-        const auto bs = ui::ButtonStyle{
-            .font = defaultFont,
-            .normalColor = LinearColor{1.f, 1.f, 1.f},
-            .selectedColor = edbr::rgbToLinear(254, 174, 52),
-            .disabledColor = edbr::rgbToLinear(128, 128, 128),
-            .textAlignment = ui::ButtonStyle::TextAlignment::Left,
-            .padding = buttonPadding,
-            .cursorOffset = {0.f, buttonPadding.y + defaultFont.lineSpacing / 2.f},
-        };
-
         for (int i = 0; i < 2; ++i) {
-            auto choiceButton = std::make_unique<ui::ButtonElement>(bs, "CHOICE", [this, i]() {
-                audioManager->playSound("assets/sounds/ui/menu_select.wav");
+            auto choiceButton = std::make_unique<
+                ui::ButtonElement>(dbStyle.choiceButtonStyle, defaultFont, "CHOICE", [this, i]() {
+                if (!choiceSelectSoundPath.empty()) {
+                    audioManager->playSound(choiceSelectSoundPath);
+                }
                 choiceSelectionIndex = i;
             });
             choiceButton->tag = (i == 0) ? Choice1Tag : Choice2Tag;
@@ -272,7 +290,7 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
     }
 
     { // more text image
-        const auto moreTextImageId = gfxDevice.loadImageFromFile("assets/images/ui/more_text.png");
+        const auto moreTextImageId = gfxDevice.loadImageFromFile(dbStyle.moreTextImagePath);
         const auto& moreTextImage = gfxDevice.getImage(moreTextImageId);
         auto moreTextImageElement = std::make_unique<ui::ImageElement>(moreTextImage);
         moreTextImageElement->tag = MoreTextImageTag;

@@ -237,6 +237,14 @@ void Game::startGameplay()
         });
 
     actionListManager.addActionList(std::move(l));
+
+    actionListManager.addActionList(ActionList{
+        "test dialogue box",
+        actions::delay(1.f),
+        say(dialogue::TextToken{
+            .text = LST{"GAME_SAVED"},
+            .name = LST{"DUDE_NAME"},
+        })});
 }
 
 void Game::enterPauseMenu()

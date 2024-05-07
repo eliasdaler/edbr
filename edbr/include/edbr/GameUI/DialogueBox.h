@@ -5,6 +5,7 @@
 #include <edbr/Graphics/Bouncer.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/UI/Element.h>
+#include <edbr/UI/Style.h>
 
 class GfxDevice;
 class SpriteRenderer;
@@ -19,9 +20,26 @@ class ButtonElement;
 class AudioManager;
 class ActionMapping;
 
+struct DialogueBoxStyle {
+    void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
+
+    ui::NineSliceStyle nineSliceStyle;
+    int maxNumCharsLine{30};
+    int maxLines{4};
+    ui::FontStyle mainTextFontStyle;
+    std::filesystem::path moreTextImagePath;
+
+    ui::ButtonStyle choiceButtonStyle;
+
+    // sounds
+    std::filesystem::path choiceSelectSoundPath;
+    std::filesystem::path showChoicesSoundPath;
+    std::filesystem::path skipTextSoundPath;
+};
+
 class DialogueBox {
 public:
-    void init(GfxDevice& gfxDevice, AudioManager& audioManager);
+    void init(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice, AudioManager& audioManager);
 
     void handleInput(const ActionMapping& actionMapping);
 
@@ -54,7 +72,7 @@ public:
     void setTempVoiceSound(const std::string& soundName);
 
 private:
-    void createUI(GfxDevice& gfxDevice);
+    void createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice);
     ui::TextElement& getMainTextElement();
     ui::TextElement& getMenuNameTextElement();
     ui::ButtonElement& getChoiceButton(std::size_t index);
@@ -100,4 +118,9 @@ private:
     glm::vec2 moreTextImageOffsetPosition;
 
     AudioManager* audioManager{nullptr};
+
+    // sounds
+    std::filesystem::path showChoicesSoundPath;
+    std::filesystem::path choiceSelectSoundPath;
+    std::filesystem::path skipTextSoundPath;
 };
