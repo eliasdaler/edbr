@@ -28,6 +28,12 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
+    eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {
+        BeginPropertyTable();
+        DisplayProperty("Tag", tc.tag);
+        EndPropertyTable();
+    });
+
     eid.registerDisplayer("Name", [](entt::const_handle e, const NameComponent& nc) {
         BeginPropertyTable();
         if (!nc.name.empty()) {

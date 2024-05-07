@@ -2,16 +2,17 @@
 
 #include <edbr/Core/JsonFile.h>
 
+#include <edbr/Graphics/CoordUtil.h>
+#include <edbr/Graphics/Letterbox.h>
+#include <edbr/Graphics/Vulkan/Util.h>
+#include <edbr/Util/FS.h>
+#include <edbr/Util/InputUtil.h>
+
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/ECS/Systems/MovementSystem.h>
 #include <edbr/ECS/Systems/TransformSystem.h>
-
-#include <edbr/Graphics/Letterbox.h>
-#include <edbr/Graphics/Vulkan/Util.h>
-#include <edbr/Util/FS.h>
-#include <edbr/Util/InputUtil.h>
 
 #include "Components.h"
 #include "EntityUtil.h"
@@ -29,6 +30,7 @@ void Game::customInit()
     spriteRenderer.init(drawImageFormat);
     uiRenderer.init(drawImageFormat);
     defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
+    devToolsFont.load(gfxDevice, "assets/fonts/at01.ttf", 16, false);
 
     loadAnimations("assets/animations");
 
@@ -193,6 +195,14 @@ void Game::handleFreeCameraInput(float dt)
     cameraPos += velocity * dt;
 }
 
+glm::vec2 Game::getMouseWorldPos() const
+{
+    const auto& mousePos = inputManager.getMouse().getPosition();
+    const auto& gameScreenPos = edbr::util::
+        getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+    return gameScreenPos + cameraPos;
+}
+
 void Game::customDraw()
 {
     auto cmd = gfxDevice.beginFrame();
@@ -261,7 +271,7 @@ void Game::drawGameObjects()
 
 void Game::drawUI()
 {
-    uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
+    // uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
 }
 
 void Game::initEntityFactory()
@@ -311,6 +321,9 @@ void Game::spawnLevelEntities()
             auto e = createEntityFromPrefab(spawner.prefabName);
             entityutil::setWorldPosition2D(e, spawner.position);
             entityutil::setHeading2D(e, spawner.heading);
+            if (!spawner.tag.empty()) {
+                entityutil::setTag(e, spawner.tag);
+            }
         } else {
             fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
         }

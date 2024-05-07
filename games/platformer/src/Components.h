@@ -6,6 +6,10 @@
 #include <edbr/Graphics/SpriteAnimationData.h>
 #include <edbr/Graphics/SpriteAnimator.h>
 
+struct TagComponent {
+    std::string tag;
+};
+
 struct SpriteComponent {
     Sprite sprite;
     int z{0};
@@ -32,6 +36,13 @@ struct SpriteAnimationComponent {
     std::string defaultAnimationName{"idle"};
     SpriteAnimationData* animationsData{nullptr};
     std::string animationsDataTag;
+};
+
+struct SpawnerComponent {};
+
+struct TeleportComponent {
+    std::string levelTag;
+    std::string spawnerTag;
 };
 
 struct PlayerComponent {};

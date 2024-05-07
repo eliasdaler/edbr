@@ -49,6 +49,8 @@ private:
     void handlePlayerInput(float dt);
     void handleFreeCameraInput(float dt);
 
+    glm::vec2 getMouseWorldPos() const;
+
     void drawWorld();
     void drawGameObjects();
     void drawUI();
@@ -59,6 +61,7 @@ private:
     void devToolsUpdate(float dt);
     void devToolsDrawInWorldUI();
 
+    // data
     glm::ivec2 gameWindowPos;
     glm::ivec2 gameWindowSize;
 
@@ -78,10 +81,13 @@ private:
     EntityFactory entityFactory;
     entt::registry registry;
 
+    // dev
+    Font devToolsFont;
     EntityTreeView entityTreeView;
     EntityInfoDisplayer entityInfoDisplayer;
     bool gameDrawnInWindow{false};
-    bool drawImGui{true};
     bool freeCamera{false};
+    bool drawImGui{true};
     bool drawCollisionShapes{false};
+    bool drawEntityTags{false};
 };

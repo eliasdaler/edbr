@@ -17,15 +17,46 @@ math::FloatRect getSelectedEntityRect(entt::const_handle e)
     }
     return {};
 }
+
+entt::handle findEntityUnderCursor(entt::registry& registry, const glm::vec2& mouseWorldPos)
+{
+    for (auto e : registry.view<entt::entity>()) {
+        auto aabb = getSelectedEntityRect({registry, e});
+        if (aabb.contains(mouseWorldPos)) {
+            return {registry, e};
+        }
+    }
+    return {};
+}
 }
 
 void Game::devToolsHandleInput(float dt)
 {
-    if (inputManager.getKeyboard().wasJustPressed(SDL_SCANCODE_C)) {
+    const auto& kb = inputManager.getKeyboard();
+    if (kb.wasJustPressed(SDL_SCANCODE_C)) {
         freeCamera = !freeCamera;
     }
-    if (inputManager.getKeyboard().wasJustPressed(SDL_SCANCODE_B)) {
+    if (kb.wasJustPressed(SDL_SCANCODE_B)) {
         drawCollisionShapes = !drawCollisionShapes;
+    }
+    if (kb.wasJustPressed(SDL_SCANCODE_T)) {
+        drawEntityTags = !drawEntityTags;
+    }
+    if (kb.wasJustPressed(SDL_SCANCODE_TAB)) {
+        drawImGui = !drawImGui;
+    }
+
+    const auto& mouse = inputManager.getMouse();
+    if (!ImGui::GetIO().WantCaptureMouse && mouse.wasJustPressed(SDL_BUTTON(1))) {
+        const auto& mousePos = inputManager.getMouse().getPosition();
+        const auto& gameScreenPos = edbr::util::
+            getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+        const auto screenRect = math::FloatRect{{}, static_cast<glm::vec2>(params.renderSize)};
+        if (screenRect.contains(gameScreenPos)) {
+            const auto mouseWorldPos = getMouseWorldPos();
+            auto selected = findEntityUnderCursor(registry, getMouseWorldPos());
+            entityTreeView.setSelectedEntity(selected);
+        }
     }
 }
 
@@ -39,9 +70,9 @@ void Game::devToolsUpdate(float dt)
             getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
         DisplayProperty("Mouse pos", mousePos);
         DisplayProperty("Game screen pos", gameScreenPos);
-        const auto worldPos = static_cast<glm::vec2>(gameScreenPos) + cameraPos;
-        DisplayProperty("Mouse wolrd pos", worldPos);
-        DisplayProperty("Tile index", TileMap::GetTileIndex(worldPos));
+        const auto mouseWorldPos = getMouseWorldPos();
+        DisplayProperty("Mouse wolrd pos", mouseWorldPos);
+        DisplayProperty("Tile index", TileMap::GetTileIndex(mouseWorldPos));
         EndPropertyTable();
         ImGui::End();
     }
@@ -86,6 +117,22 @@ void Game::devToolsDrawInWorldUI()
         for (const auto&& [e, cc] : registry.view<CollisionComponent>().each()) {
             auto bb = entityutil::getAABB({registry, e});
             spriteRenderer.drawFilledRect(bb, LinearColor{1.f, 0.f, 0.f, 0.5f});
+        }
+    }
+
+    if (drawEntityTags) {
+        for (const auto&& [e, tc] : registry.view<TagComponent>().each()) {
+            // text is centered on top-center of entity rect
+            const auto aabb = getSelectedEntityRect({registry, e});
+            const auto textBB = devToolsFont.calculateTextBoundingBox(tc.tag);
+            const auto textPos = (aabb.getPosition() + glm::vec2{aabb.width, 0.f}) -
+                                 glm::vec2{textBB.width / 2.f, textBB.height};
+
+            // "shadow"
+            spriteRenderer.drawText(
+                devToolsFont, tc.tag, textPos + glm::vec2{1.f, 1.f}, LinearColor::Black());
+
+            spriteRenderer.drawText(devToolsFont, tc.tag, textPos, LinearColor{1.f, 1.f, 0.f});
         }
     }
 }

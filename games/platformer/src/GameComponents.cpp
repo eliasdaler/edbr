@@ -38,6 +38,14 @@ void Game::registerComponents(ComponentFactory& cf)
             loader.get("maxSpeed", mc.maxSpeed);
         });
 
+    cf.registerComponent<SpawnerComponent>("spawner");
+
+    cf.registerComponentLoader(
+        "teleport", [](entt::handle e, TeleportComponent& tc, const JsonDataLoader& loader) {
+            loader.getIfExists("to_level", tc.levelTag);
+            loader.getIfExists("to", tc.spawnerTag);
+        });
+
     cf.registerComponentLoader(
         "character_controller",
         [](entt::handle e, CharacterControllerComponent& cc, const JsonDataLoader& loader) {});

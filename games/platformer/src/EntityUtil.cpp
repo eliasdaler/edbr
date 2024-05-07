@@ -12,6 +12,27 @@
 namespace entityutil
 {
 
+entt::handle getEntityByTag(entt::registry& registry, const std::string& tag)
+{
+    for (const auto&& [e, tc] : registry.view<TagComponent>().each()) {
+        if (tc.tag == tag) {
+            return {registry, e};
+        }
+    }
+    return {};
+}
+
+void setTag(entt::handle e, const std::string& tag)
+{
+    assert(!tag.empty() && "tag can't be empty");
+    // ensure that tags are unique
+    assert(
+        getEntityByTag(*e.registry(), tag).entity() == entt::null &&
+        "tag already assigned to another entity");
+
+    e.emplace<TagComponent>(TagComponent{.tag = tag});
+}
+
 void setWorldPosition2D(entt::handle e, const glm::vec2& pos)
 {
     assert(

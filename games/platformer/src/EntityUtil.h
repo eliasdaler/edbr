@@ -8,6 +8,9 @@
 
 namespace entityutil
 {
+entt::handle getEntityByTag(entt::registry& registry, const std::string& tag);
+void setTag(entt::handle e, const std::string& tag);
+
 // transform
 void setWorldPosition2D(entt::handle e, const glm::vec2& pos);
 glm::vec2 getWorldPosition2D(entt::const_handle e);

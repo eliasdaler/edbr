@@ -126,7 +126,7 @@
 		},
 		{
 			"prefab": "generic_npc",
-      "tag": "TEST_NPC",
+      "tag": "test_npc",
 			"pos": [
 				684,
 				192

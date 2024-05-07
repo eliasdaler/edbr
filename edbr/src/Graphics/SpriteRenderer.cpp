@@ -107,6 +107,7 @@ void SpriteRenderer::drawText(
     const LinearColor& color,
     int maxNumGlyphsToDraw)
 {
+    assert(font.glyphAtlasID != NULL_IMAGE_ID && "font wasn't loaded");
     const auto& atlasTexture = gfxDevice.getImage(font.glyphAtlasID);
     Sprite glyphSprite(atlasTexture);
     glyphSprite.color = color;
