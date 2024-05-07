@@ -10,6 +10,7 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/ECS/Systems/MovementSystem.h>
 #include <edbr/ECS/Systems/TransformSystem.h>
@@ -47,8 +48,7 @@ void Game::customInit()
         entityutil::makePersistent(player);
     }
 
-    level.load("assets/levels/LevelTown.json", gfxDevice);
-    enterLevel();
+    changeLevel("LevelTown", "from_level_b");
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -95,6 +95,9 @@ void Game::loadAppSettings()
 
 void Game::customCleanup()
 {
+    entityutil::makeNonPersistent(entityutil::getPlayerEntity(registry));
+    destroyNonPersistentEntities();
+
     gfxDevice.waitIdle();
     spriteRenderer.cleanup();
     uiRenderer.cleanup();
@@ -102,6 +105,10 @@ void Game::customCleanup()
 
 void Game::customUpdate(float dt)
 {
+    if (!newLevelToLoad.empty()) {
+        doLevelChange();
+    }
+
     handleInput(dt);
 
     if (!gameDrawnInWindow) {
@@ -182,7 +189,15 @@ void Game::handlePlayerInput(float dt)
     static const auto interactAction = actionMapping.getActionTagHash("Interact");
     interactEntity = entityutil::findInteractableEntity(registry);
     if (actionMapping.wasJustPressed(interactAction) && interactEntity.entity() != entt::null) {
-        fmt::println("iteract with {}", (int)interactEntity.entity());
+        const auto it = interactEntity.get<InteractComponent>().type;
+        switch (it) {
+        case InteractComponent::Type::GoInside: {
+            const auto& tc = interactEntity.get<TeleportComponent>();
+            changeLevel(tc.levelTag, tc.spawnTag);
+        } break;
+        default:
+            break;
+        }
     }
 }
 
@@ -220,8 +235,9 @@ void Game::customDraw()
     const auto& drawImage = gfxDevice.getImage(drawImageId);
     vkutil::transitionImage(
         cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    vkutil::clearColorImage(
-        cmd, drawImage.getExtent2D(), drawImage.imageView, glm::vec4{1.f, 0.f, 1.f, 1.f});
+    // const auto clearColor = glm::vec4{1.f, 0.f, 1.f, 1.f};
+    const auto clearColor = glm::vec4{0.f, 0.f, 0.f, 1.f};
+    vkutil::clearColorImage(cmd, drawImage.getExtent2D(), drawImage.imageView, clearColor);
 
     spriteRenderer.beginDrawing();
     {
@@ -319,9 +335,34 @@ void Game::loadAnimations(const std::filesystem::path& animationsDir)
     });
 }
 
-void Game::enterLevel()
+void Game::changeLevel(const std::string& levelName, const std::string& spawnName)
 {
+    newLevelToLoad = levelName;
+    newLevelSpawnName = spawnName;
+}
+
+void Game::doLevelChange()
+{
+    bool hasPreviousLevel = !level.getName().empty();
+    if (hasPreviousLevel) {
+        exitLevel();
+    }
+    level.load("assets/levels/" + newLevelToLoad + ".json", gfxDevice);
+
     spawnLevelEntities();
+    entityutil::spawnPlayer(registry, newLevelSpawnName);
+    enterLevel();
+
+    newLevelToLoad.clear();
+    newLevelSpawnName.clear();
+}
+
+void Game::enterLevel()
+{}
+
+void Game::exitLevel()
+{
+    destroyNonPersistentEntities();
 }
 
 void Game::spawnLevelEntities()
@@ -340,6 +381,23 @@ void Game::spawnLevelEntities()
     }
 }
 
+void Game::destroyNonPersistentEntities()
+{
+    // TODO: move somewhere else?
+    interactEntity = {registry, entt::null};
+
+    // Note that this will remove persistent entities if they're not parented
+    // to persistent parents!
+    for (auto entity : registry.view<entt::entity>()) {
+        auto e = entt::handle{registry, entity};
+        if (!e.get<HierarchyComponent>().hasParent()) {
+            if (!e.all_of<PersistentComponent>()) {
+                destroyEntity({registry, entity}, true);
+            }
+        }
+    }
+}
+
 entt::handle Game::createEntityFromPrefab(
     const std::string& prefabName,
     const nlohmann::json& overrideData)
@@ -354,5 +412,23 @@ entt::handle Game::createEntityFromPrefab(
     } catch (const std::exception& e) {
         throw std::runtime_error(
             fmt::format("failed to create prefab '{}': {}", prefabName, e.what()));
+    }
+}
+
+void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
+{
+    auto& hc = e.get<HierarchyComponent>();
+    if (hc.hasParent()) {
+        // remove from parent's children list
+        auto& parentHC = hc.parent.get<HierarchyComponent>();
+        std::erase(parentHC.children, e);
+    }
+    // destory children before removing itself
+    for (const auto& child : hc.children) {
+        destroyEntity(child, removeFromRegistry);
+    }
+
+    if (removeFromRegistry) {
+        e.destroy();
     }
 }

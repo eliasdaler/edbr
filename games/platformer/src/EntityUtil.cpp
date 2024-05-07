@@ -119,6 +119,20 @@ entt::handle getPlayerEntity(entt::registry& registry)
     return {};
 }
 
+void spawnPlayer(entt::registry& registry, const std::string& spawnName)
+{
+    auto player = getPlayerEntity(registry);
+    auto spawn = getEntityByTag(registry, spawnName);
+    assert(spawn.entity() != entt::null && "spawn was not found");
+
+    // copy heading (don't copy scale)
+    auto& playerTC = player.get<TransformComponent>();
+    const auto& spawnTC = spawn.get<TransformComponent>();
+    playerTC.transform.setHeading(spawnTC.transform.getHeading());
+
+    setWorldPosition2D(player, getWorldPosition2D(spawn));
+}
+
 entt::handle findInteractableEntity(entt::registry& registry)
 {
     const auto& player = getPlayerEntity(registry);

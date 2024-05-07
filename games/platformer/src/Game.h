@@ -41,11 +41,18 @@ private:
     void registerComponentDisplayers();
     void entityPostInit(entt::handle e);
 
+    void changeLevel(const std::string& levelName, const std::string& spawnName);
+    void doLevelChange();
     void enterLevel();
+    void exitLevel();
+
     void spawnLevelEntities();
+    void destroyNonPersistentEntities();
+
     entt::handle createEntityFromPrefab(
         const std::string& prefabName,
         const nlohmann::json& overrideData = {});
+    void destroyEntity(entt::handle e, bool removeFromRegistry);
 
     void handleInput(float dt);
     void handlePlayerInput(float dt);
@@ -80,6 +87,8 @@ private:
 
     Font defaultFont;
     Level level;
+    std::string newLevelToLoad;
+    std::string newLevelSpawnName;
 
     std::unordered_map<std::string, SpriteAnimationData> animationsData;
     EntityFactory entityFactory;

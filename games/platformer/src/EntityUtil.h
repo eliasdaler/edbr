@@ -32,6 +32,7 @@ void setSpriteAnimation(entt::handle e, const std::string& animName);
 
 // player
 entt::handle getPlayerEntity(entt::registry& registry);
+void spawnPlayer(entt::registry& registry, const std::string& spawnName);
 
 // interaction
 entt::handle findInteractableEntity(entt::registry& registry);

@@ -18,7 +18,7 @@ math::FloatRect getSelectedEntityRect(entt::const_handle e)
     if (e.all_of<CollisionComponent>()) {
         return entityutil::getAABB(e);
     }
-    return {};
+    return {entityutil::getWorldPosition2D(e), {}};
 }
 
 entt::handle findEntityUnderCursor(
