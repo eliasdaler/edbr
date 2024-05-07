@@ -32,4 +32,8 @@ void setSpriteAnimation(entt::handle e, const std::string& animName);
 
 // player
 entt::handle getPlayerEntity(entt::registry& registry);
+
+// interaction
+entt::handle findInteractableEntity(entt::registry& registry);
+
 } // end of namespace entityutil

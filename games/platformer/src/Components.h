@@ -45,4 +45,14 @@ struct TeleportComponent {
     std::string spawnTag;
 };
 
+struct InteractComponent {
+    enum class Type {
+        None,
+        Examine,
+        Talk,
+        GoInside,
+    };
+    Type type{Type::None};
+};
+
 struct PlayerComponent {};

@@ -178,6 +178,12 @@ void Game::handlePlayerInput(float dt)
     } else {
         cc.gravity = playerGravity;
     }
+
+    static const auto interactAction = actionMapping.getActionTagHash("Interact");
+    interactEntity = entityutil::findInteractableEntity(registry);
+    if (actionMapping.wasJustPressed(interactAction) && interactEntity.entity() != entt::null) {
+        fmt::println("iteract with {}", (int)interactEntity.entity());
+    }
 }
 
 void Game::handleFreeCameraInput(float dt)

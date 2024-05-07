@@ -110,4 +110,27 @@ void Game::registerComponentDisplayers()
         }
         EndPropertyTable();
     });
+
+    eid.registerDisplayer("Interact", [](entt::const_handle e, const InteractComponent& ic) {
+        BeginPropertyTable();
+        {
+            const auto interactTypeString = [](InteractComponent::Type t) {
+                switch (t) {
+                case InteractComponent::Type::None:
+                    return "None";
+                case InteractComponent::Type::Examine:
+                    return "Examine";
+                case InteractComponent::Type::Talk:
+                    return "Talk";
+                case InteractComponent::Type::GoInside:
+                    return "GoInside";
+                default:
+                    return "???";
+                }
+            }(ic.type);
+
+            DisplayProperty("Type", interactTypeString);
+        }
+        EndPropertyTable();
+    });
 }

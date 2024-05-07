@@ -76,6 +76,7 @@ private:
     TileMapRenderer tileMapRenderer;
 
     glm::vec2 cameraPos;
+    entt::handle interactEntity;
 
     Font defaultFont;
     Level level;

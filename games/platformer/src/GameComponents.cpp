@@ -49,4 +49,20 @@ void Game::registerComponents(ComponentFactory& cf)
     cf.registerComponentLoader(
         "character_controller",
         [](entt::handle e, CharacterControllerComponent& cc, const JsonDataLoader& loader) {});
+
+    cf.registerComponentLoader(
+        "interaction", [](entt::handle e, InteractComponent& ic, const JsonDataLoader& loader) {
+            std::string interactTypeString;
+            loader.getIfExists("type", interactTypeString);
+            if (interactTypeString == "Examine") {
+                ic.type = InteractComponent::Type::Examine;
+            } else if (interactTypeString == "Talk") {
+                ic.type = InteractComponent::Type::Talk;
+            } else if (interactTypeString == "GoInside") {
+                ic.type = InteractComponent::Type::GoInside;
+            } else if (!interactTypeString.empty()) {
+                throw std::runtime_error(
+                    fmt::format("unknown interact type '{}'", interactTypeString));
+            }
+        });
 }

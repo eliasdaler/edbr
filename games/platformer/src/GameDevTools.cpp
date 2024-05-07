@@ -63,7 +63,8 @@ void Game::devToolsHandleInput(float dt)
         if (screenRect.contains(gameScreenPos)) {
             const auto mouseWorldPos = getMouseWorldPos();
             bool includeInvisible = drawCollisionShapes;
-            auto selected = findEntityUnderCursor(registry, getMouseWorldPos(), includeInvisible);
+            const auto selected =
+                findEntityUnderCursor(registry, getMouseWorldPos(), includeInvisible);
             entityTreeView.setSelectedEntity(selected);
         }
     }
@@ -124,7 +125,7 @@ void Game::devToolsDrawInWorldUI()
             level.getTileMap(),
             level.getTileMap().getLayer(TileMap::CollisionLayerName));
         for (const auto&& [e, cc] : registry.view<CollisionComponent>().each()) {
-            auto bb = entityutil::getAABB({registry, e});
+            const auto bb = entityutil::getAABB({registry, e});
             auto collBoxColor = LinearColor{1.f, 0.f, 0.f, 0.5f};
             if (registry.all_of<TeleportComponent>(e)) {
                 collBoxColor = LinearColor{1.f, 1.f, 0.f, 0.5f};

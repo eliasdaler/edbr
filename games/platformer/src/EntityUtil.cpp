@@ -119,4 +119,17 @@ entt::handle getPlayerEntity(entt::registry& registry)
     return {};
 }
 
+entt::handle findInteractableEntity(entt::registry& registry)
+{
+    const auto& player = getPlayerEntity(registry);
+    const auto playerBB = getAABB(player);
+    for (const auto& [e, cc, ic] : registry.view<CollisionComponent, InteractComponent>().each()) {
+        const auto& eBB = getAABB({registry, e});
+        if (eBB.intersects(playerBB)) {
+            return {registry, e};
+        }
+    }
+    return {};
+}
+
 }
