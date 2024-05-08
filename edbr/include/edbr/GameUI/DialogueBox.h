@@ -33,6 +33,7 @@ struct DialogueBoxStyle {
     glm::vec2 mainTextPadding;
     int mainTextMaxNumCharsLine{};
     int mainTextMaxLines{};
+    ui::ElementPositionAndSize mainTextPositionAndSize;
 
     // typewriter
     float charsDisplaySpeed{15.f};
@@ -40,9 +41,11 @@ struct DialogueBoxStyle {
     float punctuationDelay{0.1f};
 
     // speaker name text
+    ui::FontStyle speakerNameTextFontStyle;
     LinearColor speakerNameTextColor;
     glm::vec2 speakerNameTextOffset;
     bool speakerNameTextShadow{false};
+    ui::ElementPositionAndSize speakerNamePositionAndSize;
 
     // choice buttons
     ui::ButtonStyle choiceButtonStyle;
@@ -103,6 +106,7 @@ private:
     void setChoicesDisplayed(bool b);
 
     Font defaultFont;
+    Font speakerNameFont;
     std::unique_ptr<ui::Element> dialogueBoxUI;
 
     std::string text;

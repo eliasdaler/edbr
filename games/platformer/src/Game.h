@@ -16,9 +16,11 @@
 
 #include <edbr/GameUI/Cursor.h>
 #include <edbr/GameUI/DialogueBox.h>
+#include <edbr/GameUI/MenuStack.h>
 
 #include <edbr/DevTools/EntityInfoDisplayer.h>
 #include <edbr/DevTools/EntityTreeView.h>
+#include <edbr/DevTools/UIInspector.h>
 
 #include "Level.h"
 
@@ -61,6 +63,8 @@ private:
     void handlePlayerInput(float dt);
     void handleFreeCameraInput(float dt);
 
+    bool isDialogueBoxOpen() const;
+
     glm::vec2 getMouseGameScreenPos() const;
     glm::vec2 getMouseWorldPos() const;
 
@@ -100,11 +104,13 @@ private:
     DialogueBox dialogueBox;
     Font defaultFont;
     Cursor cursor;
+    MenuStack menuStack;
 
     // dev
     Font devToolsFont;
     EntityTreeView entityTreeView;
     EntityInfoDisplayer entityInfoDisplayer;
+    UIInspector uiInspector;
     bool gameDrawnInWindow{false};
     bool freeCamera{false};
     bool drawImGui{true};

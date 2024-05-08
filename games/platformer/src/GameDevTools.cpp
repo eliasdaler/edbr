@@ -87,6 +87,12 @@ void Game::devToolsUpdate(float dt)
         ImGui::End();
     }
 
+    if (ImGui::Begin("UI")) {
+        ImGui::Checkbox("Draw UI bounding boxes", &uiInspector.drawUIElementBoundingBoxes);
+        uiInspector.updateUI(dt);
+        ImGui::End();
+    }
+
     if (ImGui::Begin("Entities")) {
         entityTreeView.update(registry, dt);
         ImGui::End();

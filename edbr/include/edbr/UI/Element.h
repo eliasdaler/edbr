@@ -11,6 +11,8 @@
 namespace ui
 {
 
+struct ElementPositionAndSize;
+
 struct Element {
     virtual ~Element() {}
 
@@ -43,6 +45,8 @@ struct Element {
     virtual void calculateChildrenPositions();
     // Calculate own position (based on screen size or parent)
     void calculateOwnPosition();
+
+    void setPositionAndSize(const ElementPositionAndSize& posAndSize);
 
     void setSelected(bool b);
     // what happens when element becomes in focus or focus exits from it

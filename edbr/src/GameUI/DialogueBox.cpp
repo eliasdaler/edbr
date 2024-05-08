@@ -32,10 +32,13 @@ void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
         const auto& mtLoader = loader.getLoader("mainText");
         mainTextFontStyle.load(mtLoader.getLoader("font"));
         mtLoader.get("color", mainTextColor);
-        mtLoader.get("padding", mainTextPadding);
-        mtLoader.get("shadow", mainTextShadow);
+        mtLoader.getIfExists("padding", mainTextPadding);
+        mtLoader.getIfExists("shadow", mainTextShadow);
         mtLoader.get("maxNumCharsLine", mainTextMaxNumCharsLine);
         mtLoader.get("maxLines", mainTextMaxLines);
+        if (mtLoader.hasKey("positionAndSize")) {
+            mainTextPositionAndSize.load(mtLoader.getLoader("positionAndSize"));
+        }
     }
 
     { // typewriter
@@ -47,9 +50,13 @@ void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 
     { // speaker name
         const auto& snLoader = loader.getLoader("speakerNameText");
+        speakerNameTextFontStyle.load(snLoader.getLoader("font"));
         snLoader.get("color", speakerNameTextColor);
-        snLoader.get("offset", speakerNameTextOffset);
         snLoader.getIfExists("shadow", speakerNameTextShadow);
+        snLoader.getIfExists("offset", speakerNameTextOffset);
+        if (snLoader.hasKey("positionAndSize")) {
+            speakerNamePositionAndSize.load(snLoader.getLoader("positionAndSize"));
+        }
     }
 
     { // choices
@@ -85,6 +92,16 @@ void DialogueBox::init(
         dbStyle.mainTextFontStyle.path,
         dbStyle.mainTextFontStyle.size,
         dbStyle.mainTextFontStyle.antialiasing);
+    if (dbStyle.mainTextFontStyle.lineSpacing != 0.f) {
+        defaultFont.lineSpacing = dbStyle.mainTextFontStyle.lineSpacing;
+    }
+    assert(ok && "font failed to load");
+
+    ok = speakerNameFont.load(
+        gfxDevice,
+        dbStyle.speakerNameTextFontStyle.path,
+        dbStyle.speakerNameTextFontStyle.size,
+        dbStyle.speakerNameTextFontStyle.antialiasing);
     assert(ok && "font failed to load");
 
     charsSpeed = dbStyle.charsDisplaySpeed;
@@ -276,10 +293,13 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
             mainTextElement->setFixedSize(fixedSizeString);
         }
 
+        mainTextElement->setPositionAndSize(dbStyle.mainTextPositionAndSize);
         // some padding is added on both sides
         const auto& padding = dbStyle.mainTextPadding;
-        mainTextElement->offsetPosition = padding;
-        mainTextElement->offsetSize = -padding * 2.f;
+        if (padding != glm::vec2{}) {
+            mainTextElement->offsetPosition = padding;
+            mainTextElement->offsetSize = -padding * 2.f;
+        }
 
         mainTextElement->shadow = dbStyle.mainTextShadow;
         dialogueBox->addChild(std::move(mainTextElement));
@@ -325,9 +345,12 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
 
     { // menu/speaker name
         auto menuName =
-            std::make_unique<ui::TextElement>(defaultFont, dbStyle.speakerNameTextColor);
+            std::make_unique<ui::TextElement>(speakerNameFont, dbStyle.speakerNameTextColor);
         menuName->tag = MenuNameTag;
-        menuName->offsetPosition = dbStyle.speakerNameTextOffset;
+        menuName->setPositionAndSize(dbStyle.speakerNamePositionAndSize);
+        if (dbStyle.speakerNameTextOffset != glm::vec2{}) {
+            menuName->offsetPosition = dbStyle.speakerNameTextOffset;
+        }
         menuName->shadow = dbStyle.speakerNameTextShadow;
 
         dialogueBox->addChild(std::move(menuName));

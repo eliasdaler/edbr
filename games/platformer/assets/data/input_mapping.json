@@ -8,8 +8,9 @@
       "CursorRight": [ "D", "Right" ],
       "CursorUp": [ "W", "Up" ],
       "CursorDown": [ "S", "Down" ],
-      "CursorConfirm": [ "F", "Return" ],
-      "MenuExit": [ "Escape" ]
+      "MenuConfirm": [ "F", "Return" ],
+      "PrimaryAction": [ "F", "Return" ],
+      "MenuBack": [ "Escape" ]
     },
 		"axisButton": [
 			{
@@ -83,8 +84,9 @@
       "CursorRight": [ "DPadRight", "LeftX+" ],
       "CursorUp": [ "DPadUp", "LeftY-" ],
       "CursorDown": [ "DPadDown", "LeftY+" ],
-      "CursorConfirm": [ "A" ],
-      "MenuExit": [ "B" ]
+      "MenuConfirm": [ "A" ],
+      "PrimaryAction": [ "A" ],
+      "MenuBack": [ "B" ]
     },
 		"axis": [
 			{

@@ -67,6 +67,7 @@ struct FontStyle {
     std::filesystem::path path;
     int size{16};
     bool antialiasing{false};
+    float lineSpacing{0.f}; // if not 0 - custom line spacing is used
 };
 
 } // end of namespace ui

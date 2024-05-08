@@ -97,14 +97,16 @@ void GameUI::init(Game& game, GfxDevice& gfxDevice, const glm::ivec2& screenSize
     createTitleScreen(game, gfxDevice);
     createMenus(game, gfxDevice);
 
-    std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
-    JsonFile dbStyleFile(dbStylePath);
-    assert(dbStyleFile.isGood());
+    { // dialogue box
+        std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
+        JsonFile dbStyleFile(dbStylePath);
+        assert(dbStyleFile.isGood());
 
-    DialogueBoxStyle dbStyle;
-    dbStyle.load(dbStyleFile.getLoader(), gfxDevice);
+        DialogueBoxStyle dbStyle;
+        dbStyle.load(dbStyleFile.getLoader(), gfxDevice);
 
-    dialogueBox.init(dbStyle, gfxDevice, audioManager);
+        dialogueBox.init(dbStyle, gfxDevice, audioManager);
+    }
 }
 
 bool GameUI::isDialogueBoxOpen() const

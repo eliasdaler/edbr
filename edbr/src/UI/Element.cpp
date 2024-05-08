@@ -1,5 +1,7 @@
 #include <edbr/UI/Element.h>
 
+#include <edbr/UI/Style.h>
+
 #include <glm/common.hpp>
 
 #include <stdexcept>
@@ -27,6 +29,15 @@ Element* Element::tryFindElement(const std::string& tag)
         }
     }
     return nullptr;
+}
+
+void Element::setPositionAndSize(const ElementPositionAndSize& posAndSize)
+{
+    relativePosition = posAndSize.relativePosition;
+    relativeSize = posAndSize.relativeSize;
+    offsetPosition = posAndSize.offsetPosition;
+    offsetSize = posAndSize.offsetSize;
+    origin = posAndSize.origin;
 }
 
 void Element::calculateLayout(const glm::vec2& screenSize)

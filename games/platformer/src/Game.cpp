@@ -19,7 +19,7 @@
 #include "EntityUtil.h"
 #include "Systems.h"
 
-Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
+Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice), menuStack(cursor)
 {}
 
 void Game::customInit()
@@ -31,12 +31,38 @@ void Game::customInit()
     spriteRenderer.init(drawImageFormat);
     uiRenderer.init(drawImageFormat);
     defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
+
     devToolsFont.load(gfxDevice, "assets/fonts/at01.ttf", 16, false);
 
     loadAnimations("assets/animations");
 
     { // UI
-      // dialogueBox.init(gfxDevice, audioManager);
+        { // dialogue box
+            std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
+            JsonFile dbStyleFile(dbStylePath);
+            assert(dbStyleFile.isGood());
+
+            DialogueBoxStyle dbStyle;
+            dbStyle.load(dbStyleFile.getLoader(), gfxDevice);
+
+            dialogueBox.init(dbStyle, gfxDevice, audioManager);
+
+            uiInspector.setInspectedUI(dialogueBox.getRootElement());
+
+            const auto cursorImageId =
+                gfxDevice.loadImageFromFile("assets/images/ui/hand_cursor.png");
+            const auto& cursorImage = gfxDevice.getImage(cursorImageId);
+            cursor.sprite.setTexture(cursorImage);
+            cursor.sprite.setPivotPixel({15, 7});
+
+            cursor.bouncer = Bouncer({
+                .maxOffset = 2.f,
+                .moveDuration = 0.5f,
+                .tween = glm::quadraticEaseInOut<float>,
+            });
+
+            cursor.moveSound = "assets/sounds/ui/cursor_move.wav";
+        }
     }
 
     initEntityFactory();
@@ -53,6 +79,14 @@ void Game::customInit()
     }
 
     changeLevel("LevelTown", "from_level_b");
+
+    dialogueBox.setText("Test\nHello world...\nOkay, this works!");
+    /* dialogueBox.setText("Are you going?");
+    dialogueBox.setChoiceText(0, "Yes");
+    dialogueBox.setChoiceText(1, "No"); */
+    dialogueBox.setSpeakerName("Crafty");
+
+    menuStack.pushMenu(dialogueBox.getRootElement());
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -144,12 +178,26 @@ void Game::customUpdate(float dt)
     if (isDevEnvironment) {
         devToolsUpdate(dt);
     }
+
+    cursor.update(dt);
+    dialogueBox.update(static_cast<glm::vec2>(params.renderSize), dt);
+    menuStack.calculateLayout(static_cast<glm::vec2>(params.renderSize));
 }
 
 void Game::handleInput(float dt)
 {
     if (!freeCamera) {
-        handlePlayerInput(dt);
+        if (menuStack.hasMenus()) {
+            if (cursor.visible) {
+                cursor.handleInput(inputManager.getActionMapping(), audioManager);
+            }
+
+            if (isDialogueBoxOpen()) {
+                dialogueBox.handleInput(inputManager.getActionMapping());
+            }
+        } else {
+            handlePlayerInput(dt);
+        }
     } else {
         handleFreeCameraInput(dt);
     }
@@ -157,6 +205,11 @@ void Game::handleInput(float dt)
     if (isDevEnvironment) {
         devToolsHandleInput(dt);
     }
+}
+
+bool Game::isDialogueBoxOpen() const
+{
+    return menuStack.isInsideMenu(DialogueBox::DialogueBoxMenuTag);
 }
 
 void Game::handlePlayerInput(float dt)
@@ -301,7 +354,15 @@ void Game::drawGameObjects()
 
 void Game::drawUI()
 {
+    menuStack.draw(uiRenderer);
+    if (cursor.visible) {
+        cursor.draw(uiRenderer);
+    }
     // uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
+
+    if (isDevEnvironment) {
+        uiInspector.draw(uiRenderer);
+    }
 }
 
 void Game::initEntityFactory()

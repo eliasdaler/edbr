@@ -25,9 +25,13 @@
     "punctuationDelay": 0.1
   },
   "speakerNameText": {
+    "font": {
+      "path": "assets/fonts/JF-Dot-Kappa20B.ttf",
+      "size": 40
+    },
     "color": { "rgb": [254, 214, 124] },
-    "offset": [20, -40],
-    "shadow": true
+    "shadow": true,
+    "offset": [20, -40]
   },
   "choiceButtonStyle": {
     "normalColor": { "rgb": [255, 255, 255 ] },

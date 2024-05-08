@@ -119,6 +119,7 @@ void FontStyle::load(const JsonDataLoader& loader)
     loader.get("path", path);
     loader.get("size", size);
     loader.getIfExists("aa", antialiasing);
+    loader.getIfExists("lineSpacing", lineSpacing);
 }
 
 }

@@ -2,13 +2,14 @@
 	"actions": [
 		"Jump",
     "Interact",
+    "PrimaryAction",
     "Pause",
     "CursorLeft",
     "CursorRight",
     "CursorUp",
     "CursorDown",
-    "CursorConfirm",
-    "MenuExit"
+    "MenuConfirm",
+    "MenuBack"
 	],
 	"axes": [
 		"MoveX",
