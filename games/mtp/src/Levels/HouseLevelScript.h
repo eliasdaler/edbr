@@ -27,8 +27,8 @@ public:
             };
             token.onChoice = [this](std::size_t index) {
                 auto tt = dialogue::TextToken{
-                    .name = LST{"GLEEBY_DEEBY_NAME"},
                     // TODO: move to NPC component?
+                    .name = LST{"GLEEBY_DEEBY_NAME"},
                     .voiceSound = "assets/sounds/ui/meow.wav",
                     .voiceSoundSpeed = 0.15f,
                 };
@@ -43,7 +43,7 @@ public:
                 tokens[1].text = LST{"TURN_TV_OFF_REACTION_2"};
                 return game.say(tokens);
             };
-            return std::vector<dialogue::TextToken>{token};
+            return std::vector{token};
         }
 
         if (name == "Bed") {

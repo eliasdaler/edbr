@@ -516,7 +516,8 @@ void Game::handlePlayerInteraction()
         const auto& tokens = std::get<std::vector<dialogue::TextToken>>(res);
         actionListManager.addActionList(say(tokens, interactEntity));
     } else if (std::holds_alternative<ActionList>(res)) {
-        actionListManager.addActionList(std::move(std::get<ActionList>(res)));
+        auto list = std::move(std::get<ActionList>(res));
+        actionListManager.addActionList(std::move(list));
     }
 }
 
@@ -1029,12 +1030,15 @@ LocalizedStringTag getSpeakerName(entt::handle e)
 
 ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
 {
-    return actions::say(textManager, ui, text, getSpeakerName(speaker));
+    const auto textToken = dialogue::TextToken{
+        .text = text,
+    };
+    return say(textToken, speaker);
 }
 
 ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
 {
-    return actions::say(textManager, ui, {&textToken, 1}, getSpeakerName(speaker));
+    return say({&textToken, 1}, speaker);
 }
 
 ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::handle speaker)

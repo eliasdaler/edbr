@@ -15,13 +15,6 @@ struct TextToken;
 
 namespace actions
 {
-
-ActionList say(
-    TextManager& textManager,
-    IGameUI& ui,
-    const LocalizedStringTag& text,
-    const LocalizedStringTag& speakerName);
-
 ActionList say(
     TextManager& textManager,
     IGameUI& ui,

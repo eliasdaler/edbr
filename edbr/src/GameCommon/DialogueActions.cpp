@@ -44,19 +44,6 @@ void prepareDialogueBox(
 
 namespace actions
 {
-
-ActionList say(
-    TextManager& textManager,
-    IGameUI& ui,
-    const LocalizedStringTag& text,
-    const LocalizedStringTag& speakerName)
-{
-    const auto textToken = dialogue::TextToken{
-        .text = text,
-    };
-    return say(textManager, ui, {&textToken, 1}, speakerName);
-}
-
 ActionList say(
     TextManager& textManager,
     IGameUI& ui,
