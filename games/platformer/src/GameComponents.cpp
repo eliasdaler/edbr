@@ -65,4 +65,19 @@ void Game::registerComponents(ComponentFactory& cf)
                     fmt::format("unknown interact type '{}'", interactTypeString));
             }
         });
+
+    cf.registerComponentLoader(
+        "npc", [](entt::handle e, NPCComponent& npcc, const JsonDataLoader& loader) {
+            std::string nameTag;
+            loader.getIfExists("name", nameTag);
+            if (!nameTag.empty()) {
+                npcc.name = LST{nameTag};
+            }
+
+            std::string defaultTextTag;
+            loader.getIfExists("text", defaultTextTag);
+            if (!defaultTextTag.empty()) {
+                npcc.defaultText = LST{defaultTextTag};
+            }
+        });
 }

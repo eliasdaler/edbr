@@ -12,6 +12,7 @@
 #include <edbr/Graphics/IdTypes.h>
 #include <edbr/Graphics/SpriteAnimationData.h>
 #include <edbr/Graphics/SpriteRenderer.h>
+#include <edbr/Text/TextToken.h>
 #include <edbr/TileMap/TileMapRenderer.h>
 
 #include <edbr/DevTools/EntityInfoDisplayer.h>
@@ -33,6 +34,16 @@ public:
 
     void customUpdate(float dt) override;
     void customDraw() override;
+
+public:
+    // high level functions for scripts
+    [[nodiscard]] ActionList say(const LocalizedStringTag& text, entt::handle speaker = {});
+    [[nodiscard]] ActionList say(const dialogue::TextToken& textToken, entt::handle speaker = {});
+    [[nodiscard]] ActionList say(
+        std::span<const dialogue::TextToken> textTokens,
+        entt::handle speaker = {});
+
+    void stopPlayerMovement();
 
 private:
     void loadAnimations(const std::filesystem::path& animationsDir);

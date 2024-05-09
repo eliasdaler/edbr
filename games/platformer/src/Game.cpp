@@ -2,9 +2,11 @@
 
 #include <edbr/Core/JsonFile.h>
 
+#include <edbr/GameCommon/DialogueActions.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Letterbox.h>
 #include <edbr/Graphics/Vulkan/Util.h>
+#include <edbr/Text/LocalizedStringTag.h>
 #include <edbr/Util/FS.h>
 #include <edbr/Util/InputUtil.h>
 
@@ -24,6 +26,8 @@ Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice), ui(audioManager
 
 void Game::customInit()
 {
+    textManager.loadText("en", "assets/text/en.json", "assets/text/en.json");
+
     inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
     inputManager.loadMapping("assets/data/input_mapping.json");
 
@@ -53,14 +57,6 @@ void Game::customInit()
     }
 
     changeLevel("LevelTown", "from_level_b");
-
-    auto& dialogueBox = ui.getDialogueBox();
-    dialogueBox.setText("Test\nHello world...\nOkay, this works!");
-    /* dialogueBox.setText("Are you going?");
-    dialogueBox.setChoiceText(0, "Yes");
-    dialogueBox.setChoiceText(1, "No"); */
-    dialogueBox.setSpeakerName("Crafty");
-    ui.openDialogueBox();
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -212,6 +208,16 @@ void Game::handlePlayerInput(float dt)
         case InteractComponent::Type::GoInside: {
             const auto& tc = interactEntity.get<TeleportComponent>();
             changeLevel(tc.levelTag, tc.spawnTag);
+        } break;
+        case InteractComponent::Type::Talk:
+            /* fallthrough */
+        case InteractComponent::Type::Examine: {
+            const auto& npcc = interactEntity.get<NPCComponent>();
+            if (!npcc.defaultText.empty()) {
+                stopPlayerMovement();
+                auto l = say(npcc.defaultText, interactEntity);
+                actionListManager.addActionList(std::move(l));
+            }
         } break;
         default:
             break;
@@ -454,4 +460,47 @@ void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
     if (removeFromRegistry) {
         e.destroy();
     }
+}
+
+namespace
+{
+LocalizedStringTag getSpeakerName(entt::handle e)
+{
+    if (e.entity() == entt::null) {
+        return LST{};
+    }
+    if (auto npcc = e.try_get<NPCComponent>(); npcc) {
+        if (!npcc->name.empty()) {
+            return npcc->name;
+        }
+    }
+    return LST{};
+}
+}
+
+ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
+{
+    const auto textToken = dialogue::TextToken{
+        .text = text,
+    };
+    return say(textToken, speaker);
+}
+
+ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
+{
+    return say({&textToken, 1}, speaker);
+}
+
+ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::handle speaker)
+{
+    return actions::say(textManager, ui, textTokens, getSpeakerName(speaker));
+}
+
+void Game::stopPlayerMovement()
+{
+    auto player = entityutil::getPlayerEntity(registry);
+    auto& mc = player.get<MovementComponent>();
+    mc.rotationProgress = mc.rotationTime;
+    mc.rotationTime = 0.f;
+    mc.kinematicVelocity = {};
 }

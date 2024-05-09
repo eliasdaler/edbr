@@ -133,4 +133,13 @@ void Game::registerComponentDisplayers()
         }
         EndPropertyTable();
     });
+
+    eid.registerDisplayer("NPC", [](entt::const_handle e, const NPCComponent& npcc) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("Name", npcc.name.tag);
+            DisplayProperty("DefaultText", npcc.defaultText.tag);
+        }
+        EndPropertyTable();
+    });
 }

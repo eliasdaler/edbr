@@ -5,6 +5,7 @@
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Graphics/SpriteAnimationData.h>
 #include <edbr/Graphics/SpriteAnimator.h>
+#include <edbr/Text/LocalizedStringTag.h>
 
 struct TagComponent {
     std::string tag;
@@ -53,6 +54,11 @@ struct InteractComponent {
         GoInside,
     };
     Type type{Type::None};
+};
+
+struct NPCComponent {
+    LocalizedStringTag name;
+    LocalizedStringTag defaultText;
 };
 
 struct PlayerComponent {};

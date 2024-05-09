@@ -95,16 +95,20 @@ public:
     void generateDrawList();
 
     MTPSaveFile& getSaveFile();
+    void writeSaveFile();
+
     const std::string& getCurrentLevelName() const;
     const std::string& getLastSpawnName() const;
 
+    const TextManager& getTextManager() const { return textManager; }
     entt::registry& getEntityRegistry() { return registry; }
-    void stopPlayerMovement();
-    void writeSaveFile();
 
+    // high level functions for scripts
+    void stopPlayerMovement();
+
+    // dialogue
     [[nodiscard]] ActionList say(const LocalizedStringTag& text, entt::handle speaker = {});
     [[nodiscard]] ActionList say(const dialogue::TextToken& textToken, entt::handle speaker = {});
-
     [[nodiscard]] ActionList say(
         std::span<const dialogue::TextToken> textTokens,
         entt::handle speaker = {});
@@ -114,8 +118,6 @@ public:
 
     // Do task with some delay. The taskName should be unique for each task
     void doWithDelay(const std::string& taskName, float delay, std::function<void()> task);
-
-    const TextManager& getTextManager() const { return textManager; }
 
 public:
     // game states
