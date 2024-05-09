@@ -2,7 +2,11 @@
 
 #include <edbr/Audio/AudioManager.h>
 #include <edbr/Core/JsonFile.h>
+#include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/SpriteRenderer.h>
+
+#include "Components.h"
 
 GameUI::GameUI(AudioManager& audioManager) : menuStack(cursor), audioManager(audioManager)
 {}
@@ -32,6 +36,31 @@ void GameUI::init(GfxDevice& gfxDevice)
 
         cursor.moveSound = "assets/sounds/ui/cursor_move.wav";
     }
+
+    { // interact sprites
+        const auto examineTipImageId =
+            gfxDevice.loadImageFromFile("assets/images/ui/check_tip.png");
+        const auto& examineTipImage = gfxDevice.getImage(examineTipImageId);
+        examineTipSprite.setTexture(examineTipImage);
+        examineTipSprite.setPivotPixel({5, 15});
+
+        const auto goInsideTipImageId =
+            gfxDevice.loadImageFromFile("assets/images/ui/go_inside_tip.png");
+        const auto& goInsideTipImage = gfxDevice.getImage(goInsideTipImageId);
+        goInsideTipSprite.setTexture(goInsideTipImage);
+        goInsideTipSprite.setPivotPixel({7, 13});
+
+        const auto talkTipImageId = gfxDevice.loadImageFromFile("assets/images/ui/talk_tip.png");
+        const auto& talkTipImage = gfxDevice.getImage(talkTipImageId);
+        talkTipSprite.setTexture(talkTipImage);
+        talkTipSprite.setPivotPixel({5, 15});
+
+        interactTipBouncer = Bouncer({
+            .maxOffset = 2.f,
+            .moveDuration = 0.5f,
+            .tween = glm::quadraticEaseInOut<float>,
+        });
+    }
 }
 
 bool GameUI::capturesInput() const
@@ -52,6 +81,7 @@ void GameUI::handleInput(const ActionMapping& am)
 
 void GameUI::update(const glm::vec2 screenSize, float dt)
 {
+    interactTipBouncer.update(dt);
     cursor.update(dt);
     dialogueBox.update(dt);
     menuStack.calculateLayout(screenSize);
@@ -78,10 +108,34 @@ void GameUI::closeDialogueBox()
     audioManager.playSound("assets/sounds/ui/menu_close.wav");
 }
 
-void GameUI::draw(SpriteRenderer& spriteRenderer)
+void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx)
 {
     menuStack.draw(spriteRenderer);
     if (cursor.visible) {
         cursor.draw(spriteRenderer);
     }
+
+    if (!isDialogueBoxOpen() && ctx.interactionType != InteractComponent::Type::None) {
+        drawInteractTip(spriteRenderer, ctx);
+    }
+}
+
+void GameUI::drawInteractTip(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
+{
+    const Sprite& sprite = [this](InteractComponent::Type type) {
+        switch (type) {
+        case InteractComponent::Type::Examine:
+            return examineTipSprite;
+        case InteractComponent::Type::Talk:
+            return talkTipSprite;
+        case InteractComponent::Type::GoInside:
+            return goInsideTipSprite;
+        default:
+            return examineTipSprite;
+        }
+    }(ctx.interactionType);
+
+    auto screenPos = ctx.playerPos + glm::vec2{0.f, -16.f} - ctx.cameraPos;
+    screenPos.y += interactTipBouncer.getOffset();
+    spriteRenderer.drawSprite(sprite, screenPos);
 }

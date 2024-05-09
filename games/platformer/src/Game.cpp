@@ -321,7 +321,16 @@ void Game::drawGameObjects()
 
 void Game::drawUI()
 {
-    ui.draw(uiRenderer);
+    auto uiCtx = GameUI::UIContext{
+        .playerPos = entityutil::getWorldPosition2D(entityutil::getPlayerEntity(registry)),
+        .cameraPos = cameraPos,
+    };
+    if (interactEntity.entity() != entt::null) {
+        auto& ic = interactEntity.get<InteractComponent>();
+        uiCtx.interactionType = ic.type;
+    }
+    ui.draw(uiRenderer, uiCtx);
+
     // uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
 
     if (isDevEnvironment) {
