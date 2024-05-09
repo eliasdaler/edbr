@@ -156,6 +156,9 @@ add_library(edbr
   src/TileMap/TileMap.cpp
   src/TileMap/TileMapRenderer.cpp
 
+  # GameCommon
+  src/GameCommon/DialogueActions.cpp
+
   src/Application.cpp
   src/SceneCache.cpp
 )

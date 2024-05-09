@@ -17,6 +17,7 @@
 #include <edbr/ECS/Systems/MovementSystem.h>
 #include <edbr/ECS/Systems/TransformSystem.h>
 
+#include <edbr/GameCommon/DialogueActions.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
@@ -1025,63 +1026,19 @@ LocalizedStringTag getSpeakerName(entt::handle e)
 
 ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
 {
-    using namespace actions;
-
     // speaker name
     auto speakerName = textToken.name; // has higher precendence than speaker's name
     if (speakerName.empty() && speaker.entity() != entt::null) {
         speakerName = getSpeakerName(speaker);
     }
 
-    auto dialogueDebugName = fmt::format("Dialogue: {}", textToken.text.tag);
-
-    auto l = ActionList(
-        std::move(dialogueDebugName),
-        doNamed(
-            "Open dialogue",
-            [this, textToken, speakerName]() {
-                auto& db = ui.getDialogueBox();
-
-                if (!speakerName.empty()) {
-                    db.setSpeakerName(textManager.getString(speakerName));
-                }
-
-                // text
-                db.setText(textManager.getString(textToken.text));
-
-                // choices
-                if (!textToken.choices.empty()) {
-                    assert(textToken.choices.size() <= DialogueBox::MaxChoices);
-                    for (std::size_t i = 0; i < textToken.choices.size(); ++i) {
-                        db.setChoiceText(i, textManager.getString(textToken.choices[i]));
-                    }
-                }
-
-                // voice
-                if (!textToken.voiceSound.empty()) {
-                    db.setTempVoiceSound(textToken.voiceSound, textToken.voiceSoundSpeed);
-                }
-
-                // open
-                ui.openDialogueBox();
-            }),
-        waitWhile(
-            "Wait dialogue input",
-            [this](float dt) {
-                auto& db = ui.getDialogueBox();
-                return !ui.getDialogueBox().wantsClose();
-            }),
-        doNamed("Close dialogue box", [this]() { ui.closeDialogueBox(); }));
-
-    auto onChoice = textToken.onChoice;
-    if (onChoice) {
-        l.addAction(actions::make("Dialogue choice", [this, onChoice]() {
-            auto lastChoice = ui.getDialogueBox().getLastChoiceSelectionIndex();
-            return actions::doList(onChoice(lastChoice));
-        }));
-    }
-
-    return l;
+    return actions::say(
+        textManager,
+        ui.getDialogueBox(),
+        [this]() { ui.openDialogueBox(); },
+        [this]() { ui.closeDialogueBox(); },
+        textToken,
+        speakerName);
 }
 
 ActionList Game::say(const std::vector<dialogue::TextToken>& textTokens, entt::handle speaker)
@@ -1104,16 +1061,18 @@ ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
 [[nodiscard]] ActionList Game::saveGameSequence()
 {
     std::vector<dialogue::TextToken> tokens{
-        {.text = LST{"DO_YOU_WANT_TO_SAVE"},
-         .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
-         .onChoice =
-             [this](std::size_t index) {
-                 if (index == 0) {
-                     writeSaveFile();
-                     return say(LST{"GAME_SAVED"});
-                 }
-                 return actions::doNothingList();
-             }},
+        {
+            .text = LST{"DO_YOU_WANT_TO_SAVE"},
+            .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
+            .onChoice =
+                [this](std::size_t index) {
+                    if (index == 0) {
+                        writeSaveFile();
+                        return say(LST{"GAME_SAVED"});
+                    }
+                    return actions::doNothingList();
+                },
+        },
     };
     return say(tokens);
 }
