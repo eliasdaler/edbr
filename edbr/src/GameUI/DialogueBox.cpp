@@ -142,7 +142,7 @@ bool isPunctuation(char c)
 
 }
 
-void DialogueBox::update(const glm::vec2& screenSize, float dt)
+void DialogueBox::update(float dt)
 {
     if (!isWholeTextDisplayed()) {
         if (currentTextDelay != 0.f) {

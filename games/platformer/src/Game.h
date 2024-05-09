@@ -14,14 +14,11 @@
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/TileMap/TileMapRenderer.h>
 
-#include <edbr/GameUI/Cursor.h>
-#include <edbr/GameUI/DialogueBox.h>
-#include <edbr/GameUI/MenuStack.h>
-
 #include <edbr/DevTools/EntityInfoDisplayer.h>
 #include <edbr/DevTools/EntityTreeView.h>
 #include <edbr/DevTools/UIInspector.h>
 
+#include "GameUI.h"
 #include "Level.h"
 
 class ComponentFactory;
@@ -63,8 +60,6 @@ private:
     void handlePlayerInput(float dt);
     void handleFreeCameraInput(float dt);
 
-    bool isDialogueBoxOpen() const;
-
     glm::vec2 getMouseGameScreenPos() const;
     glm::vec2 getMouseWorldPos() const;
 
@@ -101,10 +96,8 @@ private:
     entt::registry registry;
 
     // ui
-    DialogueBox dialogueBox;
+    GameUI ui;
     Font defaultFont;
-    Cursor cursor;
-    MenuStack menuStack;
 
     // dev
     Font devToolsFont;

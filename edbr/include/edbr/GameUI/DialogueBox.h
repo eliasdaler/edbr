@@ -69,7 +69,7 @@ public:
 
     void handleInput(const ActionMapping& actionMapping);
 
-    void update(const glm::vec2& screenSize, float dt);
+    void update(float dt);
 
     void draw(SpriteRenderer& spriteRenderer) const;
 

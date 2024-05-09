@@ -19,7 +19,7 @@
 #include "EntityUtil.h"
 #include "Systems.h"
 
-Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice), menuStack(cursor)
+Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice), ui(audioManager)
 {}
 
 void Game::customInit()
@@ -36,34 +36,8 @@ void Game::customInit()
 
     loadAnimations("assets/animations");
 
-    { // UI
-        { // dialogue box
-            std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
-            JsonFile dbStyleFile(dbStylePath);
-            assert(dbStyleFile.isGood());
-
-            DialogueBoxStyle dbStyle;
-            dbStyle.load(dbStyleFile.getLoader(), gfxDevice);
-
-            dialogueBox.init(dbStyle, gfxDevice, audioManager);
-
-            uiInspector.setInspectedUI(dialogueBox.getRootElement());
-
-            const auto cursorImageId =
-                gfxDevice.loadImageFromFile("assets/images/ui/hand_cursor.png");
-            const auto& cursorImage = gfxDevice.getImage(cursorImageId);
-            cursor.sprite.setTexture(cursorImage);
-            cursor.sprite.setPivotPixel({15, 7});
-
-            cursor.bouncer = Bouncer({
-                .maxOffset = 2.f,
-                .moveDuration = 0.5f,
-                .tween = glm::quadraticEaseInOut<float>,
-            });
-
-            cursor.moveSound = "assets/sounds/ui/cursor_move.wav";
-        }
-    }
+    ui.init(gfxDevice);
+    uiInspector.setInspectedUI(ui.getDialogueBox().getRootElement());
 
     initEntityFactory();
     registerComponents(entityFactory.getComponentFactory());
@@ -80,13 +54,13 @@ void Game::customInit()
 
     changeLevel("LevelTown", "from_level_b");
 
+    auto& dialogueBox = ui.getDialogueBox();
     dialogueBox.setText("Test\nHello world...\nOkay, this works!");
     /* dialogueBox.setText("Are you going?");
     dialogueBox.setChoiceText(0, "Yes");
     dialogueBox.setChoiceText(1, "No"); */
     dialogueBox.setSpeakerName("Crafty");
-
-    menuStack.pushMenu(dialogueBox.getRootElement());
+    ui.openDialogueBox();
 }
 
 void Game::createDrawImage(const glm::ivec2& drawImageSize)
@@ -179,22 +153,14 @@ void Game::customUpdate(float dt)
         devToolsUpdate(dt);
     }
 
-    cursor.update(dt);
-    dialogueBox.update(static_cast<glm::vec2>(params.renderSize), dt);
-    menuStack.calculateLayout(static_cast<glm::vec2>(params.renderSize));
+    ui.update(static_cast<glm::vec2>(params.renderSize), dt);
 }
 
 void Game::handleInput(float dt)
 {
     if (!freeCamera) {
-        if (menuStack.hasMenus()) {
-            if (cursor.visible) {
-                cursor.handleInput(inputManager.getActionMapping(), audioManager);
-            }
-
-            if (isDialogueBoxOpen()) {
-                dialogueBox.handleInput(inputManager.getActionMapping());
-            }
+        if (ui.capturesInput()) {
+            ui.handleInput(inputManager.getActionMapping());
         } else {
             handlePlayerInput(dt);
         }
@@ -205,11 +171,6 @@ void Game::handleInput(float dt)
     if (isDevEnvironment) {
         devToolsHandleInput(dt);
     }
-}
-
-bool Game::isDialogueBoxOpen() const
-{
-    return menuStack.isInsideMenu(DialogueBox::DialogueBoxMenuTag);
 }
 
 void Game::handlePlayerInput(float dt)
@@ -354,10 +315,7 @@ void Game::drawGameObjects()
 
 void Game::drawUI()
 {
-    menuStack.draw(uiRenderer);
-    if (cursor.visible) {
-        cursor.draw(uiRenderer);
-    }
+    ui.draw(uiRenderer);
     // uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
 
     if (isDevEnvironment) {

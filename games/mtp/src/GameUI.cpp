@@ -151,7 +151,7 @@ void GameUI::update(float dt)
     interactTipBouncer.update(dt);
 
     if (isDialogueBoxOpen()) {
-        dialogueBox.update(screenSize, dt);
+        dialogueBox.update(dt);
     }
 }
 
