@@ -1,12 +1,12 @@
 #pragma once
 
-#include <functional>
+#include <span>
 
 #include <edbr/Text/LocalizedStringTag.h>
 
 class ActionList;
-class DialogueBox;
 class TextManager;
+class IGameUI;
 
 namespace dialogue
 {
@@ -15,11 +15,16 @@ struct TextToken;
 
 namespace actions
 {
+
 ActionList say(
     TextManager& textManager,
-    DialogueBox& dialogueBox,
-    std::function<void()> openDialogueBox,
-    std::function<void()> closeDialogueBox,
-    const dialogue::TextToken& textToken,
+    IGameUI& ui,
+    const LocalizedStringTag& text,
+    const LocalizedStringTag& speakerName);
+
+ActionList say(
+    TextManager& textManager,
+    IGameUI& ui,
+    std::span<const dialogue::TextToken> textTokens,
     const LocalizedStringTag& speakerName);
 }

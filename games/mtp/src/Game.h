@@ -106,7 +106,7 @@ public:
     [[nodiscard]] ActionList say(const dialogue::TextToken& textToken, entt::handle speaker = {});
 
     [[nodiscard]] ActionList say(
-        const std::vector<dialogue::TextToken>& textTokens,
+        std::span<const dialogue::TextToken> textTokens,
         entt::handle speaker = {});
 
     [[nodiscard]] ActionList saveGameSequence();

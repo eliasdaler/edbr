@@ -1015,6 +1015,9 @@ namespace
 {
 LocalizedStringTag getSpeakerName(entt::handle e)
 {
+    if (e.entity() == entt::null) {
+        return LST{};
+    }
     if (auto npcc = e.try_get<NPCComponent>(); npcc) {
         if (!npcc->name.empty()) {
             return npcc->name;
@@ -1024,57 +1027,37 @@ LocalizedStringTag getSpeakerName(entt::handle e)
 }
 }
 
-ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
-{
-    // speaker name
-    auto speakerName = textToken.name; // has higher precendence than speaker's name
-    if (speakerName.empty() && speaker.entity() != entt::null) {
-        speakerName = getSpeakerName(speaker);
-    }
-
-    return actions::say(
-        textManager,
-        ui.getDialogueBox(),
-        [this]() { ui.openDialogueBox(); },
-        [this]() { ui.closeDialogueBox(); },
-        textToken,
-        speakerName);
-}
-
-ActionList Game::say(const std::vector<dialogue::TextToken>& textTokens, entt::handle speaker)
-{
-    auto l = ActionList("interaction");
-    for (const auto& token : textTokens) {
-        l.addAction(say(token, speaker));
-    }
-    return l;
-}
-
 ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
 {
-    const auto textToken = dialogue::TextToken{
-        .text = text,
-    };
-    return say(textToken, speaker);
+    return actions::say(textManager, ui, text, getSpeakerName(speaker));
+}
+
+ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
+{
+    return actions::say(textManager, ui, {&textToken, 1}, getSpeakerName(speaker));
+}
+
+ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::handle speaker)
+{
+    return actions::say(textManager, ui, textTokens, getSpeakerName(speaker));
 }
 
 [[nodiscard]] ActionList Game::saveGameSequence()
 {
-    std::vector<dialogue::TextToken> tokens{
-        {
-            .text = LST{"DO_YOU_WANT_TO_SAVE"},
-            .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
-            .onChoice =
-                [this](std::size_t index) {
-                    if (index == 0) {
-                        writeSaveFile();
-                        return say(LST{"GAME_SAVED"});
-                    }
-                    return actions::doNothingList();
-                },
-        },
+    const auto token = dialogue::TextToken{
+        .text = LST{"DO_YOU_WANT_TO_SAVE"},
+        .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
+        .onChoice =
+            [this](std::size_t index) {
+                if (index == 0) {
+                    writeSaveFile();
+                    return say(LST{"GAME_SAVED"});
+                }
+                return actions::doNothingList();
+            },
+
     };
-    return say(tokens);
+    return say(token);
 }
 
 void Game::playSound(const std::string& soundName)
