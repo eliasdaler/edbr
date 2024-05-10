@@ -14,12 +14,6 @@
 						-16
 					]
 				},
-				"graphics": {
-					"sprite_origin": [
-						8,
-						16
-					]
-				},
 				"teleport": {
 					"to_level": "CraftyHouse",
           "to": "crafty_house_door"
@@ -38,12 +32,6 @@
 					"origin": [
 						-8,
 						-16
-					]
-				},
-				"graphics": {
-					"sprite_origin": [
-						8,
-						16
 					]
 				},
 				"teleport": {
@@ -65,12 +53,6 @@
 						-16
 					]
 				},
-				"graphics": {
-					"sprite_origin": [
-						8,
-						16
-					]
-				},
 				"npc": {
 					"text": "BW_TOWN_SIGN"
 				}
@@ -87,12 +69,6 @@
 					"origin": [
 						-8,
 						-16
-					]
-				},
-				"graphics": {
-					"sprite_origin": [
-						8,
-						16
 					]
 				},
 				"npc": {
@@ -113,12 +89,6 @@
 						-16
 					]
 				},
-				"graphics": {
-					"sprite_origin": [
-						8,
-						16
-					]
-				},
 				"npc": {
 					"text": "LIBRARY_SIGN"
 				}
@@ -137,12 +107,6 @@
 					"origin": [
 						-6,
 						-16
-					]
-				},
-				"graphics": {
-					"sprite_origin": [
-						8,
-						16
 					]
 				},
 				"npc": {

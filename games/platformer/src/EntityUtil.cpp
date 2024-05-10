@@ -146,4 +146,12 @@ entt::handle findInteractableEntity(entt::registry& registry)
     return {};
 }
 
+void stopMovement(entt::handle e)
+{
+    auto& mc = e.get<MovementComponent>();
+    mc.rotationProgress = mc.rotationTime;
+    mc.rotationTime = 0.f;
+    mc.kinematicVelocity = {};
+}
+
 }

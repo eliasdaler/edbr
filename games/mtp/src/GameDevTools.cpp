@@ -272,8 +272,8 @@ void Game::devToolsUpdate(float dt)
 
     if (ImGui::Begin("UI")) {
         ui.updateDevTools(dt);
+        ImGui::End();
     }
-    ImGui::End();
 
     if (ImGui::Begin("Action lists")) {
         for (const auto& [name, al] : actionListManager.getActionLists()) {

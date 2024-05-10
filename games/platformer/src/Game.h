@@ -43,8 +43,6 @@ public:
         std::span<const dialogue::TextToken> textTokens,
         entt::handle speaker = {});
 
-    void stopPlayerMovement();
-
 private:
     void loadAnimations(const std::filesystem::path& animationsDir);
 
@@ -68,8 +66,9 @@ private:
     void destroyEntity(entt::handle e, bool removeFromRegistry);
 
     void handleInput(float dt);
-    void handlePlayerInput(float dt);
-    void handleFreeCameraInput(float dt);
+    void handlePlayerInput(const ActionMapping& am, float dt);
+
+    void handleInteraction();
 
     glm::vec2 getMouseGameScreenPos() const;
     glm::vec2 getMouseWorldPos() const;
@@ -81,6 +80,7 @@ private:
     void createDrawImage(const glm::ivec2& drawImageSize);
 
     void devToolsHandleInput(float dt);
+    void handleFreeCameraInput(float dt);
     void devToolsUpdate(float dt);
     void devToolsDrawInWorldUI();
 
@@ -97,6 +97,7 @@ private:
 
     glm::vec2 cameraPos;
     entt::handle interactEntity;
+    bool playerInputEnabled{true};
 
     Level level;
     std::string newLevelToLoad;

@@ -6,6 +6,7 @@
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
+#include <edbr/Util/InputUtil.h>
 #include <imgui.h>
 
 namespace
@@ -45,6 +46,7 @@ void Game::devToolsHandleInput(float dt)
     const auto& kb = inputManager.getKeyboard();
     if (kb.wasJustPressed(SDL_SCANCODE_C)) {
         freeCamera = !freeCamera;
+        playerInputEnabled = !freeCamera;
     }
     if (kb.wasJustPressed(SDL_SCANCODE_B)) {
         drawCollisionShapes = !drawCollisionShapes;
@@ -68,6 +70,25 @@ void Game::devToolsHandleInput(float dt)
             entityTreeView.setSelectedEntity(selected);
         }
     }
+
+    if (freeCamera) {
+        handleFreeCameraInput(dt);
+    }
+}
+
+void Game::handleFreeCameraInput(float dt)
+{
+    const auto& actionMapping = inputManager.getActionMapping();
+    static const auto moveXAxis = actionMapping.getActionTagHash("CameraMoveX");
+    static const auto moveYAxis = actionMapping.getActionTagHash("CameraMoveY");
+
+    const auto moveStickState = util::getStickState(actionMapping, moveXAxis, moveYAxis);
+    const auto cameraMoveSpeed = glm::vec2{120.f, 120.f};
+    auto velocity = moveStickState * cameraMoveSpeed;
+    if (inputManager.getKeyboard().isHeld(SDL_SCANCODE_LSHIFT)) {
+        velocity *= 2.f;
+    }
+    cameraPos += velocity * dt;
 }
 
 void Game::devToolsUpdate(float dt)
@@ -78,6 +99,7 @@ void Game::devToolsUpdate(float dt)
         const auto& mousePos = inputManager.getMouse().getPosition();
         const auto& gameScreenPos = edbr::util::
             getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+        DisplayProperty("PlayerInput", playerInputEnabled);
         DisplayProperty("Mouse pos", mousePos);
         DisplayProperty("Game screen pos", gameScreenPos);
         const auto mouseWorldPos = getMouseWorldPos();

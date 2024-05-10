@@ -101,243 +101,6 @@ void Game::loadAppSettings()
     };
 }
 
-void Game::customCleanup()
-{
-    entityutil::makeNonPersistent(entityutil::getPlayerEntity(registry));
-    destroyNonPersistentEntities();
-
-    gfxDevice.waitIdle();
-    spriteRenderer.cleanup();
-    uiRenderer.cleanup();
-}
-
-void Game::customUpdate(float dt)
-{
-    if (!newLevelToLoad.empty()) {
-        doLevelChange();
-    }
-
-    handleInput(dt);
-
-    if (!gameDrawnInWindow) {
-        const auto blitRect =
-            util::calculateLetterbox(params.renderSize, gfxDevice.getSwapchainSize(), true);
-        gameWindowPos = {blitRect.x, blitRect.y};
-        gameWindowSize = {blitRect.z, blitRect.w};
-    }
-
-    const auto& tileMap = level.getTileMap();
-    characterControlSystemUpdate(registry, dt, tileMap);
-    edbr::ecs::movementSystemUpdate(registry, dt);
-    edbr::ecs::transformSystemUpdate(registry, dt);
-    tileCollisionSystemUpdate(registry, dt, tileMap);
-    edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
-    directionSystemUpdate(registry, dt);
-    playerAnimationSystemUpdate(registry, dt, tileMap);
-    spriteAnimationSystemUpdate(registry, dt);
-
-    // update camera
-    if (!freeCamera) {
-        auto player = entityutil::getPlayerEntity(registry);
-        const auto cameraOffset = glm::vec2{0, 32.f};
-        cameraPos = glm::vec2{player.get<TransformComponent>().transform.getPosition()} -
-                    static_cast<glm::vec2>(params.renderSize) / 2.f - cameraOffset;
-        cameraPos = glm::round(cameraPos);
-    }
-
-    if (isDevEnvironment) {
-        devToolsUpdate(dt);
-    }
-
-    ui.update(static_cast<glm::vec2>(params.renderSize), dt);
-}
-
-void Game::handleInput(float dt)
-{
-    if (!freeCamera) {
-        if (ui.capturesInput()) {
-            ui.handleInput(inputManager.getActionMapping());
-        } else {
-            handlePlayerInput(dt);
-        }
-    } else {
-        handleFreeCameraInput(dt);
-    }
-
-    if (isDevEnvironment) {
-        devToolsHandleInput(dt);
-    }
-}
-
-void Game::handlePlayerInput(float dt)
-{
-    const auto& actionMapping = inputManager.getActionMapping();
-    static const auto horizonalWalkAxis = actionMapping.getActionTagHash("MoveX");
-    static const auto verticalWalkAxis = actionMapping.getActionTagHash("MoveY");
-
-    const auto moveStickState =
-        util::getStickState(actionMapping, horizonalWalkAxis, verticalWalkAxis);
-
-    auto player = entityutil::getPlayerEntity(registry);
-    auto& mc = player.get<MovementComponent>();
-    mc.kinematicVelocity.x = moveStickState.x * mc.maxSpeed.x;
-
-    static const auto jumpAction = actionMapping.getActionTagHash("Jump");
-    auto& cc = player.get<CharacterControllerComponent>();
-    if (actionMapping.isPressed(jumpAction)) {
-        cc.wantJump = true;
-    }
-
-    // "short jump" - if key is not pressed, more gravity is applied,
-    // so the jump becomes shorter
-    const auto playerGravity = 1.f;
-    // ShortJumpFactor is a factor by which gravity is multiplied if player doesn't hold a
-    // jump button.
-    const float ShortJumpFactor = 7.5f;
-    if (mc.kinematicVelocity.y < 0 && !actionMapping.isHeld(jumpAction)) {
-        cc.gravity = playerGravity * (1 + ShortJumpFactor);
-    } else {
-        cc.gravity = playerGravity;
-    }
-
-    static const auto interactAction = actionMapping.getActionTagHash("Interact");
-    interactEntity = entityutil::findInteractableEntity(registry);
-    if (actionMapping.wasJustPressed(interactAction) && interactEntity.entity() != entt::null) {
-        const auto it = interactEntity.get<InteractComponent>().type;
-        switch (it) {
-        case InteractComponent::Type::GoInside: {
-            const auto& tc = interactEntity.get<TeleportComponent>();
-            changeLevel(tc.levelTag, tc.spawnTag);
-        } break;
-        case InteractComponent::Type::Talk:
-            /* fallthrough */
-        case InteractComponent::Type::Examine: {
-            const auto& npcc = interactEntity.get<NPCComponent>();
-            if (!npcc.defaultText.empty()) {
-                stopPlayerMovement();
-                auto l = say(npcc.defaultText, interactEntity);
-                actionListManager.addActionList(std::move(l));
-            }
-        } break;
-        default:
-            break;
-        }
-    }
-}
-
-void Game::handleFreeCameraInput(float dt)
-{
-    const auto& actionMapping = inputManager.getActionMapping();
-    static const auto moveXAxis = actionMapping.getActionTagHash("CameraMoveX");
-    static const auto moveYAxis = actionMapping.getActionTagHash("CameraMoveY");
-
-    const auto moveStickState = util::getStickState(actionMapping, moveXAxis, moveYAxis);
-    const auto cameraMoveSpeed = glm::vec2{120.f, 120.f};
-    auto velocity = moveStickState * cameraMoveSpeed;
-    if (inputManager.getKeyboard().isHeld(SDL_SCANCODE_LSHIFT)) {
-        velocity *= 2.f;
-    }
-    cameraPos += velocity * dt;
-}
-
-glm::vec2 Game::getMouseGameScreenPos() const
-{
-    const auto& mousePos = inputManager.getMouse().getPosition();
-    return edbr::util::
-        getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
-}
-
-glm::vec2 Game::getMouseWorldPos() const
-{
-    return getMouseGameScreenPos() + cameraPos;
-}
-
-void Game::customDraw()
-{
-    auto cmd = gfxDevice.beginFrame();
-
-    const auto& drawImage = gfxDevice.getImage(drawImageId);
-    vkutil::transitionImage(
-        cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    // const auto clearColor = glm::vec4{1.f, 0.f, 1.f, 1.f};
-    const auto clearColor = glm::vec4{0.f, 0.f, 0.f, 1.f};
-    vkutil::clearColorImage(cmd, drawImage.getExtent2D(), drawImage.imageView, clearColor);
-
-    spriteRenderer.beginDrawing();
-    {
-        drawWorld();
-        if (isDevEnvironment) {
-            devToolsDrawInWorldUI();
-        }
-    }
-    spriteRenderer.endDrawing();
-    spriteRenderer.draw(cmd, drawImage, cameraPos);
-
-    uiRenderer.beginDrawing();
-    drawUI();
-    uiRenderer.endDrawing();
-    uiRenderer.draw(cmd, drawImage);
-
-    const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
-    const auto endFrameProps = GfxDevice::EndFrameProps{
-        .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
-        .copyImageIntoSwapchain = !gameDrawnInWindow,
-        .drawImageBlitRect = {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
-        .drawImageLinearBlit = false,
-        .drawImGui = drawImGui,
-    };
-
-    gfxDevice.endFrame(cmd, drawImage, endFrameProps);
-}
-
-void Game::drawWorld()
-{
-    const auto& tileMap = level.getTileMap();
-    const auto minZ = tileMap.getMinLayerZ();
-    const auto maxZ = tileMap.getMaxLayerZ();
-    assert(maxZ >= minZ);
-
-    bool drewObjects = false;
-    for (int z = minZ; z <= maxZ; ++z) {
-        tileMapRenderer.drawTileMapLayers(gfxDevice, spriteRenderer, tileMap, z);
-        if (z == 0) {
-            drawGameObjects();
-            drewObjects = true;
-        }
-    }
-
-    if (!drewObjects) {
-        drawGameObjects();
-    }
-}
-
-void Game::drawGameObjects()
-{
-    for (const auto&& [e, tc, sc] : registry.view<TransformComponent, SpriteComponent>().each()) {
-        const auto spritePos = glm::round(glm::vec2{tc.worldTransform[3]});
-        spriteRenderer.drawSprite(sc.sprite, spritePos);
-    }
-}
-
-void Game::drawUI()
-{
-    auto uiCtx = GameUI::UIContext{
-        .playerPos = entityutil::getWorldPosition2D(entityutil::getPlayerEntity(registry)),
-        .cameraPos = cameraPos,
-    };
-    if (interactEntity.entity() != entt::null) {
-        auto& ic = interactEntity.get<InteractComponent>();
-        uiCtx.interactionType = ic.type;
-    }
-    ui.draw(uiRenderer, uiCtx);
-
-    // uiRenderer.drawText(defaultFont, "Platformer test", glm::vec2{0.f, 0.f}, {1.f, 1.f, 0.f});
-
-    if (isDevEnvironment) {
-        uiInspector.draw(uiRenderer);
-    }
-}
-
 void Game::initEntityFactory()
 {
     entityFactory.setCreateDefaultEntityFunc([](entt::registry& registry) {
@@ -373,6 +136,236 @@ void Game::loadAnimations(const std::filesystem::path& animationsDir)
     });
 }
 
+void Game::customCleanup()
+{
+    entityutil::makeNonPersistent(entityutil::getPlayerEntity(registry));
+    destroyNonPersistentEntities();
+
+    gfxDevice.waitIdle();
+    spriteRenderer.cleanup();
+    uiRenderer.cleanup();
+}
+
+void Game::customUpdate(float dt)
+{
+    if (!newLevelToLoad.empty()) {
+        doLevelChange();
+    }
+
+    if (!gameDrawnInWindow) {
+        const auto blitRect =
+            util::calculateLetterbox(params.renderSize, gfxDevice.getSwapchainSize(), true);
+        gameWindowPos = {blitRect.x, blitRect.y};
+        gameWindowSize = {blitRect.z, blitRect.w};
+    }
+
+    handleInput(dt);
+
+    const auto& tileMap = level.getTileMap();
+
+    characterControlSystemUpdate(registry, dt, tileMap);
+    edbr::ecs::movementSystemUpdate(registry, dt);
+    edbr::ecs::transformSystemUpdate(registry, dt);
+    tileCollisionSystemUpdate(registry, dt, tileMap);
+    edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
+    directionSystemUpdate(registry, dt);
+    playerAnimationSystemUpdate(registry, dt, tileMap);
+    spriteAnimationSystemUpdate(registry, dt);
+
+    // update camera
+    if (!freeCamera) {
+        auto player = entityutil::getPlayerEntity(registry);
+        const auto cameraOffset = glm::vec2{0, -32.f};
+        cameraPos = entityutil::getWorldPosition2D(player) -
+                    static_cast<glm::vec2>(params.renderSize) / 2.f + cameraOffset;
+        cameraPos = glm::round(cameraPos);
+    }
+
+    if (isDevEnvironment) {
+        devToolsUpdate(dt);
+    }
+
+    ui.update(static_cast<glm::vec2>(params.renderSize), dt);
+}
+
+void Game::handleInput(float dt)
+{
+    if (playerInputEnabled) {
+        const auto& am = inputManager.getActionMapping();
+        if (ui.capturesInput()) {
+            ui.handleInput(am);
+        } else {
+            handlePlayerInput(am, dt);
+        }
+    }
+
+    if (isDevEnvironment) {
+        devToolsHandleInput(dt);
+    }
+}
+
+void Game::handlePlayerInput(const ActionMapping& am, float dt)
+{
+    static const auto horizonalWalkAxis = am.getActionTagHash("MoveX");
+    static const auto verticalWalkAxis = am.getActionTagHash("MoveY");
+    const auto moveStickState = util::getStickState(am, horizonalWalkAxis, verticalWalkAxis);
+
+    auto player = entityutil::getPlayerEntity(registry);
+    auto& mc = player.get<MovementComponent>();
+    mc.kinematicVelocity.x = moveStickState.x * mc.maxSpeed.x;
+
+    { // handle jump
+        static const auto jumpAction = am.getActionTagHash("Jump");
+        auto& cc = player.get<CharacterControllerComponent>();
+        if (am.isPressed(jumpAction)) {
+            cc.wantJump = true;
+        }
+
+        // "short jump" - if key is not pressed, more gravity is applied,
+        // so the jump becomes shorter
+        const auto playerGravity = 1.f;
+        // ShortJumpFactor is a factor by which gravity is multiplied if player doesn't hold a
+        // jump button.
+        const float ShortJumpFactor = 7.5f;
+        if (mc.kinematicVelocity.y < 0 && !am.isHeld(jumpAction)) {
+            cc.gravity = playerGravity * (1 + ShortJumpFactor);
+        } else {
+            cc.gravity = playerGravity;
+        }
+    }
+
+    // handle interation
+    static const auto interactAction = am.getActionTagHash("Interact");
+    interactEntity = entityutil::findInteractableEntity(registry);
+    if (am.wasJustPressed(interactAction) && interactEntity.entity() != entt::null) {
+        handleInteraction();
+    }
+}
+
+void Game::handleInteraction()
+{
+    auto player = entityutil::getPlayerEntity(registry);
+    entityutil::stopMovement(player);
+
+    const auto it = interactEntity.get<InteractComponent>().type;
+    switch (it) {
+    case InteractComponent::Type::GoInside: {
+        const auto& tc = interactEntity.get<TeleportComponent>();
+        changeLevel(tc.levelTag, tc.spawnTag);
+    } break;
+    case InteractComponent::Type::Talk:
+        /* fallthrough */
+    case InteractComponent::Type::Examine: {
+        const auto& npcc = interactEntity.get<NPCComponent>();
+        if (!npcc.defaultText.empty()) {
+            auto l = say(npcc.defaultText, interactEntity);
+            actionListManager.addActionList(std::move(l));
+        }
+    } break;
+    default:
+        break;
+    }
+}
+
+glm::vec2 Game::getMouseGameScreenPos() const
+{
+    const auto& mousePos = inputManager.getMouse().getPosition();
+    return edbr::util::
+        getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+}
+
+glm::vec2 Game::getMouseWorldPos() const
+{
+    return getMouseGameScreenPos() + cameraPos;
+}
+
+void Game::customDraw()
+{
+    auto cmd = gfxDevice.beginFrame();
+
+    const auto& drawImage = gfxDevice.getImage(drawImageId);
+    vkutil::transitionImage(
+        cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    // const auto clearColor = glm::vec4{1.f, 0.f, 1.f, 1.f};
+    const auto clearColor = glm::vec4{0.f, 0.f, 0.f, 1.f};
+    vkutil::clearColorImage(cmd, drawImage.getExtent2D(), drawImage.imageView, clearColor);
+
+    // draw world
+    spriteRenderer.beginDrawing();
+    drawWorld();
+    if (isDevEnvironment) {
+        devToolsDrawInWorldUI();
+    }
+    spriteRenderer.endDrawing();
+    spriteRenderer.draw(cmd, drawImage, cameraPos);
+
+    // draw UI
+    uiRenderer.beginDrawing();
+    drawUI();
+    uiRenderer.endDrawing();
+    uiRenderer.draw(cmd, drawImage);
+
+    // finish frame
+    const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
+    const auto endFrameProps = GfxDevice::EndFrameProps{
+        .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
+        .copyImageIntoSwapchain = !gameDrawnInWindow,
+        .drawImageBlitRect = {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
+        .drawImageLinearBlit = false,
+        .drawImGui = drawImGui,
+    };
+
+    gfxDevice.endFrame(cmd, drawImage, endFrameProps);
+}
+
+void Game::drawWorld()
+{
+    const auto& tileMap = level.getTileMap();
+    const auto minZ = tileMap.getMinLayerZ();
+    const auto maxZ = tileMap.getMaxLayerZ();
+    assert(maxZ >= minZ);
+
+    bool drewObjects = false;
+    for (int z = minZ; z <= maxZ; ++z) {
+        tileMapRenderer.drawTileMapLayers(gfxDevice, spriteRenderer, tileMap, z);
+        if (z == 0) {
+            drawGameObjects();
+            drewObjects = true;
+        }
+    }
+
+    if (!drewObjects) {
+        drawGameObjects();
+    }
+}
+
+void Game::drawGameObjects()
+{
+    // TODO: sort by Z
+    for (const auto&& [e, sc] : registry.view<SpriteComponent>().each()) {
+        const auto spritePos = glm::round(entityutil::getWorldPosition2D({registry, e}));
+        spriteRenderer.drawSprite(sc.sprite, spritePos);
+    }
+}
+
+void Game::drawUI()
+{
+    auto uiCtx = GameUI::UIContext{
+        .playerPos = entityutil::getWorldPosition2D(entityutil::getPlayerEntity(registry)),
+        .cameraPos = cameraPos,
+    };
+    if (interactEntity.entity() != entt::null) {
+        auto& ic = interactEntity.get<InteractComponent>();
+        uiCtx.interactionType = ic.type;
+    }
+
+    ui.draw(uiRenderer, uiCtx);
+
+    if (isDevEnvironment) {
+        uiInspector.draw(uiRenderer);
+    }
+}
+
 void Game::changeLevel(const std::string& levelName, const std::string& spawnName)
 {
     newLevelToLoad = levelName;
@@ -406,15 +399,16 @@ void Game::exitLevel()
 void Game::spawnLevelEntities()
 {
     for (const auto& spawner : level.getSpawners()) {
-        if (entityFactory.prefabExists(spawner.prefabName)) {
-            auto e = createEntityFromPrefab(spawner.prefabName, spawner.prefabData);
-            entityutil::setWorldPosition2D(e, spawner.position);
-            entityutil::setHeading2D(e, spawner.heading);
-            if (!spawner.tag.empty()) {
-                entityutil::setTag(e, spawner.tag);
-            }
-        } else {
+        if (!entityFactory.prefabExists(spawner.prefabName)) {
             fmt::println("skipping prefab '{}': not loaded", spawner.prefabName);
+            continue;
+        }
+
+        auto e = createEntityFromPrefab(spawner.prefabName, spawner.prefabData);
+        entityutil::setWorldPosition2D(e, spawner.position);
+        entityutil::setHeading2D(e, spawner.heading);
+        if (!spawner.tag.empty()) {
+            entityutil::setTag(e, spawner.tag);
         }
     }
 }
@@ -503,13 +497,4 @@ ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
 ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::handle speaker)
 {
     return actions::say(textManager, ui, textTokens, getSpeakerName(speaker));
-}
-
-void Game::stopPlayerMovement()
-{
-    auto player = entityutil::getPlayerEntity(registry);
-    auto& mc = player.get<MovementComponent>();
-    mc.rotationProgress = mc.rotationTime;
-    mc.rotationTime = 0.f;
-    mc.kinematicVelocity = {};
 }
