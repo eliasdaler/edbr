@@ -157,6 +157,9 @@ add_library(edbr
   src/TileMap/TileMapRenderer.cpp
 
   # GameCommon
+  src/GameCommon/CommonComponentDisplayers.cpp
+  src/GameCommon/CommonComponentLoaders.cpp
+  src/GameCommon/CommonComponentLoaders2D.cpp
   src/GameCommon/DialogueActions.cpp
   src/GameCommon/EntityUtil2D.cpp
   src/GameCommon/EntityUtil.cpp

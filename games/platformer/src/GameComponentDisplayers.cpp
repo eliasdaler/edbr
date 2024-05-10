@@ -13,6 +13,8 @@
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
+#include <edbr/GameCommon/CommonComponentDisplayers.h>
+
 #include "Components.h"
 #include "EntityUtil.h"
 
@@ -25,17 +27,13 @@ void Game::registerComponentDisplayers()
 
     auto& eid = entityInfoDisplayer;
 
+    edbr::registerTagComponentDisplayer(eid);
+
     eid.registerDisplayer("Meta", [](entt::const_handle e, const MetaInfoComponent& tc) {
         BeginPropertyTable();
         {
             DisplayProperty("Prefab", tc.prefabName);
         }
-        EndPropertyTable();
-    });
-
-    eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {
-        BeginPropertyTable();
-        DisplayProperty("Tag", tc.tag);
         EndPropertyTable();
     });
 
@@ -56,21 +54,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Movement", [](entt::const_handle e, const MovementComponent& mc) {
-        BeginPropertyTable();
-        {
-            DisplayProperty("MaxSpeed", mc.maxSpeed);
-            DisplayProperty("Velocity (kin)", mc.kinematicVelocity);
-            DisplayProperty("Velocity (eff)", mc.effectiveVelocity);
-            if (mc.rotationTime != 0.f) {
-                DisplayProperty("Start heading", mc.startHeading);
-                DisplayProperty("Target heading", mc.targetHeading);
-                DisplayProperty("Rotation progress", mc.rotationProgress);
-                DisplayProperty("Rotation time", mc.rotationTime);
-            }
-        }
-        EndPropertyTable();
-    });
+    edbr::registerMovementComponentDisplayer(eid);
 
     eid.registerDisplayer("Collision", [](entt::const_handle e, const CollisionComponent2D& cc) {
         BeginPropertyTable();
@@ -139,12 +123,5 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("NPC", [](entt::const_handle e, const NPCComponent& npcc) {
-        BeginPropertyTable();
-        {
-            DisplayProperty("Name", npcc.name.tag);
-            DisplayProperty("DefaultText", npcc.defaultText.tag);
-        }
-        EndPropertyTable();
-    });
+    edbr::registerNPCComponentDisplayer(eid);
 }

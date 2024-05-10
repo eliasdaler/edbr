@@ -21,6 +21,7 @@ public:
     const SpriteAnimation& getAnimation() const { return animation; }
     int getCurrentFrame() const { return currentFrame; }
     float getProgress() const { return progress; }
+    bool hasFrameChanged() const { return frameChanged; }
 
 private:
     SpriteAnimation animation;

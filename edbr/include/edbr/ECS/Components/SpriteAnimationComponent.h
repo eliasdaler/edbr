@@ -7,6 +7,6 @@ struct SpriteAnimationComponent {
     SpriteAnimator animator;
 
     std::string defaultAnimationName{"idle"};
-    SpriteAnimationData* animationsData{nullptr};
+    const SpriteAnimationData* animationsData{nullptr};
     std::string animationsDataTag;
 };

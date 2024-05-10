@@ -1,9 +1,8 @@
 #include "Game.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
-#include <edbr/ECS/Components/MovementComponent.h>
-#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
+#include <edbr/GameCommon/CommonComponentLoaders.h>
 
 namespace
 {
@@ -12,6 +11,9 @@ void loadPhysicsComponent(entt::handle e, PhysicsComponent& pc, const JsonDataLo
 
 void Game::registerComponents(ComponentFactory& cf)
 {
+    edbr::registerMovementComponentLoader(cf);
+    edbr::registerNPCComponentLoader(cf);
+
     cf.registerComponent<TriggerComponent>("trigger");
     cf.registerComponent<CameraComponent>("camera");
     cf.registerComponent<PlayerSpawnComponent>("player_spawn");
@@ -28,11 +30,6 @@ void Game::registerComponents(ComponentFactory& cf)
             loader.getIfExists("castShadow", mc.castShadow);
         });
 
-    cf.registerComponentLoader(
-        "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
-            loader.get("maxSpeed", mc.maxSpeed);
-        });
-
     cf.registerComponentLoader("physics", loadPhysicsComponent);
 
     cf.registerComponentLoader(
@@ -46,15 +43,6 @@ void Game::registerComponents(ComponentFactory& cf)
                 ic.type = InteractComponent::Type::Talk;
             } else if (!type.empty()) {
                 fmt::println("[error] unknown interact component type '{}'", type);
-            }
-        });
-
-    cf.registerComponentLoader(
-        "npc", [this](entt::handle e, NPCComponent& npcc, const JsonDataLoader& loader) {
-            // type
-            loader.getIfExists("name", npcc.name.tag);
-            if (!npcc.name.tag.empty()) {
-                assert(textManager.stringLoaded(npcc.name));
             }
         });
 

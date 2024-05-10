@@ -12,6 +12,8 @@
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
+#include <edbr/GameCommon/CommonComponentDisplayers.h>
+
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
 
@@ -34,13 +36,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {
-        BeginPropertyTable();
-        if (!tc.tag.empty()) {
-            DisplayProperty("Tag", tc.tag);
-        }
-        EndPropertyTable();
-    });
+    edbr::registerTagComponentDisplayer(eid);
 
     eid.registerDisplayer("Name", [](entt::const_handle e, const NameComponent& nc) {
         BeginPropertyTable();
@@ -60,25 +56,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer(
-        "Movement",
-        [](entt::const_handle e, const MovementComponent& mc) {
-            BeginPropertyTable();
-            {
-                DisplayProperty("MaxSpeed", mc.maxSpeed);
-                DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
-                // don't display for now: too noisy
-                // DisplayProperty("Velocity (effective)", mc.effectiveVelocity);
-                if (mc.rotationTime != 0.f) {
-                    DisplayProperty("Start heading", mc.startHeading);
-                    DisplayProperty("Target heading", mc.targetHeading);
-                    DisplayProperty("Rotation progress", mc.rotationProgress);
-                    DisplayProperty("Rotation time", mc.rotationTime);
-                }
-            }
-            EndPropertyTable();
-        },
-        EntityInfoDisplayer::DisplayStyle::CollapsedByDefault);
+    edbr::registerMovementComponentDisplayer(eid);
 
     eid.registerDisplayer(
         "Physics",
@@ -230,6 +208,8 @@ void Game::registerComponentDisplayers()
     eid.registerEmptyDisplayer<PersistentComponent>("Persistent");
     eid.registerEmptyDisplayer<ColliderComponent>("Collider");
 
+    edbr::registerNPCComponentDisplayer(eid);
+
     eid.registerEmptyDisplayer<CameraComponent>("Camera", [this](entt::const_handle e) {
         if (ImGui::Button("Make current")) {
             setCurrentCamera(e);
@@ -250,16 +230,6 @@ void Game::registerComponentDisplayers()
                 }
             }(ic.type);
             DisplayProperty("Type", typeString);
-        }
-        EndPropertyTable();
-    });
-
-    eid.registerDisplayer("NPC", [](entt::const_handle e, const NPCComponent& npcc) {
-        BeginPropertyTable();
-        {
-            if (!npcc.name.tag.empty()) {
-                DisplayProperty("Name", npcc.name.tag);
-            }
         }
         EndPropertyTable();
     });

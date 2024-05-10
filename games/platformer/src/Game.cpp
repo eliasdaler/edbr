@@ -144,6 +144,14 @@ void Game::customUpdate(float dt)
     playerAnimationSystemUpdate(registry, dt, tileMap);
     spriteAnimationSystemUpdate(registry, dt);
 
+    // step sounds
+    // TODO: move to FSM
+    auto player = entityutil::getPlayerEntity(registry);
+    const auto& animator = player.get<SpriteAnimationComponent>().animator;
+    if (animator.hasFrameChanged() && animator.getCurrentFrame() == 2) {
+        audioManager.playSound("assets/sounds/step.wav");
+    }
+
     // update camera
     if (!freeCamera) {
         auto player = entityutil::getPlayerEntity(registry);
