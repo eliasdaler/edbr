@@ -1,6 +1,7 @@
 #include <edbr/GameCommon/EntityUtil.h>
 
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 
@@ -61,6 +62,16 @@ void stopKinematicRotation(entt::handle e)
     auto& mc = e.get<MovementComponent>();
     mc.rotationProgress = mc.rotationTime;
     mc.rotationTime = 0.f;
+}
+
+LocalizedStringTag getNPCName(entt::const_handle e)
+{
+    if (auto npcc = e.try_get<NPCComponent>(); npcc) {
+        if (!npcc->name.empty()) {
+            return npcc->name;
+        }
+    }
+    return LST{};
 }
 
 }

@@ -4,6 +4,8 @@
 
 #include <entt/entity/fwd.hpp>
 
+#include <edbr/Text/LocalizedStringTag.h>
+
 namespace entityutil
 {
 // tag
@@ -18,4 +20,7 @@ void makeNonPersistent(entt::handle e);
 // kinematic movement
 void stopKinematicMovement(entt::handle e);
 void stopKinematicRotation(entt::handle e);
+
+// npc
+LocalizedStringTag getNPCName(entt::const_handle e);
 }

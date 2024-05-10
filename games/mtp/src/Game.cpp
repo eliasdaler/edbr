@@ -967,22 +967,6 @@ LevelScript& Game::getLevelScript()
     return emptyLevelScript;
 }
 
-namespace
-{
-LocalizedStringTag getSpeakerName(entt::handle e)
-{
-    if (e.entity() == entt::null) {
-        return LST{};
-    }
-    if (auto npcc = e.try_get<NPCComponent>(); npcc) {
-        if (!npcc->name.empty()) {
-            return npcc->name;
-        }
-    }
-    return LST{};
-}
-}
-
 ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
 {
     const auto textToken = dialogue::TextToken{
@@ -998,7 +982,8 @@ ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
 
 ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::handle speaker)
 {
-    return actions::say(textManager, ui, textTokens, getSpeakerName(speaker));
+    auto speakerName = speaker.entity() == entt::null ? LST{} : entityutil::getNPCName(speaker);
+    return actions::say(textManager, ui, textTokens, speakerName);
 }
 
 [[nodiscard]] ActionList Game::saveGameSequence()
