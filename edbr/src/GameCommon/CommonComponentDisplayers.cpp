@@ -22,25 +22,22 @@ void registerTagComponentDisplayer(EntityInfoDisplayer& eid)
 
 void registerMovementComponentDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer(
-        "Movement",
-        [](entt::const_handle e, const MovementComponent& mc) {
-            BeginPropertyTable();
-            {
-                DisplayProperty("MaxSpeed", mc.maxSpeed);
-                DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
-                // don't display for now: too noisy
-                // DisplayProperty("Velocity (effective)", mc.effectiveVelocity);
-                if (mc.rotationTime != 0.f) {
-                    DisplayProperty("Start heading", mc.startHeading);
-                    DisplayProperty("Target heading", mc.targetHeading);
-                    DisplayProperty("Rotation progress", mc.rotationProgress);
-                    DisplayProperty("Rotation time", mc.rotationTime);
-                }
+    eid.registerDisplayer("Movement", [](entt::const_handle e, const MovementComponent& mc) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("MaxSpeed", mc.maxSpeed);
+            DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
+            // don't display for now: too noisy
+            // DisplayProperty("Velocity (effective)", mc.effectiveVelocity);
+            if (mc.rotationTime != 0.f) {
+                DisplayProperty("Start heading", mc.startHeading);
+                DisplayProperty("Target heading", mc.targetHeading);
+                DisplayProperty("Rotation progress", mc.rotationProgress);
+                DisplayProperty("Rotation time", mc.rotationTime);
             }
-            EndPropertyTable();
-        },
-        EntityInfoDisplayer::DisplayStyle::CollapsedByDefault);
+        }
+        EndPropertyTable();
+    });
 }
 
 void registerNPCComponentDisplayer(EntityInfoDisplayer& eid)

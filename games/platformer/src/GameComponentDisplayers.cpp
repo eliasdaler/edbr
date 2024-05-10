@@ -14,9 +14,9 @@
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <edbr/GameCommon/CommonComponentDisplayers.h>
+#include <edbr/GameCommon/CommonComponentDisplayers2D.h>
 
 #include "Components.h"
-#include "EntityUtil.h"
 
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
@@ -45,25 +45,10 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Transform", [](entt::const_handle e, const TransformComponent& tc) {
-        BeginPropertyTable();
-        {
-            DisplayProperty("Position2D", entityutil::getWorldPosition2D(e));
-            DisplayProperty("Heading2D", entityutil::getHeading2D(e));
-        }
-        EndPropertyTable();
-    });
-
+    edbr::registerTransformComponentDisplayer2D(eid);
     edbr::registerMovementComponentDisplayer(eid);
-
-    eid.registerDisplayer("Collision", [](entt::const_handle e, const CollisionComponent2D& cc) {
-        BeginPropertyTable();
-        {
-            DisplayProperty("Size", cc.size);
-            DisplayProperty("Origin", cc.origin);
-        }
-        EndPropertyTable();
-    });
+    edbr::registerCollisionComponent2DDisplayer(eid);
+    edbr::registerSpriteAnimationComponentDisplayer(eid);
 
     eid.registerDisplayer(
         "CharacterController", [](entt::const_handle e, const CharacterControllerComponent& cc) {
@@ -73,18 +58,6 @@ void Game::registerComponentDisplayers()
                 DisplayProperty("WasOnGround", cc.wasOnGround);
                 DisplayProperty("IsOnGround", cc.isOnGround);
                 DisplayProperty("WantJump", cc.wantJump);
-            }
-            EndPropertyTable();
-        });
-
-    eid.registerDisplayer(
-        "Animation", [](entt::const_handle e, const SpriteAnimationComponent& ac) {
-            BeginPropertyTable();
-            {
-                DisplayProperty("Animation", ac.animator.getAnimationName());
-                DisplayProperty("Frame", ac.animator.getCurrentFrame());
-                DisplayProperty("Progress", ac.animator.getProgress());
-                DisplayProperty("Anim data", ac.animationsDataTag);
             }
             EndPropertyTable();
         });

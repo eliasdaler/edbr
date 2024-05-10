@@ -158,6 +158,7 @@ add_library(edbr
 
   # GameCommon
   src/GameCommon/CommonComponentDisplayers.cpp
+  src/GameCommon/CommonComponentDisplayers2D.cpp
   src/GameCommon/CommonComponentLoaders.cpp
   src/GameCommon/CommonComponentLoaders2D.cpp
   src/GameCommon/DialogueActions.cpp
