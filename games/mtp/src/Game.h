@@ -157,7 +157,7 @@ private:
     void initEntityAnimation(entt::handle e);
 
     void destroyNonPersistentEntities();
-    void destroyEntity(entt::handle e, bool removeFromRegistry = true);
+    void destroyEntity(entt::handle e);
 
     void onCollisionStarted(const CharacterCollisionStartedEvent& event);
     void onCollisionEnded(const CharacterCollisionEndedEvent& event);

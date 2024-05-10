@@ -8,6 +8,7 @@
 
 #include <edbr/Application.h>
 #include <edbr/ECS/EntityFactory.h>
+#include <edbr/Graphics/Camera.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/Graphics/IdTypes.h>
 #include <edbr/Graphics/SpriteAnimationData.h>
@@ -77,8 +78,6 @@ private:
     void drawGameObjects();
     void drawUI();
 
-    void createDrawImage(const glm::ivec2& drawImageSize);
-
     void devToolsHandleInput(float dt);
     void handleFreeCameraInput(float dt);
     void devToolsUpdate(float dt);
@@ -95,7 +94,7 @@ private:
     SpriteRenderer uiRenderer;
     TileMapRenderer tileMapRenderer;
 
-    glm::vec2 cameraPos;
+    Camera gameCamera;
     entt::handle interactEntity;
     bool playerInputEnabled{true};
 
@@ -109,7 +108,6 @@ private:
 
     // ui
     GameUI ui;
-    Font defaultFont;
 
     // dev
     Font devToolsFont;

@@ -143,10 +143,9 @@ void Game::customCleanup()
 {
     for (auto entity : registry.view<entt::entity>()) {
         if (!registry.get<HierarchyComponent>(entity).hasParent()) {
-            destroyEntity({registry, entity}, false);
+            destroyEntity({registry, entity});
         }
     }
-    registry.clear();
 
     // unsub from physics events
     eventManager.removeListener<CharacterCollisionStartedEvent>(this);
@@ -238,14 +237,6 @@ void Game::startGameplay()
         });
 
     actionListManager.addActionList(std::move(l));
-
-    actionListManager.addActionList(ActionList{
-        "test dialogue box",
-        actions::delay(1.f),
-        say(dialogue::TextToken{
-            .text = LST{"GAME_SAVED"},
-            .name = LST{"DUDE_NAME"},
-        })});
 }
 
 void Game::enterPauseMenu()
@@ -919,13 +910,13 @@ void Game::destroyNonPersistentEntities()
         auto e = entt::handle{registry, entity};
         if (!e.get<HierarchyComponent>().hasParent()) {
             if (!e.all_of<PersistentComponent>()) {
-                destroyEntity({registry, entity}, true);
+                destroyEntity({registry, entity});
             }
         }
     }
 }
 
-void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
+void Game::destroyEntity(entt::handle e)
 {
     auto& hc = e.get<HierarchyComponent>();
     if (hc.hasParent()) {
@@ -935,7 +926,7 @@ void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
     }
     // destory children before removing itself
     for (const auto& child : hc.children) {
-        destroyEntity(child, removeFromRegistry);
+        destroyEntity(child);
     }
 
     if (auto tcPtr = e.try_get<TagComponent>(); tcPtr) {
@@ -954,9 +945,7 @@ void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
         physicsSystem->onEntityDestroyed(e);
     }
 
-    if (removeFromRegistry) {
-        e.destroy();
-    }
+    e.destroy();
 }
 
 void Game::onCollisionStarted(const CharacterCollisionStartedEvent& event)

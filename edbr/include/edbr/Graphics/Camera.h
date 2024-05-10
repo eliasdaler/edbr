@@ -39,6 +39,9 @@ public:
     void setPosition(const glm::vec3& pos) { transform.setPosition(pos); }
     const glm::vec3 getPosition() const { return transform.getPosition(); }
 
+    void setPosition2D(const glm::vec2& pos) { transform.setPosition({pos, 0.f}); }
+    const glm::vec2 getPosition2D() const { return glm::vec2{transform.getPosition()}; }
+
     void setHeading(const glm::quat& h) { transform.setHeading(h); }
     const glm::quat& getHeading() const { return transform.getHeading(); }
 

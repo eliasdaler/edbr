@@ -83,12 +83,15 @@ void Game::handleFreeCameraInput(float dt)
     static const auto moveYAxis = actionMapping.getActionTagHash("CameraMoveY");
 
     const auto moveStickState = util::getStickState(actionMapping, moveXAxis, moveYAxis);
-    const auto cameraMoveSpeed = glm::vec2{120.f, 120.f};
+    const auto cameraMoveSpeed = glm::vec2{240.f, 240.f};
     auto velocity = moveStickState * cameraMoveSpeed;
     if (inputManager.getKeyboard().isHeld(SDL_SCANCODE_LSHIFT)) {
         velocity *= 2.f;
     }
+
+    auto cameraPos = gameCamera.getPosition2D();
     cameraPos += velocity * dt;
+    gameCamera.setPosition2D(cameraPos);
 }
 
 void Game::devToolsUpdate(float dt)

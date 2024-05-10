@@ -495,6 +495,28 @@ ImageId GfxDevice::createImage(
     return addImageToCache(std::move(image));
 }
 
+ImageId GfxDevice::createDrawImage(VkFormat format, glm::ivec2 size, const char* debugName)
+{
+    const auto extent = VkExtent3D{
+        .width = (std::uint32_t)size.x,
+        .height = (std::uint32_t)size.y,
+        .depth = 1,
+    };
+
+    VkImageUsageFlags usages{};
+    usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    usages |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    const auto createImageInfo = vkutil::CreateImageInfo{
+        .format = format,
+        .usage = usages,
+        .extent = extent,
+    };
+    return createImage(createImageInfo, debugName);
+}
+
 ImageId GfxDevice::loadImageFromFile(
     const std::filesystem::path& path,
     VkFormat format,

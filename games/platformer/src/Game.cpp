@@ -31,21 +31,21 @@ void Game::customInit()
     inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
     inputManager.loadMapping("assets/data/input_mapping.json");
 
-    createDrawImage(params.renderSize);
+    drawImageId = gfxDevice.createDrawImage(drawImageFormat, params.renderSize, "draw image");
     spriteRenderer.init(drawImageFormat);
     uiRenderer.init(drawImageFormat);
-    defaultFont.load(gfxDevice, "assets/fonts/m6x11.ttf", 16, false);
 
     devToolsFont.load(gfxDevice, "assets/fonts/at01.ttf", 16, false);
-
-    loadAnimations("assets/animations");
 
     ui.init(gfxDevice);
     uiInspector.setInspectedUI(ui.getDialogueBox().getRootElement());
 
+    loadAnimations("assets/animations");
     initEntityFactory();
     registerComponents(entityFactory.getComponentFactory());
     registerComponentDisplayers();
+
+    gameCamera.initOrtho2D(static_cast<glm::vec2>(params.renderSize));
 
     { // create player
         auto player = createEntityFromPrefab("player");
@@ -57,28 +57,6 @@ void Game::customInit()
     }
 
     changeLevel("LevelTown", "from_level_b");
-}
-
-void Game::createDrawImage(const glm::ivec2& drawImageSize)
-{
-    const auto drawImageExtent = VkExtent3D{
-        .width = (std::uint32_t)drawImageSize.x,
-        .height = (std::uint32_t)drawImageSize.y,
-        .depth = 1,
-    };
-
-    VkImageUsageFlags usages{};
-    usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    usages |= VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    const auto createImageInfo = vkutil::CreateImageInfo{
-        .format = drawImageFormat,
-        .usage = usages,
-        .extent = drawImageExtent,
-    };
-    drawImageId = gfxDevice.createImage(createImageInfo, "draw image", nullptr, drawImageId);
 }
 
 void Game::loadAppSettings()
@@ -109,6 +87,7 @@ void Game::initEntityFactory()
         registry.emplace<HierarchyComponent>(e);
         return entt::handle(registry, e);
     });
+    entityFactory.setPostInitEntityFunc([this](entt::handle e) { entityPostInit(e); });
 
     const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
     loadPrefabs(prefabsDir);
@@ -176,9 +155,10 @@ void Game::customUpdate(float dt)
     if (!freeCamera) {
         auto player = entityutil::getPlayerEntity(registry);
         const auto cameraOffset = glm::vec2{0, -32.f};
-        cameraPos = entityutil::getWorldPosition2D(player) -
-                    static_cast<glm::vec2>(params.renderSize) / 2.f + cameraOffset;
+        auto cameraPos = entityutil::getWorldPosition2D(player) -
+                         static_cast<glm::vec2>(params.renderSize) / 2.f + cameraOffset;
         cameraPos = glm::round(cameraPos);
+        gameCamera.setPosition2D(cameraPos);
     }
 
     if (isDevEnvironment) {
@@ -276,7 +256,7 @@ glm::vec2 Game::getMouseGameScreenPos() const
 
 glm::vec2 Game::getMouseWorldPos() const
 {
-    return getMouseGameScreenPos() + cameraPos;
+    return getMouseGameScreenPos() + gameCamera.getPosition2D();
 }
 
 void Game::customDraw()
@@ -297,7 +277,7 @@ void Game::customDraw()
         devToolsDrawInWorldUI();
     }
     spriteRenderer.endDrawing();
-    spriteRenderer.draw(cmd, drawImage, cameraPos);
+    spriteRenderer.draw(cmd, drawImage, gameCamera.getViewProj());
 
     // draw UI
     uiRenderer.beginDrawing();
@@ -350,9 +330,10 @@ void Game::drawGameObjects()
 
 void Game::drawUI()
 {
+    auto player = entityutil::getPlayerEntity(registry);
     auto uiCtx = GameUI::UIContext{
-        .playerPos = entityutil::getWorldPosition2D(entityutil::getPlayerEntity(registry)),
-        .cameraPos = cameraPos,
+        .playerPos = entityutil::getWorldPosition2D(player),
+        .cameraPos = gameCamera.getPosition2D(),
     };
     if (interactEntity.entity() != entt::null) {
         auto& ic = interactEntity.get<InteractComponent>();
@@ -436,11 +417,7 @@ entt::handle Game::createEntityFromPrefab(
 
 {
     try {
-        auto e = overrideData.empty() ?
-                     entityFactory.createEntity(registry, prefabName) :
-                     entityFactory.createEntity(registry, prefabName, overrideData);
-        entityPostInit(e);
-        return e;
+        return entityFactory.createEntity(registry, prefabName, overrideData);
     } catch (const std::exception& e) {
         throw std::runtime_error(
             fmt::format("failed to create prefab '{}': {}", prefabName, e.what()));

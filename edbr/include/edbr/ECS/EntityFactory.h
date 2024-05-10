@@ -23,11 +23,10 @@ public:
 
     entt::handle createDefaultEntity(entt::registry& registry, bool postInit = true) const;
 
-    entt::handle createEntity(entt::registry& registry, const std::string& prefabName) const;
     entt::handle createEntity(
         entt::registry& registry,
         const std::string& prefabName,
-        const nlohmann::json& overridePrefabData) const;
+        const nlohmann::json& overridePrefabData = {}) const;
 
     bool prefabExists(const std::string& prefabName) const;
 

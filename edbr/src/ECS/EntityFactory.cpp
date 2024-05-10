@@ -59,31 +59,24 @@ entt::handle EntityFactory::createDefaultEntity(entt::registry& registry, bool p
     return e;
 }
 
-entt::handle EntityFactory::createEntity(entt::registry& registry, const std::string& prefabName)
-    const
-{
-    const auto& mappedPrefabName = getMappedPrefabName(prefabName);
-    const auto& actualPrefabName = !mappedPrefabName.empty() ? mappedPrefabName : prefabName;
-    const auto prefabLoader = getPrefabDataLoader(actualPrefabName);
-    return createEntity(registry, actualPrefabName, prefabLoader);
-}
-
 entt::handle EntityFactory::createEntity(
     entt::registry& registry,
     const std::string& prefabName,
     const nlohmann::json& overridePrefabData) const
 {
-    // same code as in createEntity without override - refactor?
     const auto& mappedPrefabName = getMappedPrefabName(prefabName);
     const auto& actualPrefabName = !mappedPrefabName.empty() ? mappedPrefabName : prefabName;
     const auto prefabLoader = getPrefabDataLoader(actualPrefabName);
 
-    // merge override data
-    const auto& originalData = prefabLoader.getJson();
-    const auto jsonData = mergeJson(originalData, overridePrefabData);
-    JsonDataLoader loader{jsonData, prefabLoader.getName() + "(+ overload data)"};
+    // merge override data (if present)
+    if (!overridePrefabData.empty()) {
+        const auto& originalData = prefabLoader.getJson();
+        const auto jsonData = mergeJson(originalData, overridePrefabData);
+        JsonDataLoader loader{jsonData, prefabLoader.getName() + "(+ overload data)"};
+        return createEntity(registry, actualPrefabName, loader);
+    }
 
-    return createEntity(registry, actualPrefabName, loader);
+    return createEntity(registry, actualPrefabName, prefabLoader);
 }
 
 entt::handle EntityFactory::createEntity(
