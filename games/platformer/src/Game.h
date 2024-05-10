@@ -48,7 +48,6 @@ private:
     void loadAnimations(const std::filesystem::path& animationsDir);
 
     void initEntityFactory();
-    void loadPrefabs(const std::filesystem::path& prefabsDir);
     void registerComponents(ComponentFactory& componentFactory);
     void registerComponentDisplayers();
     void entityPostInit(entt::handle e);
@@ -71,6 +70,7 @@ private:
 
     void handleInteraction();
 
+    glm::vec2 getScreenSize() const;
     glm::vec2 getMouseGameScreenPos() const;
     glm::vec2 getMouseWorldPos() const;
 
@@ -90,21 +90,21 @@ private:
     VkFormat drawImageFormat{VK_FORMAT_R16G16B16A16_SFLOAT};
     ImageId drawImageId{NULL_IMAGE_ID};
 
+    std::unordered_map<std::string, SpriteAnimationData> animationsData;
+    EntityFactory entityFactory;
+    entt::registry registry;
+
     SpriteRenderer spriteRenderer;
     SpriteRenderer uiRenderer;
     TileMapRenderer tileMapRenderer;
-
-    Camera gameCamera;
-    entt::handle interactEntity;
-    bool playerInputEnabled{true};
 
     Level level;
     std::string newLevelToLoad;
     std::string newLevelSpawnName;
 
-    std::unordered_map<std::string, SpriteAnimationData> animationsData;
-    EntityFactory entityFactory;
-    entt::registry registry;
+    Camera gameCamera;
+    entt::handle interactEntity;
+    bool playerInputEnabled{true};
 
     // ui
     GameUI ui;

@@ -853,15 +853,6 @@ void Game::initEntityFactory()
     });
 
     const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
-    loadPrefabs(prefabsDir);
-
-    entityFactory.addMappedPrefabName("guardrail", "static_geometry_no_coll");
-    entityFactory.addMappedPrefabName("stairs", "static_geometry_no_coll");
-    entityFactory.addMappedPrefabName("railing", "static_geometry_no_coll");
-}
-
-void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
-{
     // Automatically load all prefabs from the directory
     // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
     util::foreachFileInDir(prefabsDir, [this, &prefabsDir](const std::filesystem::path& p) {
@@ -869,6 +860,10 @@ void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
         const auto prefabName = relPath.replace_extension("").string();
         entityFactory.registerPrefab(prefabName, p);
     });
+
+    entityFactory.addMappedPrefabName("guardrail", "static_geometry_no_coll");
+    entityFactory.addMappedPrefabName("stairs", "static_geometry_no_coll");
+    entityFactory.addMappedPrefabName("railing", "static_geometry_no_coll");
 }
 
 void Game::destroyNonPersistentEntities()

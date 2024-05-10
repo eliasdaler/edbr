@@ -131,7 +131,6 @@ public:
 
 private:
     void initEntityFactory();
-    void loadPrefabs(const std::filesystem::path& prefabsDir);
     void registerComponents(ComponentFactory& componentFactory);
     void registerComponentDisplayers();
 

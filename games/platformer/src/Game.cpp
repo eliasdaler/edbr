@@ -46,14 +46,11 @@ void Game::customInit()
     registerComponents(entityFactory.getComponentFactory());
     registerComponentDisplayers();
 
-    gameCamera.initOrtho2D(static_cast<glm::vec2>(params.renderSize));
+    gameCamera.initOrtho2D(getScreenSize());
 
     { // create player
         auto player = createEntityFromPrefab("player");
         player.emplace<PlayerComponent>();
-
-        const auto playerPos = glm::vec2{640, 192};
-        entityutil::setWorldPosition2D(player, playerPos);
         entityutil::makePersistent(player);
     }
 
@@ -91,11 +88,6 @@ void Game::initEntityFactory()
     entityFactory.setPostInitEntityFunc([this](entt::handle e) { entityPostInit(e); });
 
     const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
-    loadPrefabs(prefabsDir);
-}
-
-void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
-{
     // Automatically load all prefabs from the directory
     // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
     util::foreachFileInDir(prefabsDir, [this, &prefabsDir](const std::filesystem::path& p) {
@@ -156,8 +148,8 @@ void Game::customUpdate(float dt)
     if (!freeCamera) {
         auto player = entityutil::getPlayerEntity(registry);
         const auto cameraOffset = glm::vec2{0, -32.f};
-        auto cameraPos = entityutil::getWorldPosition2D(player) -
-                         static_cast<glm::vec2>(params.renderSize) / 2.f + cameraOffset;
+        auto cameraPos =
+            entityutil::getWorldPosition2D(player) - getScreenSize() / 2.f + cameraOffset;
         cameraPos = glm::round(cameraPos);
         gameCamera.setPosition2D(cameraPos);
     }
@@ -166,7 +158,7 @@ void Game::customUpdate(float dt)
         devToolsUpdate(dt);
     }
 
-    ui.update(static_cast<glm::vec2>(params.renderSize), dt);
+    ui.update(getScreenSize(), dt);
 }
 
 void Game::handleInput(float dt)
@@ -246,6 +238,11 @@ void Game::handleInteraction()
     default:
         break;
     }
+}
+
+glm::vec2 Game::getScreenSize() const
+{
+    return static_cast<glm::vec2>(params.renderSize);
 }
 
 glm::vec2 Game::getMouseGameScreenPos() const
