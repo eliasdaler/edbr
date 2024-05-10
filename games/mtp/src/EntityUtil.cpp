@@ -6,7 +6,6 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
-#include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <edbr/Event/EventManager.h>
@@ -19,16 +18,6 @@ EventManager* eventManager{nullptr};
 void setEventManager(EventManager& em)
 {
     eventManager = &em;
-}
-
-void makePersistent(entt::handle e)
-{
-    e.emplace<PersistentComponent>();
-}
-
-void makeNonPersistent(entt::handle e)
-{
-    e.erase<PersistentComponent>();
 }
 
 void addChild(entt::handle parent, entt::handle child)
@@ -182,15 +171,6 @@ void spawnPlayer(entt::registry& registry, const std::string& spawnName)
 
     // teleport
     teleportEntity(player, spawnTC.transform.getPosition());
-}
-
-const std::string& getTag(entt::const_handle e)
-{
-    static const std::string emptyString{};
-    if (auto tcPtr = e.try_get<TagComponent>(); tcPtr && !tcPtr->getTag().empty()) {
-        return tcPtr->getTag();
-    }
-    return emptyString;
 }
 
 const std::string& getMetaName(entt::const_handle e)

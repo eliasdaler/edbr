@@ -19,19 +19,6 @@
 
 #include "VirtualCharacterParams.h"
 
-struct TagComponent {
-    friend class Game;
-
-public:
-    // call Game::setEntityTag to set the tag
-    const std::string& getTag() const { return tag; }
-
-private:
-    void setTag(const std::string& t) { tag = t; }
-
-    std::string tag;
-};
-
 struct MeshComponent {
     std::vector<MeshId> meshes;
     std::vector<Transform> meshTransforms;

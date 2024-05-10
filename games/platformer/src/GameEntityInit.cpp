@@ -1,6 +1,7 @@
 #include <Game.h>
 
-#include "Components.h"
+#include <edbr/ECS/Components/SpriteAnimationComponent.h>
+#include <edbr/ECS/Components/SpriteComponent.h>
 
 void Game::entityPostInit(entt::handle e)
 {

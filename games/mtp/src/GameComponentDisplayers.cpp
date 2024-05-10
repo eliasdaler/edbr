@@ -8,6 +8,7 @@
 #include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <entt/entity/handle.hpp>
@@ -34,8 +35,8 @@ void Game::registerComponentDisplayers()
 
     eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {
         BeginPropertyTable();
-        if (!tc.getTag().empty()) {
-            DisplayProperty("Tag", tc.getTag());
+        if (!tc.tag.empty()) {
+            DisplayProperty("Tag", tc.tag);
         }
         EndPropertyTable();
     });

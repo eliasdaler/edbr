@@ -6,6 +6,7 @@
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/SpriteRenderer.h>

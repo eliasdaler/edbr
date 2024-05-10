@@ -12,6 +12,7 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <edbr/ECS/Systems/MovementSystem.h>
@@ -512,36 +513,6 @@ void Game::handlePlayerInteraction()
     }
 }
 
-void Game::setEntityTag(entt::handle e, const std::string& tag)
-{
-    auto& tc = e.get_or_emplace<TagComponent>();
-    if (!tc.tag.empty()) {
-        taggedEntities.erase(tc.tag);
-    }
-
-    tc.tag = tag;
-    auto [it, inserted] = taggedEntities.emplace(tc.tag, e.entity());
-    assert(inserted);
-}
-
-entt::handle Game::findEntityByTag(const std::string& tag)
-{
-    auto it = taggedEntities.find(tag);
-    if (it != taggedEntities.end()) {
-        return entt::handle{registry, it->second};
-    }
-    return {};
-}
-
-entt::const_handle Game::findEntityByTag(const std::string& tag) const
-{
-    auto it = taggedEntities.find(tag);
-    if (it != taggedEntities.end()) {
-        return entt::const_handle{registry, it->second};
-    }
-    return {};
-}
-
 void Game::setCurrentCamera(entt::const_handle cameraEnt, float transitionTime)
 {
     if (cameraEnt.entity() == entt::null) {
@@ -927,12 +898,6 @@ void Game::destroyEntity(entt::handle e)
     // destory children before removing itself
     for (const auto& child : hc.children) {
         destroyEntity(child);
-    }
-
-    if (auto tcPtr = e.try_get<TagComponent>(); tcPtr) {
-        if (!tcPtr->getTag().empty()) {
-            taggedEntities.erase(tcPtr->getTag());
-        }
     }
 
     if (auto scPtr = e.try_get<SkeletonComponent>(); scPtr) {

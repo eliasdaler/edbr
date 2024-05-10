@@ -11,6 +11,7 @@
 #include <fmt/format.h>
 
 #include <edbr/ECS/Components/NameComponent.h>
+#include <edbr/GameCommon/EntityUtil.h>
 
 class EventManager;
 
@@ -18,9 +19,6 @@ namespace entityutil
 {
 // allows to send events from any function without carrying event manager around
 void setEventManager(EventManager& eventManager);
-
-void makePersistent(entt::handle e);
-void makeNonPersistent(entt::handle e);
 
 void addChild(entt::handle parent, entt::handle child);
 glm::vec3 getWorldPosition(entt::handle e);
@@ -55,8 +53,6 @@ entt::handle findEntityByName(entt::registry& registry, const std::string& name)
     fmt::println("Entity with name '{}' was not found", name);
     return {registry, entt::null};
 }
-
-const std::string& getTag(entt::const_handle e);
 
 // returns names (if they exist) in this order
 // 1. tag

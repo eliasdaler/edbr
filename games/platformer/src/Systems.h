@@ -6,6 +6,8 @@
 #include <glm/gtx/norm.hpp> // length2
 
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/SpriteAnimationComponent.h>
+#include <edbr/ECS/Components/SpriteComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/TileMap/TileMap.h>
 

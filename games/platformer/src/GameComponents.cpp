@@ -3,6 +3,8 @@
 #include "Components.h"
 
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/SpriteAnimationComponent.h>
+#include <edbr/ECS/Components/SpriteComponent.h>
 
 void Game::registerComponents(ComponentFactory& cf)
 {

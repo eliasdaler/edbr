@@ -158,6 +158,8 @@ add_library(edbr
 
   # GameCommon
   src/GameCommon/DialogueActions.cpp
+  src/GameCommon/EntityUtil2D.cpp
+  src/GameCommon/EntityUtil.cpp
 
   src/Application.cpp
   src/SceneCache.cpp

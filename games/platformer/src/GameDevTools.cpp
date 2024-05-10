@@ -4,6 +4,8 @@
 #include "EntityUtil.h"
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
+#include <edbr/ECS/Components/SpriteComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Util/ImGuiUtil.h>
 #include <edbr/Util/InputUtil.h>

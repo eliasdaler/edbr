@@ -81,10 +81,6 @@ public:
     void handlePlayerInput(float dt);
     void handlePlayerInteraction();
 
-    void setEntityTag(entt::handle entity, const std::string& tag);
-    entt::handle findEntityByTag(const std::string& tag);
-    entt::const_handle findEntityByTag(const std::string& tag) const;
-
     entt::const_handle findDefaultCamera();
     void setCurrentCamera(entt::const_handle camera, float transitionTime = 0.f);
     void setCurrentCamera(const std::string& cameraTag, float transitionTime = 0.f);
@@ -184,7 +180,6 @@ private:
     SkeletalAnimationCache animationCache;
 
     entt::registry registry;
-    std::unordered_map<std::string, entt::entity> taggedEntities;
     EntityFactory entityFactory;
     EntityCreator entityCreator;
 
