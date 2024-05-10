@@ -14,4 +14,8 @@ const std::string& getTag(entt::const_handle e);
 // persistency
 void makePersistent(entt::handle e);
 void makeNonPersistent(entt::handle e);
+
+// kinematic movement
+void stopKinematicMovement(entt::handle e);
+void stopKinematicRotation(entt::handle e);
 }

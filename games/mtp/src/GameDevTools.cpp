@@ -4,10 +4,13 @@
 #include "EntityUtil.h"
 #include "FollowCameraController.h"
 
-#include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
+
+#include <edbr/DevTools/ImGuiPropertyTable.h>
+
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/Util/Im3dUtil.h>

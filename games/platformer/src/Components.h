@@ -3,11 +3,6 @@
 #include <edbr/Graphics/Sprite.h>
 #include <edbr/Text/LocalizedStringTag.h>
 
-struct CollisionComponent {
-    glm::vec2 size;
-    glm::vec2 origin;
-};
-
 struct CharacterControllerComponent {
 public:
     float gravity{1.f};
@@ -32,11 +27,6 @@ struct InteractComponent {
         GoInside,
     };
     Type type{Type::None};
-};
-
-struct NPCComponent {
-    LocalizedStringTag name;
-    LocalizedStringTag defaultText;
 };
 
 struct PlayerComponent {};

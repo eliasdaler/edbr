@@ -11,6 +11,7 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
@@ -478,7 +479,7 @@ void Game::handlePlayerInput(float dt)
         eu::rotateSmoothlyTo(player, targetHeading, 0.12f);
     } else {
         moveDir = {};
-        eu::stopRotation(player);
+        eu::stopKinematicRotation(player);
     }
 
     // handle movement
@@ -947,7 +948,7 @@ const std::string& Game::getLastSpawnName() const
 void Game::stopPlayerMovement()
 {
     auto player = eu::getPlayerEntity(registry);
-    eu::stopRotation(player);
+    eu::stopKinematicRotation(player);
     physicsSystem->stopCharacterMovement();
 }
 

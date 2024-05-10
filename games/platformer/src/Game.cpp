@@ -12,6 +12,7 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/ECS/Systems/MovementSystem.h>
@@ -225,7 +226,7 @@ void Game::handlePlayerInput(const ActionMapping& am, float dt)
 void Game::handleInteraction()
 {
     auto player = entityutil::getPlayerEntity(registry);
-    entityutil::stopMovement(player);
+    entityutil::stopKinematicMovement(player);
 
     const auto it = interactEntity.get<InteractComponent>().type;
     switch (it) {

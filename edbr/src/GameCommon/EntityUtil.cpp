@@ -1,5 +1,6 @@
 #include <edbr/GameCommon/EntityUtil.h>
 
+#include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 
@@ -46,6 +47,20 @@ void makePersistent(entt::handle e)
 void makeNonPersistent(entt::handle e)
 {
     e.erase<PersistentComponent>();
+}
+
+void stopKinematicMovement(entt::handle e)
+{
+    auto& mc = e.get<MovementComponent>();
+    mc.kinematicVelocity = {};
+    stopKinematicRotation(e);
+}
+
+void stopKinematicRotation(entt::handle e)
+{
+    auto& mc = e.get<MovementComponent>();
+    mc.rotationProgress = mc.rotationTime;
+    mc.rotationTime = 0.f;
 }
 
 }

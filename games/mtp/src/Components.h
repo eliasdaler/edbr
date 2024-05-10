@@ -55,10 +55,6 @@ struct InteractComponent {
     Type type{Type::Interact};
 };
 
-struct NPCComponent {
-    LocalizedStringTag name;
-};
-
 struct PhysicsComponent {
     enum class Type {
         Static,

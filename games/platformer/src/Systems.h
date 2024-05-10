@@ -5,6 +5,7 @@
 
 #include <glm/gtx/norm.hpp> // length2
 
+#include <edbr/ECS/Components/CollisionComponent2D.h>
 #include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/SpriteAnimationComponent.h>
 #include <edbr/ECS/Components/SpriteComponent.h>
@@ -23,7 +24,7 @@ bool isSolidTile(const TileMap& tileMap, const TileMap::TileIndex& tileIndex)
 
 bool isOnGround(const entt::const_handle& e, const TileMap& tileMap)
 {
-    const auto eBB = entityutil::getAABB(e);
+    const auto eBB = entityutil::getCollisionAABB(e);
     const auto cp1 = eBB.getBottomLeftCorner() + glm::vec2{0.5f, 0.5f};
     const auto cp2 = eBB.getBottomLeftCorner() + glm::vec2{eBB.width / 2.f, 0.5f};
     const auto cp3 = eBB.getBottomRightCorner() + glm::vec2{-0.5f, 0.5f};
@@ -88,9 +89,10 @@ inline void spriteAnimationSystemUpdate(entt::registry& registry, float dt)
 inline void tileCollisionSystemUpdate(entt::registry& registry, float dt, const TileMap& tileMap)
 {
     static constexpr auto MAX_ITERATIONS = 3;
-    for (const auto&& [e, cc, mc] : registry.view<CollisionComponent, MovementComponent>().each()) {
+    for (const auto&& [e, cc, mc] :
+         registry.view<CollisionComponent2D, MovementComponent>().each()) {
         for (int i = 0; i < MAX_ITERATIONS; ++i) {
-            const auto& eBB = entityutil::getAABB({registry, e});
+            const auto& eBB = entityutil::getCollisionAABB({registry, e});
 
             glm::vec2 minMtv{};
             bool minMTVSet = false;

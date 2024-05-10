@@ -1,5 +1,6 @@
 #include <edbr/GameCommon/EntityUtil2D.h>
 
+#include <edbr/ECS/Components/CollisionComponent2D.h>
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/SpriteAnimationComponent.h>
 #include <edbr/ECS/Components/SpriteComponent.h>
@@ -64,6 +65,18 @@ void setSpriteAnimation(entt::handle e, const std::string& animName)
 
     ac.animator.setAnimation(ac.animationsData->getAnimation(animName), animName);
     ac.animator.animate(sc.sprite, ac.animationsData->getSpriteSheet());
+}
+
+math::FloatRect getCollisionAABB(entt::const_handle e)
+{
+    auto& cc = e.get<CollisionComponent2D>();
+    auto origin = cc.origin;
+    if (origin == glm::vec2{}) {
+        origin = {-cc.size.x / 2.f, -cc.size.y};
+    }
+    const auto pos = getWorldPosition2D(e);
+    const auto tl = pos + origin;
+    return {tl, cc.size};
 }
 
 }

@@ -2,7 +2,9 @@
 
 #include "Components.h"
 
+#include <edbr/ECS/Components/CollisionComponent2D.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/SpriteAnimationComponent.h>
 #include <edbr/ECS/Components/SpriteComponent.h>
 
@@ -15,7 +17,7 @@ void Game::registerComponents(ComponentFactory& cf)
         });
 
     cf.registerComponentLoader(
-        "collision", [](entt::handle e, CollisionComponent& cc, const JsonDataLoader& loader) {
+        "collision", [](entt::handle e, CollisionComponent2D& cc, const JsonDataLoader& loader) {
             loader.getIfExists("size", cc.size);
             loader.getIfExists("origin", cc.origin);
         });

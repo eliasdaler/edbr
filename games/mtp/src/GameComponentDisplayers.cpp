@@ -6,6 +6,7 @@
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>

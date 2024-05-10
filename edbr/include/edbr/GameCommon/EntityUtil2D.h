@@ -16,4 +16,7 @@ glm::vec2 getHeading2D(entt::const_handle e);
 // sprite graphics
 math::FloatRect getSpriteWorldRect(entt::const_handle e);
 void setSpriteAnimation(entt::handle e, const std::string& animName);
+
+// collision
+math::FloatRect getCollisionAABB(entt::const_handle e);
 }

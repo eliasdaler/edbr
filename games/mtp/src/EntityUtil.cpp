@@ -99,13 +99,6 @@ void rotateSmoothlyTo(entt::handle e, const glm::quat& targetHeading, float rota
     mc.rotationProgress = 0.f;
 }
 
-void stopRotation(entt::handle e)
-{
-    auto& mc = e.get<MovementComponent>();
-    mc.rotationProgress = mc.rotationTime;
-    mc.rotationTime = 0.f;
-}
-
 void setAnimation(entt::handle e, const std::string& name)
 {
     auto scPtr = e.try_get<SkeletonComponent>();

@@ -2,6 +2,7 @@
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 namespace

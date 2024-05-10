@@ -4,6 +4,7 @@
 #include "EntityUtil.h"
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
+#include <edbr/ECS/Components/CollisionComponent2D.h>
 #include <edbr/ECS/Components/SpriteComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
@@ -18,8 +19,8 @@ math::FloatRect getSelectedEntityRect(entt::const_handle e)
     if (e.all_of<SpriteComponent>()) {
         return entityutil::getSpriteWorldRect(e);
     }
-    if (e.all_of<CollisionComponent>()) {
-        return entityutil::getAABB(e);
+    if (e.all_of<CollisionComponent2D>()) {
+        return entityutil::getCollisionAABB(e);
     }
     return {entityutil::getWorldPosition2D(e), {}};
 }
@@ -157,8 +158,8 @@ void Game::devToolsDrawInWorldUI()
             spriteRenderer,
             level.getTileMap(),
             level.getTileMap().getLayer(TileMap::CollisionLayerName));
-        for (const auto&& [e, cc] : registry.view<CollisionComponent>().each()) {
-            const auto bb = entityutil::getAABB({registry, e});
+        for (const auto&& [e, cc] : registry.view<CollisionComponent2D>().each()) {
+            const auto bb = entityutil::getCollisionAABB({registry, e});
             auto collBoxColor = LinearColor{1.f, 0.f, 0.f, 0.5f};
             if (registry.all_of<TeleportComponent>(e)) {
                 collBoxColor = LinearColor{1.f, 1.f, 0.f, 0.5f};

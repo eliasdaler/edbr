@@ -1,7 +1,10 @@
 #include <Game.h>
 
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/SpriteAnimationComponent.h>
 #include <edbr/ECS/Components/SpriteComponent.h>
+
+#include "Components.h"
 
 void Game::entityPostInit(entt::handle e)
 {
@@ -19,5 +22,11 @@ void Game::entityPostInit(entt::handle e)
         ac.animator.setAnimation(
             ac.animationsData->getAnimation(ac.defaultAnimationName), ac.defaultAnimationName);
         ac.animator.animate(sc.sprite, ac.animationsData->getSpriteSheet());
+    }
+
+    // For NPCs, add InteractComponent with "Talk" type if not added already
+    if (e.all_of<NPCComponent>() && !e.all_of<InteractComponent>()) {
+        auto& ic = e.emplace<InteractComponent>();
+        ic.type = InteractComponent::Type::Talk;
     }
 }

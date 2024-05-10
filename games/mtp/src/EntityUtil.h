@@ -29,7 +29,6 @@ void setPosition(entt::handle e, const glm::vec3& pos);
 void teleportEntity(entt::handle e, const glm::vec3& pos);
 void setRotation(entt::handle e, const glm::quat& rotation);
 void rotateSmoothlyTo(entt::handle e, const glm::quat& targetHeading, float rotationTime);
-void stopRotation(entt::handle e);
 void setAnimation(entt::handle e, const std::string& name);
 
 // Find entity by glTF scene node name - pretty slow

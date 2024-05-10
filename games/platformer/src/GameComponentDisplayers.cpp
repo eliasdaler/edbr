@@ -2,8 +2,10 @@
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 
+#include <edbr/ECS/Components/CollisionComponent2D.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
 #include <edbr/ECS/Components/SpriteAnimationComponent.h>
@@ -70,7 +72,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Collision", [](entt::const_handle e, const CollisionComponent& cc) {
+    eid.registerDisplayer("Collision", [](entt::const_handle e, const CollisionComponent2D& cc) {
         BeginPropertyTable();
         {
             DisplayProperty("Size", cc.size);

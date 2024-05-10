@@ -1,5 +1,6 @@
 #include "EntityUtil.h"
 
+#include <edbr/ECS/Components/CollisionComponent2D.h>
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
@@ -11,18 +12,6 @@
 
 namespace entityutil
 {
-
-math::FloatRect getAABB(entt::const_handle e)
-{
-    auto& cc = e.get<CollisionComponent>();
-    auto origin = cc.origin;
-    if (origin == glm::vec2{}) {
-        origin = {-cc.size.x / 2.f, -cc.size.y};
-    }
-    const auto pos = getWorldPosition2D(e);
-    const auto tl = pos + origin;
-    return {tl, cc.size};
-}
 
 entt::handle getPlayerEntity(entt::registry& registry)
 {
@@ -49,22 +38,14 @@ void spawnPlayer(entt::registry& registry, const std::string& spawnName)
 entt::handle findInteractableEntity(entt::registry& registry)
 {
     const auto& player = getPlayerEntity(registry);
-    const auto playerBB = getAABB(player);
-    for (const auto& [e, cc, ic] : registry.view<CollisionComponent, InteractComponent>().each()) {
-        const auto& eBB = getAABB({registry, e});
+    const auto playerBB = getCollisionAABB(player);
+    for (const auto& [e, cc, ic] :
+         registry.view<CollisionComponent2D, InteractComponent>().each()) {
+        const auto& eBB = getCollisionAABB({registry, e});
         if (eBB.intersects(playerBB)) {
             return {registry, e};
         }
     }
     return {};
 }
-
-void stopMovement(entt::handle e)
-{
-    auto& mc = e.get<MovementComponent>();
-    mc.rotationProgress = mc.rotationTime;
-    mc.rotationTime = 0.f;
-    mc.kinematicVelocity = {};
-}
-
 }
