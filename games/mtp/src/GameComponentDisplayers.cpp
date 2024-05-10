@@ -5,11 +5,9 @@
 #include "Components.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
-#include <edbr/ECS/Components/MovementComponent.h>
-#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
-#include <edbr/ECS/Components/TagComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <edbr/GameCommon/CommonComponentDisplayers.h>
@@ -25,13 +23,14 @@ void Game::registerComponentDisplayers()
 
     auto& eid = entityInfoDisplayer;
 
-    eid.registerDisplayer("Meta", [](entt::const_handle e, const MetaInfoComponent& tc) {
+    edbr::registerMetaInfoComponentDisplayer(eid);
+
+    eid.registerDisplayer("Scene", [](entt::const_handle e, const SceneComponent& sc) {
         BeginPropertyTable();
         {
-            DisplayProperty("Prefab", tc.prefabName);
-            DisplayProperty("Prefab scene name", tc.sceneName);
-            DisplayProperty("Creation scene name", tc.creationSceneName);
-            DisplayProperty("glTF node name", tc.sceneNodeName);
+            DisplayProperty("Prefab scene name", sc.sceneName);
+            DisplayProperty("Creation scene name", sc.creationSceneName);
+            DisplayProperty("glTF node name", sc.sceneNodeName);
         }
         EndPropertyTable();
     });

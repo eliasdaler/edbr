@@ -1,9 +1,9 @@
 #include "Game.h"
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
-#include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 
 namespace
 {
@@ -42,7 +42,7 @@ void Game::entityPostInit(entt::handle e)
 
     // extract name from scene node
     if (e.any_of<PlayerSpawnComponent, CameraComponent, TriggerComponent, NPCComponent>()) {
-        const auto& sceneNodeName = e.get<MetaInfoComponent>().sceneNodeName;
+        const auto& sceneNodeName = e.get<SceneComponent>().sceneNodeName;
         if (sceneNodeName.empty()) { // created manually
             return;
         }
@@ -60,11 +60,11 @@ void Game::initEntityAnimation(entt::handle e)
     auto& sc = e.get<SkeletonComponent>();
     assert(sc.skinId != -1);
 
-    auto& mic = e.get<MetaInfoComponent>();
-    const auto& scene = sceneCache.loadOrGetScene(mic.sceneName);
+    const auto& scc = e.get<SceneComponent>();
+    const auto& scene = sceneCache.loadOrGetScene(scc.sceneName);
 
     sc.skeleton = scene.skeletons[sc.skinId];
-    sc.animations = &animationCache.getAnimations(mic.sceneName);
+    sc.animations = &animationCache.getAnimations(scc.sceneName);
 
     auto& mc = e.get<MeshComponent>();
     sc.skinnedMeshes.reserve(mc.meshes.size());

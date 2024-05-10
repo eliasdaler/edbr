@@ -2,15 +2,8 @@
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 
-#include <edbr/ECS/Components/CollisionComponent2D.h>
-#include <edbr/ECS/Components/MetaInfoComponent.h>
-#include <edbr/ECS/Components/MovementComponent.h>
-#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
-#include <edbr/ECS/Components/SpriteAnimationComponent.h>
-#include <edbr/ECS/Components/SpriteComponent.h>
-#include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <edbr/GameCommon/CommonComponentDisplayers.h>
@@ -27,15 +20,8 @@ void Game::registerComponentDisplayers()
 
     auto& eid = entityInfoDisplayer;
 
+    edbr::registerMetaInfoComponentDisplayer(eid);
     edbr::registerTagComponentDisplayer(eid);
-
-    eid.registerDisplayer("Meta", [](entt::const_handle e, const MetaInfoComponent& tc) {
-        BeginPropertyTable();
-        {
-            DisplayProperty("Prefab", tc.prefabName);
-        }
-        EndPropertyTable();
-    });
 
     eid.registerDisplayer("Name", [](entt::const_handle e, const NameComponent& nc) {
         BeginPropertyTable();

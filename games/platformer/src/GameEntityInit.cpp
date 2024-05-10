@@ -6,6 +6,8 @@
 
 #include "Components.h"
 
+#include <edbr/GameCommon/EntityUtil2D.h>
+
 void Game::entityPostInit(entt::handle e)
 {
     if (auto scPtr = e.try_get<SpriteComponent>(); scPtr) {
@@ -17,11 +19,7 @@ void Game::entityPostInit(entt::handle e)
 
     if (auto acPtr = e.try_get<SpriteAnimationComponent>(); acPtr) {
         auto& ac = *acPtr;
-        auto& sc = e.get<SpriteComponent>();
-
-        ac.animator.setAnimation(
-            ac.animationsData->getAnimation(ac.defaultAnimationName), ac.defaultAnimationName);
-        ac.animator.animate(sc.sprite, ac.animationsData->getSpriteSheet());
+        entityutil::setSpriteAnimation(e, ac.defaultAnimationName);
     }
 
     // For NPCs, add InteractComponent with "Talk" type if not added already

@@ -13,6 +13,7 @@
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
@@ -76,9 +77,8 @@ void Game::loadAppSettings()
 
 void Game::customInit()
 {
-    inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
-    inputManager.loadMapping("assets/data/input_mapping.json");
     textManager.loadText("en", "assets/text/en.json", "");
+    inputManager.loadMapping("assets/data/input_actions.json", "assets/data/input_mapping.json");
     handleSaveFiles();
 
     animationCache.loadAnimationData("assets/data/animation_data.json");
@@ -849,6 +849,7 @@ void Game::initEntityFactory()
         auto e = registry.create();
         registry.emplace<TransformComponent>(e);
         registry.emplace<HierarchyComponent>(e);
+        registry.emplace<SceneComponent>(e);
         return entt::handle(registry, e);
     });
 

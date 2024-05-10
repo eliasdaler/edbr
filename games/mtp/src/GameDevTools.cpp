@@ -6,6 +6,7 @@
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NPCComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
@@ -384,7 +385,7 @@ void Game::devToolsUpdate(float dt)
             auto e = entt::const_handle(registry, entity);
             const auto& metaName = entityutil::getMetaName(e);
             if (e.any_of<TagComponent, NameComponent>() && !metaName.empty()) {
-                auto& mic = registry.get<MetaInfoComponent>(e);
+                auto& sc = registry.get<SceneComponent>(e);
                 if (e.any_of<
                         PlayerSpawnComponent,
                         ColliderComponent,
@@ -396,7 +397,7 @@ void Game::devToolsUpdate(float dt)
                         e.get<TransformComponent>().transform.getPosition(),
                         1.f,
                         RGBColor{255, 255, 255},
-                        mic.sceneNodeName.c_str());
+                        sc.sceneNodeName.c_str());
                 } else {
                     Im3dText(
                         e.get<TransformComponent>().transform.getPosition(),

@@ -14,7 +14,9 @@ public:
     InputManager();
 
     // Stuff for main loop
-    void loadMapping(const std::filesystem::path& path);
+    void loadMapping(
+        const std::filesystem::path& inputActionsPath,
+        const std::filesystem::path& inputMappingPath);
 
     void onNewFrame();
     void handleEvent(const SDL_Event& event);

@@ -1,6 +1,6 @@
 #include "Game.h"
 
-#include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/GameCommon/CommonComponentLoaders.h>
 
@@ -20,9 +20,9 @@ void Game::registerComponents(ComponentFactory& cf)
     cf.registerComponent<ColliderComponent>("collider");
 
     cf.registerComponentLoader(
-        "meta", [](entt::handle e, MetaInfoComponent& mic, const JsonDataLoader& loader) {
-            loader.getIfExists("scene", mic.sceneName);
-            loader.getIfExists("node", mic.sceneNodeName);
+        "scene", [](entt::handle e, SceneComponent& sc, const JsonDataLoader& loader) {
+            loader.getIfExists("scene", sc.sceneName);
+            loader.getIfExists("node", sc.sceneNodeName);
         });
 
     cf.registerComponentLoader(

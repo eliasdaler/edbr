@@ -28,9 +28,7 @@ Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice), ui(audioManager
 void Game::customInit()
 {
     textManager.loadText("en", "assets/text/en.json", "assets/text/en.json");
-
-    inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
-    inputManager.loadMapping("assets/data/input_mapping.json");
+    inputManager.loadMapping("assets/data/input_actions.json", "assets/data/input_mapping.json");
 
     drawImageId = gfxDevice.createDrawImage(drawImageFormat, params.renderSize, "draw image");
     spriteRenderer.init(drawImageFormat);
@@ -46,7 +44,7 @@ void Game::customInit()
     registerComponents(entityFactory.getComponentFactory());
     registerComponentDisplayers();
 
-    gameCamera.initOrtho2D(getScreenSize());
+    gameCamera.initOrtho2D(static_cast<glm::vec2>(getGameScreenSize()));
 
     { // create player
         auto player = createEntityFromPrefab("player");
@@ -156,8 +154,8 @@ void Game::customUpdate(float dt)
     if (!freeCamera) {
         auto player = entityutil::getPlayerEntity(registry);
         const auto cameraOffset = glm::vec2{0, -32.f};
-        auto cameraPos =
-            entityutil::getWorldPosition2D(player) - getScreenSize() / 2.f + cameraOffset;
+        auto cameraPos = entityutil::getWorldPosition2D(player) -
+                         static_cast<glm::vec2>(getGameScreenSize()) / 2.f + cameraOffset;
         cameraPos = glm::round(cameraPos);
         gameCamera.setPosition2D(cameraPos);
     }
@@ -166,7 +164,7 @@ void Game::customUpdate(float dt)
         devToolsUpdate(dt);
     }
 
-    ui.update(getScreenSize(), dt);
+    ui.update(static_cast<glm::vec2>(getGameScreenSize()), dt);
 }
 
 void Game::handleInput(float dt)
@@ -248,9 +246,9 @@ void Game::handleInteraction()
     }
 }
 
-glm::vec2 Game::getScreenSize() const
+glm::ivec2 Game::getGameScreenSize() const
 {
-    return static_cast<glm::vec2>(params.renderSize);
+    return params.renderSize;
 }
 
 glm::vec2 Game::getMouseGameScreenPos() const

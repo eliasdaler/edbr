@@ -70,7 +70,7 @@ private:
 
     void handleInteraction();
 
-    glm::vec2 getScreenSize() const;
+    glm::ivec2 getGameScreenSize() const;
     glm::vec2 getMouseGameScreenPos() const;
     glm::vec2 getMouseWorldPos() const;
 

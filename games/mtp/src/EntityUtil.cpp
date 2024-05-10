@@ -6,6 +6,7 @@
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 
 #include <edbr/Event/EventManager.h>
@@ -112,7 +113,7 @@ void setAnimation(entt::handle e, const std::string& name)
 
 entt::handle findEntityBySceneNodeName(entt::registry& registry, const std::string& name)
 {
-    for (auto&& [e, mic] : registry.view<MetaInfoComponent>().each()) {
+    for (auto&& [e, mic] : registry.view<SceneComponent>().each()) {
         if (mic.sceneNodeName == name) {
             return {registry, e};
         }
@@ -180,7 +181,7 @@ const std::string& getMetaName(entt::const_handle e)
     }
 
     // if everything failed - use scene node name
-    return e.get<MetaInfoComponent>().sceneNodeName;
+    return e.get<SceneComponent>().sceneNodeName;
 }
 
 }

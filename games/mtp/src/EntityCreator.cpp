@@ -1,7 +1,9 @@
 #include "EntityCreator.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
+
 #include <edbr/ECS/EntityFactory.h>
 #include <edbr/SceneCache.h>
 #include <edbr/Util/StringUtil.h>
@@ -97,18 +99,18 @@ entt::handle EntityCreator::createFromPrefab(const std::string& prefabName, bool
     auto e = entityFactory.createEntity(registry, prefabName);
 
     // load from external (prefab) scene
-    auto& mic = e.get<MetaInfoComponent>();
-    if (!mic.sceneName.empty()) {
+    auto& sc = e.get<SceneComponent>();
+    if (!sc.sceneName.empty()) {
         // load or get scene
-        auto& scene = sceneCache.loadOrGetScene(mic.sceneName);
+        auto& scene = sceneCache.loadOrGetScene(sc.sceneName);
         assert(scene.nodes.size() == 1);
         // TODO: support multiple root nodes here?
         // Can find node with mic.sceneNodeName on the scene and use it as a
         // root, for example.
         auto& rootNode = *scene.nodes[0];
         processNode(e, scene, rootNode);
-        mic.creationSceneName = mic.sceneName;
-        mic.sceneNodeName = rootNode.name;
+        sc.creationSceneName = sc.sceneName;
+        sc.sceneNodeName = rootNode.name;
     }
 
     if (callPostInitFunc) {
@@ -144,9 +146,9 @@ entt::handle EntityCreator::createFromNode(
 {
     auto e = createFromPrefab(prefabName, false);
 
-    auto& mic = e.get<MetaInfoComponent>();
+    auto& sc = e.get<SceneComponent>();
     // this is the scene this prefab was created from - process its children too
-    if (!mic.sceneName.empty() && creationNode.children.size() == 1 &&
+    if (!sc.sceneName.empty() && creationNode.children.size() == 1 &&
         creationNode.children[0]->meshIndex != -1) {
         e.get<TransformComponent>().transform = creationNode.transform;
         // Only copy transform - this is a hack for Blender's "instanced" prefabs
@@ -154,8 +156,8 @@ entt::handle EntityCreator::createFromNode(
         // a node which has the only child - our prefab mesh
     } else {
         processNode(e, creationScene, creationNode);
-        mic.creationSceneName = creationScene.path.string();
-        mic.sceneNodeName = creationNode.name;
+        sc.creationSceneName = creationScene.path.string();
+        sc.sceneNodeName = creationNode.name;
     }
 
     return e;

@@ -3,6 +3,7 @@
 #include <edbr/DevTools/EntityInfoDisplayer.h>
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 
+#include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
@@ -11,6 +12,17 @@ using namespace devtools;
 
 namespace edbr
 {
+void registerMetaInfoComponentDisplayer(EntityInfoDisplayer& eid)
+{
+    eid.registerDisplayer("Meta", [](entt::const_handle e, const MetaInfoComponent& tc) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("Prefab", tc.prefabName);
+        }
+        EndPropertyTable();
+    });
+}
+
 void registerTagComponentDisplayer(EntityInfoDisplayer& eid)
 {
     eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {

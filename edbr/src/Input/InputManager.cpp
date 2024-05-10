@@ -16,12 +16,16 @@ InputManager::InputManager()
     }
 }
 
-void InputManager::loadMapping(const std::filesystem::path& path)
+void InputManager::loadMapping(
+    const std::filesystem::path& inputActionsPath,
+    const std::filesystem::path& inputMappingPath)
 {
-    JsonFile file(path);
+    actionMapping.loadActions(inputActionsPath);
+
+    JsonFile file(inputMappingPath);
     if (!file.isGood()) {
         throw std::runtime_error(
-            fmt::format("failed to load input mapping from {}", path.string()));
+            fmt::format("failed to load input mapping from {}", inputMappingPath.string()));
     }
     const auto loader = file.getLoader();
 

@@ -1,5 +1,5 @@
 {
-  "meta": {
+  "scene": {
     "scene": "assets/models/human_base.gltf"
   },
   "movement": {
