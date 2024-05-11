@@ -134,7 +134,8 @@ void Game::customUpdate(float dt)
 
     handleInput(dt);
 
-    const auto& tileMap = level.getTileMap();
+    auto& tileMap = level.getTileMap();
+    tileMap.update(dt);
 
     characterControlSystemUpdate(registry, dt, tileMap);
     edbr::ecs::movementSystemUpdate(registry, dt);

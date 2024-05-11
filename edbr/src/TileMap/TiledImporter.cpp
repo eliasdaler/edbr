@@ -39,12 +39,22 @@ void TiledImporter::loadLevel(
     // add tilesets to tilemap
     for (std::size_t i = 0; i < tilesets.size(); ++i) {
         const auto& tiledTS = tilesets[i];
-        tileMap.addTileset(
-            (TileMap::TilesetId)i,
-            TileMap::Tileset{
-                .name = tiledTS.name,
-                .texture = gfxDevice.loadImageFromFile(tiledTS.imagePath),
-            });
+        auto tileset = TileMap::Tileset{
+            .name = tiledTS.name,
+            .texture = gfxDevice.loadImageFromFile(tiledTS.imagePath),
+            .textureSize = tiledTS.imageSize,
+        };
+        tileset.animations.reserve(tiledTS.animations.size());
+        for (const auto& anim : tiledTS.animations) {
+            assert(!anim.tileIds.empty());
+            auto& animation = tileset.animations[anim.tileIds[0]];
+            animation.duration = anim.duration;
+            animation.tileIds.reserve(animation.tileIds.size());
+            for (const auto& tid : anim.tileIds) {
+                animation.tileIds.push_back(static_cast<TileMap::TileId>(tid));
+            }
+        }
+        tileMap.addTileset((TileMap::TilesetId)i, std::move(tileset));
     }
 
     // load tile layers
@@ -68,8 +78,6 @@ void TiledImporter::loadLevel(
                 break;
             }
         }
-
-        fmt::println("layer: {}, z={}", layerName, layerZ);
 
         auto& layer = tileMap.addLayer(TileMap::TileMapLayer{
             .name = layerName,
@@ -122,6 +130,9 @@ void TiledImporter::loadLevel(
             }
         }
     }
+
+    // TODO: move somewhere else?
+    tileMap.updateAnimatedTileIndices();
 
     // load object layers
     for (const auto& layerLoader : loader.getLoader("layers").getVector()) {
@@ -184,12 +195,47 @@ TiledImporter::TiledTileset TiledImporter::loadTileset(
     loader.get("imagewidth", imageWidth);
     loader.get("imageheight", imageHeight);
 
-    return TiledTileset{
+    auto tileset = TiledTileset{
         .name = name,
         .firstGID = firstGID,
         .imagePath = basePath / tilesetPath,
         .imageSize = {imageWidth, imageHeight},
     };
+
+    if (loader.hasKey("tiles")) {
+        const auto tileAnimLoaders = loader.getLoader("tiles").getVector();
+        tileset.animations.reserve(tileAnimLoaders.size());
+        for (const auto& tileAnimLoader : tileAnimLoaders) {
+            std::uint32_t firstTileId{0};
+            tileAnimLoader.get("id", firstTileId);
+
+            TiledTileset::TileAnimation animation{};
+            const auto frameLoaders = tileAnimLoader.getLoader("animation").getVector();
+            animation.tileIds.reserve(frameLoaders.size());
+            for (const auto& frameLoader : frameLoaders) {
+                float duration{};
+                frameLoader.get("duration", duration);
+                duration /= 1000; // from ms to seconds
+
+                std::uint32_t tileId;
+                frameLoader.get("tileid", tileId);
+
+                if (animation.duration == 0) {
+                    animation.duration = duration;
+                    assert(tileId == firstTileId && "first 'tileid' should be equal to 'id'");
+                } else {
+                    assert(
+                        duration == animation.duration &&
+                        "tile animation should have constant frame duration");
+                }
+
+                animation.tileIds.push_back(tileId);
+            }
+            tileset.animations.push_back(std::move(animation));
+        }
+    }
+
+    return tileset;
 }
 
 std::size_t TiledImporter::findTileset(const std::uint32_t tileGID) const

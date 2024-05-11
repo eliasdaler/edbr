@@ -8,6 +8,9 @@
 
 #include <edbr/Graphics/IdTypes.h>
 
+#include <edbr/Graphics/SpriteAnimation.h>
+#include <edbr/Graphics/SpriteAnimator.h>
+#include <edbr/Graphics/SpriteSheet.h>
 #include <edbr/Math/HashMath.h>
 #include <edbr/Math/IndexRange2.h>
 #include <edbr/Math/Rect.h>
@@ -39,17 +42,39 @@ public:
         // returns a tile with NULL_TILE_ID and NULL_TILESET_ID if tile is not
         // present on a layer
         const Tile& getTile(const TileIndex& tileIndex) const;
+
+        struct AnimatedTileInfo {
+            TileId originalTileId;
+            TileIndex tileIndex;
+            const SpriteAnimator* animator{nullptr}; // reference to animator in Tileset
+            const SpriteSheet* spriteSheet{nullptr}; // reference to sprite sheet in Tileset
+        };
+        std::vector<AnimatedTileInfo> animatedTiles;
+    };
+
+    struct TilesetAnimation {
+        float duration{0}; // in seconds
+        std::vector<TileId> tileIds;
+
+        SpriteAnimation animation;
+        SpriteSheet spriteSheet;
     };
 
     struct Tileset {
         std::string name;
         ImageId texture;
+        glm::ivec2 textureSize;
+
+        std::unordered_map<TileId, TilesetAnimation> animations; // first tile id -> animation
+        std::unordered_map<TileId, SpriteAnimator> tileAnimators;
     };
 
     static constexpr auto CollisionLayerName = "Collision";
 
     void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
     void clear();
+
+    void update(float dt);
 
     int getMinLayerZ() const;
     int getMaxLayerZ() const;
@@ -70,6 +95,9 @@ public:
 
     void addTileset(TilesetId tilesetId, Tileset tileset);
     ImageId getTilesetImageId(TilesetId tilesetId) const;
+
+    // should be called when tile layers change
+    void updateAnimatedTileIndices();
 
 private:
     std::vector<TileMapLayer> layers;

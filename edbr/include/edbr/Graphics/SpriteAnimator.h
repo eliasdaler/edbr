@@ -3,6 +3,7 @@
 #include <string>
 
 #include <edbr/Graphics/SpriteAnimation.h>
+#include <edbr/Math/Rect.h>
 
 class Sprite;
 struct SpriteSheet;
@@ -16,6 +17,7 @@ public:
     int getSpriteSheetFrameNumber() const;
 
     void animate(Sprite& sprite, const SpriteSheet& spriteSheet) const;
+    math::IntRect getFrameRect(const SpriteSheet& spriteSheet) const;
 
     const std::string& getAnimationName() const { return animationName; }
     const SpriteAnimation& getAnimation() const { return animation; }

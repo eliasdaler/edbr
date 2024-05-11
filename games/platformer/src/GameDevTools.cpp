@@ -100,12 +100,20 @@ void Game::handleFreeCameraInput(float dt)
 
 void Game::devToolsUpdate(float dt)
 {
+    if (displayFPSDelay > 0.f) {
+        displayFPSDelay -= dt;
+    } else {
+        displayFPSDelay = 1.f;
+        displayedFPS = avgFPS;
+    }
+
     if (ImGui::Begin("Hello, world")) {
         using namespace devtools;
         BeginPropertyTable();
         const auto& mousePos = inputManager.getMouse().getPosition();
         const auto& gameScreenPos = edbr::util::
             getGameWindowScreenCoord(mousePos, gameWindowPos, gameWindowSize, params.renderSize);
+        DisplayProperty("FPS", (int)displayedFPS);
         DisplayProperty("PlayerInput", playerInputEnabled);
         DisplayProperty("Mouse pos", mousePos);
         DisplayProperty("Game screen pos", gameScreenPos);

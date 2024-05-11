@@ -36,6 +36,16 @@ private:
         std::uint32_t firstGID;
         std::filesystem::path imagePath;
         glm::ivec2 imageSize;
+
+        struct TileAnimation {
+            // Tiled tile animations can have animations with different
+            // frame durations, but we assume constant frame speed for ease
+            // of implementation
+            float duration{0.f}; // in seconds
+
+            std::vector<std::uint32_t> tileIds;
+        };
+        std::vector<TileAnimation> animations;
     };
 
     TiledTileset loadTileset(const std::filesystem::path& path, std::uint32_t firstGID);

@@ -29,25 +29,59 @@ glm::vec2 tileIndexToWorldPos(const TileMap::TileIndex& tileIndex)
     return static_cast<glm::vec2>(tileIndex) * tileWorldSize;
 }
 
+math::IntRect tileIdToTextureRect(TileMap::TileId tileId, const glm::ivec2& tilesetTextureSize)
+{
+    const auto numTilesX = tilesetTextureSize.x / tileImageSize;
+    const auto tilePixelCoords = glm::ivec2{tileId % numTilesX, tileId / numTilesX} * tileImageSize;
+    return math::IntRect{tilePixelCoords, {tileImageSize, tileImageSize}};
+}
+
 std::pair<glm::vec2, glm::vec2> tileIdToUVs(
     TileMap::TileId tileId,
     const glm::ivec2& tilesetTextureSize)
 {
-    const auto numTilesX = tilesetTextureSize.x / tileImageSize;
-    const auto tilePixelCoords = glm::ivec2{tileId % numTilesX, tileId / numTilesX} * tileImageSize;
+    const auto textureRect = tileIdToTextureRect(tileId, tilesetTextureSize);
 
-    const auto uv1 = pixelCoordToUV(tilePixelCoords, tilesetTextureSize);
-    const auto uv2 =
-        pixelCoordToUV(tilePixelCoords + glm::ivec2{tileImageSize}, tilesetTextureSize);
+    const auto uv1 = pixelCoordToUV(textureRect.getTopLeftCorner(), tilesetTextureSize);
+    const auto uv2 = pixelCoordToUV(textureRect.getBottomRightCorner(), tilesetTextureSize);
 
     return {uv1, uv2};
 }
+
+TileMap::TileId textureRectToFrameId(
+    const math::IntRect& textureRect,
+    const glm::ivec2& tilesetTextureSize)
+{
+    const auto i = textureRect.getTopLeftCorner() / glm::ivec2{tileImageSize, tileImageSize};
+    const auto numTilesX = tilesetTextureSize.x / tileImageSize;
+    return i.x + i.y * numTilesX;
+}
+
 }
 
 void TileMap::clear()
 {
     layers.clear();
     tilesets.clear();
+}
+
+void TileMap::update(float dt)
+{
+    for (auto& [tilesetId, tileset] : tilesets) {
+        for (auto& [tileId, animator] : tileset.tileAnimators) {
+            animator.update(dt);
+        }
+    }
+
+    for (auto& layer : layers) {
+        for (const auto& ti : layer.animatedTiles) {
+            // potential optimization: only animate visible tiles
+            auto& tile = layer.tiles.at(ti.tileIndex);
+            const auto& tileset = tilesets.at(tile.tilesetId);
+            const auto frame = ti.animator->getFrameRect(*ti.spriteSheet);
+            tile.id = edbr::tilemap::textureRectToFrameId(frame, tileset.textureSize);
+        }
+    }
 }
 
 void TileMap::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
@@ -191,11 +225,68 @@ math::IndexRange2 TileMap::getTileIndicesInRect(const math::FloatRect& rect) con
 void TileMap::addTileset(TilesetId tilesetId, Tileset tileset)
 {
     assert(tileset.texture != NULL_IMAGE_ID);
+    assert(tileset.textureSize != glm::ivec2{});
     assert(!tilesets.contains(tilesetId));
+
+    for (auto& [firstId, anim] : tileset.animations) {
+        assert(anim.duration != 0.f);
+        assert(!anim.tileIds.empty());
+
+        // make animation
+        anim.animation.looped = true;
+        anim.animation.startFrame = 0;
+        anim.animation.endFrame = anim.tileIds.size() - 1;
+        anim.animation.frameDuration = anim.duration;
+
+        // make spritesheet
+        for (std::size_t i = 0; i < anim.tileIds.size(); ++i) {
+            const auto& tid = anim.tileIds[i];
+            const auto rect = edbr::tilemap::tileIdToTextureRect(tid, tileset.textureSize);
+            anim.spriteSheet.frames.push_back(SpriteSheet::Frame{
+                .frameNum = (int)i,
+                .frameRect = rect,
+            });
+        }
+
+        // create animator
+        auto& animator = tileset.tileAnimators[anim.tileIds[0]];
+        animator.setAnimation(anim.animation, "idle");
+    }
+
     tilesets.emplace(tilesetId, std::move(tileset));
 }
 
 ImageId TileMap::getTilesetImageId(TileMap::TilesetId tilesetId) const
 {
     return tilesets.at(tilesetId).texture;
+}
+
+void TileMap::updateAnimatedTileIndices()
+{
+    // restore tilemap to original state
+    for (auto& layer : layers) {
+        for (auto& ti : layer.animatedTiles) {
+            auto it = layer.tiles.find(ti.tileIndex);
+            if (it != layer.tiles.end()) {
+                it->second.id = ti.originalTileId;
+            }
+        }
+        layer.animatedTiles.clear();
+    }
+
+    // update animated tile list
+    for (auto& layer : layers) {
+        layer.animatedTiles.clear();
+        for (const auto& [ti, tile] : layer.tiles) {
+            const auto& tileset = tilesets.at(tile.tilesetId);
+            if (tileset.animations.contains(tile.id)) {
+                layer.animatedTiles.push_back(TileMapLayer::AnimatedTileInfo{
+                    .originalTileId = tile.id,
+                    .tileIndex = ti,
+                    .animator = &tileset.tileAnimators.at(tile.id),
+                    .spriteSheet = &tileset.animations.at(tile.id).spriteSheet,
+                });
+            }
+        }
+    }
 }

@@ -61,6 +61,11 @@ void SpriteAnimator::update(float dt)
 
 void SpriteAnimator::animate(Sprite& sprite, const SpriteSheet& spriteSheet) const
 {
+    sprite.setTextureRect(getFrameRect(spriteSheet));
+}
+
+math::IntRect SpriteAnimator::getFrameRect(const SpriteSheet& spriteSheet) const
+{
     const auto fn = getSpriteSheetFrameNumber();
-    sprite.setTextureRect(spriteSheet.getFrameRect(fn));
+    return spriteSheet.getFrameRect(fn);
 }
