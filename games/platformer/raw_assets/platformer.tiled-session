@@ -29,22 +29,22 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 5.3694,
-            "selectedLayer": 4,
+            "scale": 7.03,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 128.2266174991619,
-                "y": 67.60531903005923
+                "x": 135.06401137980083,
+                "y": 84.63726884779514
             }
         },
         "levels/TestLevel.tmj": {
             "expandedObjectLayers": [
                 4
             ],
-            "scale": 8.6334,
+            "scale": 5.5615,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 314.8817383649547,
-                "y": 96.13825375865824
+                "x": 290.29937966375974,
+                "y": 74.97977164434056
             }
         },
         "levels/TestLevel.tmj#Collision": {
