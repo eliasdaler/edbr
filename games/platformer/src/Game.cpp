@@ -14,9 +14,12 @@
 #include <edbr/ECS/Components/MovementComponent.h>
 #include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/ECS/Systems/MovementSystem.h>
 #include <edbr/ECS/Systems/TransformSystem.h>
+
+#include <edbr/TileMap/TiledImporter.h>
 
 #include "Components.h"
 #include "EntityUtil.h"
@@ -52,7 +55,7 @@ void Game::customInit()
         entityutil::makePersistent(player);
     }
 
-    changeLevel("LevelTown", "from_level_b");
+    changeLevel("TestLevel", "DEFAULT_SPAWN");
 }
 
 void Game::loadAppSettings()
@@ -357,13 +360,75 @@ void Game::changeLevel(const std::string& levelName, const std::string& spawnNam
     newLevelSpawnName = spawnName;
 }
 
+namespace
+{
+Spawner tiledObjectToSpawner(const TiledImporter::TiledObject& object)
+{
+    Spawner spawner;
+    spawner.position = object.position;
+    spawner.prefabName = object.className;
+    assert(!spawner.prefabName.empty() && "prefab name not set");
+    spawner.tag = object.name;
+
+    // origin in Tiled is in top-left
+    spawner.position += object.size * glm::vec2{0.5f, 1.f};
+
+    if (spawner.prefabName == "trigger" || spawner.prefabName == "teleport") {
+        spawner.prefabData["collision"]["size"] = {object.size.x, object.size.y};
+    }
+
+    // custom properties
+    for (const auto& property : object.customProperties) {
+        if (property.name == "direction") {
+            auto dir = std::get<std::string>(property.value);
+            if (dir == "Left") {
+                spawner.heading = {-1.f, 0.f};
+            } else if (dir == "Right") {
+                spawner.heading = {1.f, 0.f};
+            } else {
+                throw std::runtime_error(fmt::format("invalid direction: {}", dir));
+            }
+        }
+        if (property.name == "text") {
+            spawner.prefabData["npc"]["text"] = std::get<std::string>(property.value);
+        }
+        if (property.name == "name") {
+            spawner.prefabData["npc"]["name"] = std::get<std::string>(property.value);
+        }
+        if (property.name == "level") {
+            spawner.prefabData["teleport"]["to_level"] = std::get<std::string>(property.value);
+        }
+        if (property.name == "spawn") {
+            spawner.prefabData["teleport"]["to"] = std::get<std::string>(property.value);
+        }
+    }
+
+    return spawner;
+}
+}
+
 void Game::doLevelChange()
 {
     bool hasPreviousLevel = !level.getName().empty();
     if (hasPreviousLevel) {
         exitLevel();
     }
-    level.load("assets/levels/" + newLevelToLoad + ".json", gfxDevice);
+    // level.load("assets/levels/" + newLevelToLoad + ".json", gfxDevice);
+
+    level.setName(newLevelToLoad);
+    auto& tileMap = level.getTileMap();
+    tileMap.clear();
+
+    TiledImporter importer;
+    const auto levelPath = std::filesystem::path{"assets/raw/levels/" + newLevelToLoad + ".tmj"};
+    importer.loadLevel(gfxDevice, levelPath, tileMap);
+
+    auto& spawners = level.getSpawners();
+    spawners.clear();
+
+    for (const auto& object : importer.getObjects()) {
+        spawners.push_back(tiledObjectToSpawner(object));
+    }
 
     spawnLevelEntities();
     entityutil::spawnPlayer(registry, newLevelSpawnName);
@@ -409,7 +474,7 @@ void Game::destroyNonPersistentEntities()
         auto e = entt::handle{registry, entity};
         if (!e.get<HierarchyComponent>().hasParent()) {
             if (!e.all_of<PersistentComponent>()) {
-                destroyEntity({registry, entity}, true);
+                destroyEntity({registry, entity});
             }
         }
     }
@@ -428,7 +493,7 @@ entt::handle Game::createEntityFromPrefab(
     }
 }
 
-void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
+void Game::destroyEntity(entt::handle e)
 {
     auto& hc = e.get<HierarchyComponent>();
     if (hc.hasParent()) {
@@ -438,12 +503,10 @@ void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
     }
     // destory children before removing itself
     for (const auto& child : hc.children) {
-        destroyEntity(child, removeFromRegistry);
+        destroyEntity(child);
     }
 
-    if (removeFromRegistry) {
-        e.destroy();
-    }
+    e.destroy();
 }
 
 ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)

@@ -1,0 +1,93 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "levels/TestLevel.tmj",
+    "expandedProjectPaths": [
+        "levels",
+        ".",
+        "tilesets"
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1.8646
+        },
+        "TestLevel.tmj": {
+            "scale": 3.919,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 148.12452156162286,
+                "y": 144.6797652462363
+            }
+        },
+        "Tileset.tsx": {
+            "scaleInDock": 2,
+            "scaleInEditor": 1
+        },
+        "levels/HouseInside.tmj": {
+            "expandedObjectLayers": [
+                3
+            ],
+            "scale": 5.3694,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 128.2266174991619,
+                "y": 67.60531903005923
+            }
+        },
+        "levels/TestLevel.tmj": {
+            "expandedObjectLayers": [
+                4
+            ],
+            "scale": 8.6334,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 314.8817383649547,
+                "y": 96.13825375865824
+            }
+        },
+        "levels/TestLevel.tmj#Collision": {
+            "scaleInDock": 1
+        },
+        "levels/TestLevel.tmj#Tileset": {
+            "scaleInDock": 1.8646,
+            "scaleInEditor": 1
+        },
+        "levels/Tileset.tsx": {
+            "scaleInDock": 1
+        },
+        "tilesets/Collision.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/Tileset.tsx": {
+            "scaleInDock": 2,
+            "scaleInEditor": 1
+        }
+    },
+    "last.externalTilesetPath": "/home/eliasdaler/work/edbr/games/platformer/raw_assets/tilesets",
+    "last.imagePath": "/home/eliasdaler/work/edbr/games/platformer/raw_assets/tilesets",
+    "map.fixedSize": false,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+        "levels/TestLevel.tmj"
+    ],
+    "project": "platformer.tiled-project",
+    "property.type": "int",
+    "recentFiles": [
+        "levels/TestLevel.tmj",
+        "tilesets/Tileset.tsx",
+        "tilesets/Collision.tsx",
+        "Tileset.tsx",
+        "TestLevel.tmj"
+    ],
+    "tileset.lastUsedFilter": "JSON tileset files (*.tsj *.json)",
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

@@ -63,7 +63,7 @@ private:
     entt::handle createEntityFromPrefab(
         const std::string& prefabName,
         const nlohmann::json& overrideData = {});
-    void destroyEntity(entt::handle e, bool removeFromRegistry);
+    void destroyEntity(entt::handle e);
 
     void handleInput(float dt);
     void handlePlayerInput(const ActionMapping& am, float dt);

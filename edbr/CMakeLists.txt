@@ -155,6 +155,7 @@ add_library(edbr
   # TileMap
   src/TileMap/TileMap.cpp
   src/TileMap/TileMapRenderer.cpp
+  src/TileMap/TiledImporter.cpp
 
   # GameCommon
   src/GameCommon/CommonComponentDisplayers.cpp

@@ -41,8 +41,15 @@ target_link_libraries(platformer PRIVATE
 # Symlinking (instead of copying) allows you to change resources and have the
 # changes be instantly visible when reloading the game
 add_custom_command(TARGET platformer POST_BUILD
-  COMMENT "Copying mtp assets to $<TARGET_FILE_DIR:platformer>/assets"
+  COMMENT "Symlink mtp assets to $<TARGET_FILE_DIR:platformer>/assets"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:platformer>/assets"
+)
+
+# Symlink raw_assets
+# Temporary until Tiled converter is in unfinished state
+add_custom_command(TARGET platformer POST_BUILD
+  COMMENT "Symlink mtp assets to $<TARGET_FILE_DIR:platformer>/assets/raw"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/raw_assets" "$<TARGET_FILE_DIR:platformer>/assets/raw"
 )
 
 # build shaders

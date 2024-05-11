@@ -44,10 +44,15 @@ std::pair<glm::vec2, glm::vec2> tileIdToUVs(
 }
 }
 
-void TileMap::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
+void TileMap::clear()
 {
     layers.clear();
     tilesets.clear();
+}
+
+void TileMap::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
+{
+    clear();
 
     auto tilesetIds = loader.getLoader("tilesets").getKeyValueMapInt();
     tilesets.reserve(tilesetIds.size());
@@ -110,6 +115,18 @@ int TileMap::getMaxLayerZ() const
     return maxZ;
 }
 
+TileMap::TileMapLayer& TileMap::addLayer(TileMapLayer layer)
+{
+    for (const auto& l : layers) {
+        if (l.name == layer.name) {
+            throw std::runtime_error(
+                fmt::format("layer with name '{}' was already added", layer.name));
+        }
+    }
+    layers.push_back(std::move(layer));
+    return layers.back();
+}
+
 const TileMap::TileMapLayer& TileMap::getLayer(const std::string& name) const
 {
     for (const auto& l : layers) {
@@ -169,6 +186,13 @@ math::IndexRange2 TileMap::getTileIndicesInRect(const math::FloatRect& rect) con
     const auto numberOfTiles = (rightDownTileIndex - leftTopTileIndex) + glm::ivec2{1, 1};
 
     return math::IndexRange2(leftTopTileIndex, numberOfTiles);
+}
+
+void TileMap::addTileset(TilesetId tilesetId, Tileset tileset)
+{
+    assert(tileset.texture != NULL_IMAGE_ID);
+    assert(!tilesets.contains(tilesetId));
+    tilesets.emplace(tilesetId, std::move(tileset));
 }
 
 ImageId TileMap::getTilesetImageId(TileMap::TilesetId tilesetId) const

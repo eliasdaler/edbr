@@ -5,6 +5,7 @@
 
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/ECS/Components/CollisionComponent2D.h>
+#include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/SpriteComponent.h>
 #include <edbr/ECS/Components/TagComponent.h>
 #include <edbr/Graphics/CoordUtil.h>
@@ -161,7 +162,8 @@ void Game::devToolsDrawInWorldUI()
         for (const auto&& [e, cc] : registry.view<CollisionComponent2D>().each()) {
             const auto bb = entityutil::getCollisionAABB({registry, e});
             auto collBoxColor = LinearColor{1.f, 0.f, 0.f, 0.5f};
-            if (registry.all_of<TeleportComponent>(e)) {
+            const auto& prefabName = registry.get<MetaInfoComponent>(e).prefabName;
+            if (registry.all_of<TeleportComponent>(e) || prefabName == "trigger") {
                 collBoxColor = LinearColor{1.f, 1.f, 0.f, 0.5f};
             }
             spriteRenderer.drawFilledRect(bb, collBoxColor);
@@ -173,7 +175,7 @@ void Game::devToolsDrawInWorldUI()
             // text is centered on top-center of entity rect
             const auto aabb = getSelectedEntityRect({registry, e});
             const auto textBB = devToolsFont.calculateTextBoundingBox(tc.tag);
-            const auto textPos = (aabb.getPosition() + glm::vec2{aabb.width, 0.f}) -
+            const auto textPos = (aabb.getPosition() + glm::vec2{aabb.width / 2.f, 0.f}) -
                                  glm::vec2{textBB.width / 2.f, textBB.height};
 
             // "shadow"

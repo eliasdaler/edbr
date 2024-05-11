@@ -49,6 +49,7 @@ public:
     static constexpr auto CollisionLayerName = "Collision";
 
     void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
+    void clear();
 
     int getMinLayerZ() const;
     int getMaxLayerZ() const;
@@ -57,15 +58,17 @@ public:
     static TileIndex GetTileIndex(const glm::vec2& worldPos);
     static math::FloatRect GetTileAABB(const TileIndex& tileIndex);
 
+    TileMap::TileMapLayer& addLayer(TileMapLayer layer);
     const TileMap::TileMapLayer& getLayer(const std::string& name) const;
     const std::vector<TileMap::TileMapLayer>& getLayers() const { return layers; }
 
-    // returns a tile with NULL_TILE_ID and NULL_TILESET_ID if tile is not
+    // Returns a tile with NULL_TILE_ID and NULL_TILESET_ID if tile is not
     // present on a layer
     const Tile& getTile(const std::string& layerName, const TileIndex& tileIndex) const;
 
     math::IndexRange2 getTileIndicesInRect(const math::FloatRect& rect) const;
 
+    void addTileset(TilesetId tilesetId, Tileset tileset);
     ImageId getTilesetImageId(TilesetId tilesetId) const;
 
 private:
