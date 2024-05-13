@@ -239,13 +239,11 @@ void TileMap::addTileset(TilesetId tilesetId, Tileset tileset)
         anim.animation.frameDuration = anim.duration;
 
         // make spritesheet
+        anim.spriteSheet.frames.reserve(anim.tileIds.size());
         for (std::size_t i = 0; i < anim.tileIds.size(); ++i) {
             const auto& tid = anim.tileIds[i];
             const auto rect = edbr::tilemap::tileIdToTextureRect(tid, tileset.textureSize);
-            anim.spriteSheet.frames.push_back(SpriteSheet::Frame{
-                .frameNum = (int)i,
-                .frameRect = rect,
-            });
+            anim.spriteSheet.frames.push_back(rect);
         }
 
         // create animator

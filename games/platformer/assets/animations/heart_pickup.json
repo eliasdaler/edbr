@@ -1,1 +1,25 @@
-{"animations":{"idle":{"endFrame":2,"frameDuration":0.3,"origin":[8,16],"startFrame":1}},"spriteSheet":[{"frame":[0,0,16,16],"frameNum":1},{"frame":[16,0,16,16],"frameNum":2}]}
+{
+    "animations": {
+        "idle": {
+            "endFrame": 1,
+            "frameDurationMS": 300,
+            "startFrame": 0
+        }
+    },
+    "spriteSheet": {
+        "frames": [
+            [
+                0,
+                0,
+                16,
+                16
+            ],
+            [
+                16,
+                0,
+                16,
+                16
+            ]
+        ]
+    }
+}

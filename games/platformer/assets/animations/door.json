@@ -1,1 +1,100 @@
-{"additionalData":{"closing":[],"opening":[]},"animations":{"closed":{"endFrame":1,"frameDuration":0.1,"origin":[8,16],"startFrame":1},"closing":{"endFrame":12,"frameDuration":0.045,"looped":false,"origin":[8,16],"startFrame":7},"open":{"endFrame":6,"frameDuration":0.1,"origin":[8,16],"startFrame":6},"opening":{"endFrame":5,"frameDuration":0.1,"looped":false,"origin":[8,16],"startFrame":2}},"spriteSheet":[{"frame":[0,0,16,16],"frameNum":1},{"frame":[16,0,16,16],"frameNum":2},{"frame":[32,0,16,16],"frameNum":3},{"frame":[0,16,16,16],"frameNum":4},{"frame":[16,16,16,16],"frameNum":5},{"frame":[16,16,16,16],"frameNum":6},{"frame":[16,16,16,16],"frameNum":7},{"frame":[32,16,16,16],"frameNum":8},{"frame":[0,32,16,16],"frameNum":9},{"frame":[16,32,16,16],"frameNum":10},{"frame":[32,32,16,16],"frameNum":11},{"frame":[0,0,16,16],"frameNum":12}]}
+{
+    "animations": {
+        "closed": {
+            "endFrame": 0,
+            "frameDurationMS": 100,
+            "startFrame": 0
+        },
+        "closing": {
+            "endFrame": 11,
+            "frameDurationMS": 45,
+            "startFrame": 6
+        },
+        "open": {
+            "endFrame": 5,
+            "frameDurationMS": 100,
+            "startFrame": 5
+        },
+        "opening": {
+            "endFrame": 4,
+            "frameDurationMS": 100,
+            "startFrame": 1
+        }
+    },
+    "spriteSheet": {
+        "frames": [
+            [
+                0,
+                0,
+                16,
+                16
+            ],
+            [
+                16,
+                0,
+                16,
+                16
+            ],
+            [
+                32,
+                0,
+                16,
+                16
+            ],
+            [
+                48,
+                0,
+                16,
+                16
+            ],
+            [
+                0,
+                16,
+                16,
+                16
+            ],
+            [
+                16,
+                16,
+                16,
+                16
+            ],
+            [
+                32,
+                16,
+                16,
+                16
+            ],
+            [
+                48,
+                16,
+                16,
+                16
+            ],
+            [
+                0,
+                32,
+                16,
+                16
+            ],
+            [
+                16,
+                32,
+                16,
+                16
+            ],
+            [
+                32,
+                32,
+                16,
+                16
+            ],
+            [
+                48,
+                32,
+                16,
+                16
+            ]
+        ]
+    }
+}

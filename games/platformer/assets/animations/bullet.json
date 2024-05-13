@@ -1,1 +1,59 @@
-{"animations":{"idle.down":{"endFrame":6,"frameDuration":0.1,"origin":[4,8],"startFrame":5},"idle.side":{"endFrame":2,"frameDuration":0.1,"origin":[4,8],"startFrame":1},"idle.up":{"endFrame":4,"frameDuration":0.1,"origin":[4,8],"startFrame":3}},"spriteSheet":[{"frame":[0,0,8,8],"frameNum":1},{"frame":[0,0,8,8],"frameNum":2},{"frame":[8,0,8,8],"frameNum":3},{"frame":[8,0,8,8],"frameNum":4},{"frame":[0,8,8,8],"frameNum":5},{"frame":[0,8,8,8],"frameNum":6}]}
+{
+    "animations": {
+        "idle.down": {
+            "endFrame": 5,
+            "frameDurationMS": 100,
+            "startFrame": 4
+        },
+        "idle.side": {
+            "endFrame": 1,
+            "frameDurationMS": 100,
+            "startFrame": 0
+        },
+        "idle.up": {
+            "endFrame": 3,
+            "frameDurationMS": 100,
+            "startFrame": 2
+        }
+    },
+    "spriteSheet": {
+        "frames": [
+            [
+                0,
+                0,
+                8,
+                8
+            ],
+            [
+                8,
+                0,
+                8,
+                8
+            ],
+            [
+                16,
+                0,
+                8,
+                8
+            ],
+            [
+                0,
+                8,
+                8,
+                8
+            ],
+            [
+                8,
+                8,
+                8,
+                8
+            ],
+            [
+                16,
+                8,
+                8,
+                8
+            ]
+        ]
+    }
+}

@@ -5,19 +5,12 @@
 #include <edbr/Math/Rect.h>
 
 struct SpriteSheet {
-    struct Frame {
-        int frameNum;
-        math::IntRect frameRect;
-    };
+    std::vector<math::IntRect> frames;
 
-    std::vector<Frame> frames;
-
-    math::IntRect getFrameRect(int fn) const
+    math::IntRect getFrameRect(std::size_t frameNum) const
     {
-        for (const auto& f : frames) {
-            if (f.frameNum == fn) {
-                return f.frameRect;
-            }
+        if (frameNum + 1 <= frames.size()) {
+            return frames[frameNum];
         }
         return {};
     }

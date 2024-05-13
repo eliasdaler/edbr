@@ -1,1 +1,113 @@
-{"additionalData":{"idle":[],"idle_enemy":[],"idle_old":[]},"animations":{"idle":{"endFrame":11,"frameDuration":0.05,"looped":false,"origin":[8,16],"startFrame":8},"idle_enemy":{"endFrame":7,"frameDuration":0.03,"looped":false,"origin":[8,16],"startFrame":1},"idle_old":{"endFrame":15,"frameDuration":0.05,"looped":false,"origin":[8,16],"startFrame":12}},"spriteSheet":[{"frame":[0,0,16,16],"frameNum":1},{"frame":[16,0,16,16],"frameNum":2},{"frame":[32,0,16,16],"frameNum":3},{"frame":[48,0,16,16],"frameNum":4},{"frame":[0,16,16,16],"frameNum":5},{"frame":[16,16,16,16],"frameNum":6},{"frame":[32,16,16,16],"frameNum":7},{"frame":[48,16,16,16],"frameNum":8},{"frame":[0,32,16,16],"frameNum":9},{"frame":[16,32,16,16],"frameNum":10},{"frame":[32,32,16,16],"frameNum":11},{"frame":[48,32,16,16],"frameNum":12},{"frame":[0,48,16,16],"frameNum":13}]}
+{
+    "animations": {
+        "idle": {
+            "endFrame": 10,
+            "frameDurationMS": 50,
+            "startFrame": 7
+        },
+        "idle_enemy": {
+            "endFrame": 6,
+            "frameDurationMS": 30,
+            "startFrame": 0
+        },
+        "idle_old": {
+            "endFrame": 14,
+            "frameDurationMS": 50,
+            "startFrame": 11
+        }
+    },
+    "spriteSheet": {
+        "frames": [
+            [
+                0,
+                0,
+                16,
+                16
+            ],
+            [
+                16,
+                0,
+                16,
+                16
+            ],
+            [
+                32,
+                0,
+                16,
+                16
+            ],
+            [
+                48,
+                0,
+                16,
+                16
+            ],
+            [
+                0,
+                16,
+                16,
+                16
+            ],
+            [
+                16,
+                16,
+                16,
+                16
+            ],
+            [
+                32,
+                16,
+                16,
+                16
+            ],
+            [
+                48,
+                16,
+                16,
+                16
+            ],
+            [
+                0,
+                32,
+                16,
+                16
+            ],
+            [
+                16,
+                32,
+                16,
+                16
+            ],
+            [
+                32,
+                32,
+                16,
+                16
+            ],
+            [
+                48,
+                32,
+                16,
+                16
+            ],
+            [
+                0,
+                48,
+                16,
+                16
+            ],
+            [
+                16,
+                48,
+                16,
+                16
+            ],
+            [
+                32,
+                48,
+                16,
+                16
+            ]
+        ]
+    }
+}

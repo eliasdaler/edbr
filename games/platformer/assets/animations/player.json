@@ -1,1 +1,529 @@
-{"additionalData":{"go_inside":[],"open_book":[]},"animations":{"die":{"endFrame":9,"frameDuration":0.12,"origin":[8,16],"startFrame":9},"fall":{"endFrame":7,"frameDuration":0.12,"origin":[8,16],"startFrame":7},"go_inside":{"endFrame":45,"frameDuration":0.1,"looped":false,"origin":[8,16],"startFrame":41},"hurt":{"endFrame":11,"frameDuration":0.12,"origin":[8,16],"startFrame":10},"idle":{"endFrame":1,"frameDuration":0.1,"origin":[8,16],"startFrame":1},"idle_awkward":{"endFrame":52,"frameDuration":0.1,"origin":[8,16],"startFrame":52},"idle_sad":{"endFrame":16,"frameDuration":0.48,"origin":[8,16],"startFrame":16},"inspect":{"endFrame":2,"frameDuration":0.1,"origin":[8,16],"startFrame":2},"jump":{"endFrame":8,"frameDuration":0.12,"origin":[8,16],"startFrame":8},"ladder":{"endFrame":47,"frameDuration":0.1,"origin":[8,16],"startFrame":46},"ladder_idle":{"endFrame":48,"frameDuration":0.1,"origin":[8,16],"startFrame":48},"on_edge":{"endFrame":4,"frameDuration":0.3,"origin":[8,16],"startFrame":3},"open_book":{"endFrame":56,"frameDuration":0.12,"looped":false,"origin":[8,16],"startFrame":53},"reading":{"endFrame":49,"frameDuration":0.1,"origin":[8,16],"startFrame":49},"reading_sleep":{"endFrame":51,"frameDuration":0.1,"origin":[8,16],"startFrame":51},"reading_sleepy":{"endFrame":50,"frameDuration":0.1,"origin":[8,16],"startFrame":50},"run":{"endFrame":6,"frameDuration":0.12,"origin":[8,16],"startFrame":5},"shoot_fall.down":{"endFrame":38,"frameDuration":0.12,"origin":[8,16],"startFrame":38},"shoot_fall.side":{"endFrame":22,"frameDuration":0.48,"origin":[8,16],"startFrame":22},"shoot_fall.up":{"endFrame":30,"frameDuration":0.12,"origin":[8,16],"startFrame":30},"shoot_idle.down":{"endFrame":33,"frameDuration":0.12,"origin":[8,16],"startFrame":33},"shoot_idle.side":{"endFrame":17,"frameDuration":0.48,"origin":[8,16],"startFrame":17},"shoot_idle.up":{"endFrame":25,"frameDuration":0.12,"origin":[8,16],"startFrame":25},"shoot_jump.down":{"endFrame":34,"frameDuration":0.12,"origin":[8,16],"startFrame":34},"shoot_jump.side":{"endFrame":18,"frameDuration":0.48,"origin":[8,16],"startFrame":18},"shoot_jump.up":{"endFrame":26,"frameDuration":0.12,"origin":[8,16],"startFrame":26},"shoot_ladder.down":{"endFrame":37,"frameDuration":0.1,"origin":[8,16],"startFrame":36},"shoot_ladder.side":{"endFrame":21,"frameDuration":0.1,"origin":[8,16],"startFrame":20},"shoot_ladder.up":{"endFrame":29,"frameDuration":0.1,"origin":[8,16],"startFrame":28},"shoot_ladder_idle.down":{"endFrame":35,"frameDuration":0.12,"origin":[8,16],"startFrame":35},"shoot_ladder_idle.side":{"endFrame":19,"frameDuration":0.48,"origin":[8,16],"startFrame":19},"shoot_ladder_idle.up":{"endFrame":27,"frameDuration":0.12,"origin":[8,16],"startFrame":27},"shoot_run.down":{"endFrame":40,"frameDuration":0.12,"origin":[8,16],"startFrame":39},"shoot_run.side":{"endFrame":24,"frameDuration":0.12,"origin":[8,16],"startFrame":23},"shoot_run.up":{"endFrame":32,"frameDuration":0.12,"origin":[8,16],"startFrame":31},"sleep.left":{"endFrame":15,"frameDuration":0.48,"origin":[8,16],"startFrame":14},"sleep.right":{"endFrame":13,"frameDuration":0.48,"origin":[8,16],"startFrame":12}},"spriteSheet":[{"frame":[96,64,16,16],"frameNum":1},{"frame":[32,48,16,16],"frameNum":2},{"frame":[48,48,16,16],"frameNum":3},{"frame":[64,48,16,16],"frameNum":4},{"frame":[80,48,16,16],"frameNum":5},{"frame":[96,64,16,16],"frameNum":6},{"frame":[96,48,16,16],"frameNum":7},{"frame":[112,48,16,16],"frameNum":8},{"frame":[0,64,16,16],"frameNum":9},{"frame":[16,64,16,16],"frameNum":10},{"frame":[32,64,16,16],"frameNum":11},{"frame":[48,64,16,16],"frameNum":12},{"frame":[64,64,16,16],"frameNum":13},{"frame":[80,64,16,16],"frameNum":14},{"frame":[16,48,16,16],"frameNum":15},{"frame":[112,64,16,16],"frameNum":16},{"frame":[0,80,16,16],"frameNum":17},{"frame":[16,80,16,16],"frameNum":18},{"frame":[32,80,16,16],"frameNum":19},{"frame":[48,80,16,16],"frameNum":20},{"frame":[64,80,16,16],"frameNum":21},{"frame":[80,80,16,16],"frameNum":22},{"frame":[96,80,16,16],"frameNum":23},{"frame":[112,80,16,16],"frameNum":24},{"frame":[0,96,16,16],"frameNum":25},{"frame":[16,96,16,16],"frameNum":26},{"frame":[80,16,16,16],"frameNum":27},{"frame":[16,0,16,16],"frameNum":28},{"frame":[32,0,16,16],"frameNum":29},{"frame":[48,0,16,16],"frameNum":30},{"frame":[64,0,16,16],"frameNum":31},{"frame":[80,0,16,16],"frameNum":32},{"frame":[96,0,16,16],"frameNum":33},{"frame":[112,0,16,16],"frameNum":34},{"frame":[0,16,16,16],"frameNum":35},{"frame":[0,16,16,16],"frameNum":36},{"frame":[16,16,16,16],"frameNum":37},{"frame":[32,16,16,16],"frameNum":38},{"frame":[96,0,16,16],"frameNum":39},{"frame":[96,0,16,16],"frameNum":40},{"frame":[48,16,16,16],"frameNum":41},{"frame":[64,16,16,16],"frameNum":42},{"frame":[0,0,16,16],"frameNum":43},{"frame":[96,16,16,16],"frameNum":44},{"frame":[112,16,16,16],"frameNum":45},{"frame":[0,32,16,16],"frameNum":46},{"frame":[16,32,16,16],"frameNum":47},{"frame":[0,32,16,16],"frameNum":48},{"frame":[32,32,16,16],"frameNum":49},{"frame":[48,32,16,16],"frameNum":50},{"frame":[64,32,16,16],"frameNum":51},{"frame":[80,32,16,16],"frameNum":52},{"frame":[96,32,16,16],"frameNum":53},{"frame":[112,32,16,16],"frameNum":54},{"frame":[0,48,16,16],"frameNum":55},{"frame":[32,32,16,16],"frameNum":56}]}
+{
+    "animations": {
+        "die": {
+            "endFrame": 8,
+            "frameDurationMS": 120,
+            "startFrame": 8
+        },
+        "fall": {
+            "endFrame": 6,
+            "frameDurationMS": 120,
+            "startFrame": 6
+        },
+        "go_inside": {
+            "endFrame": 44,
+            "frameDurationMS": 100,
+            "startFrame": 40
+        },
+        "hurt": {
+            "endFrame": 10,
+            "frameDurationMS": 120,
+            "startFrame": 9
+        },
+        "idle": {
+            "endFrame": 0,
+            "frameDurationMS": 100,
+            "startFrame": 0
+        },
+        "idle_awkward": {
+            "endFrame": 51,
+            "frameDurationMS": 100,
+            "startFrame": 51
+        },
+        "idle_sad": {
+            "endFrame": 15,
+            "frameDurationMS": 480,
+            "startFrame": 15
+        },
+        "inspect": {
+            "endFrame": 1,
+            "frameDurationMS": 100,
+            "startFrame": 1
+        },
+        "jump": {
+            "endFrame": 7,
+            "frameDurationMS": 120,
+            "startFrame": 7
+        },
+        "ladder": {
+            "endFrame": 46,
+            "frameDurationMS": 100,
+            "startFrame": 45
+        },
+        "ladder_idle": {
+            "endFrame": 47,
+            "frameDurationMS": 100,
+            "startFrame": 47
+        },
+        "on_edge": {
+            "endFrame": 3,
+            "frameDurationMS": 300,
+            "startFrame": 2
+        },
+        "open_book": {
+            "endFrame": 55,
+            "frameDurationMS": 120,
+            "startFrame": 52
+        },
+        "reading": {
+            "endFrame": 48,
+            "frameDurationMS": 100,
+            "startFrame": 48
+        },
+        "reading_sleep": {
+            "endFrame": 50,
+            "frameDurationMS": 100,
+            "startFrame": 50
+        },
+        "reading_sleepy": {
+            "endFrame": 49,
+            "frameDurationMS": 100,
+            "startFrame": 49
+        },
+        "run": {
+            "endFrame": 5,
+            "frameDurationMS": 120,
+            "startFrame": 4
+        },
+        "shoot_fall.down": {
+            "endFrame": 37,
+            "frameDurationMS": 120,
+            "startFrame": 37
+        },
+        "shoot_fall.side": {
+            "endFrame": 21,
+            "frameDurationMS": 480,
+            "startFrame": 21
+        },
+        "shoot_fall.up": {
+            "endFrame": 29,
+            "frameDurationMS": 120,
+            "startFrame": 29
+        },
+        "shoot_idle.down": {
+            "endFrame": 32,
+            "frameDurationMS": 120,
+            "startFrame": 32
+        },
+        "shoot_idle.side": {
+            "endFrame": 16,
+            "frameDurationMS": 480,
+            "startFrame": 16
+        },
+        "shoot_idle.up": {
+            "endFrame": 24,
+            "frameDurationMS": 120,
+            "startFrame": 24
+        },
+        "shoot_jump.down": {
+            "endFrame": 33,
+            "frameDurationMS": 120,
+            "startFrame": 33
+        },
+        "shoot_jump.side": {
+            "endFrame": 17,
+            "frameDurationMS": 480,
+            "startFrame": 17
+        },
+        "shoot_jump.up": {
+            "endFrame": 25,
+            "frameDurationMS": 120,
+            "startFrame": 25
+        },
+        "shoot_ladder.down": {
+            "endFrame": 36,
+            "frameDurationMS": 100,
+            "startFrame": 35
+        },
+        "shoot_ladder.side": {
+            "endFrame": 20,
+            "frameDurationMS": 100,
+            "startFrame": 19
+        },
+        "shoot_ladder.up": {
+            "endFrame": 28,
+            "frameDurationMS": 100,
+            "startFrame": 27
+        },
+        "shoot_ladder_idle.down": {
+            "endFrame": 34,
+            "frameDurationMS": 120,
+            "startFrame": 34
+        },
+        "shoot_ladder_idle.side": {
+            "endFrame": 18,
+            "frameDurationMS": 480,
+            "startFrame": 18
+        },
+        "shoot_ladder_idle.up": {
+            "endFrame": 26,
+            "frameDurationMS": 120,
+            "startFrame": 26
+        },
+        "shoot_run.down": {
+            "endFrame": 39,
+            "frameDurationMS": 120,
+            "startFrame": 38
+        },
+        "shoot_run.side": {
+            "endFrame": 23,
+            "frameDurationMS": 120,
+            "startFrame": 22
+        },
+        "shoot_run.up": {
+            "endFrame": 31,
+            "frameDurationMS": 120,
+            "startFrame": 30
+        },
+        "sleep.left": {
+            "endFrame": 14,
+            "frameDurationMS": 480,
+            "startFrame": 13
+        },
+        "sleep.right": {
+            "endFrame": 12,
+            "frameDurationMS": 480,
+            "startFrame": 11
+        }
+    },
+    "spriteSheet": {
+        "frames": [
+            [
+                0,
+                0,
+                16,
+                16
+            ],
+            [
+                16,
+                0,
+                16,
+                16
+            ],
+            [
+                32,
+                0,
+                16,
+                16
+            ],
+            [
+                48,
+                0,
+                16,
+                16
+            ],
+            [
+                64,
+                0,
+                16,
+                16
+            ],
+            [
+                80,
+                0,
+                16,
+                16
+            ],
+            [
+                96,
+                0,
+                16,
+                16
+            ],
+            [
+                112,
+                0,
+                16,
+                16
+            ],
+            [
+                0,
+                16,
+                16,
+                16
+            ],
+            [
+                16,
+                16,
+                16,
+                16
+            ],
+            [
+                32,
+                16,
+                16,
+                16
+            ],
+            [
+                48,
+                16,
+                16,
+                16
+            ],
+            [
+                64,
+                16,
+                16,
+                16
+            ],
+            [
+                80,
+                16,
+                16,
+                16
+            ],
+            [
+                96,
+                16,
+                16,
+                16
+            ],
+            [
+                112,
+                16,
+                16,
+                16
+            ],
+            [
+                0,
+                32,
+                16,
+                16
+            ],
+            [
+                16,
+                32,
+                16,
+                16
+            ],
+            [
+                32,
+                32,
+                16,
+                16
+            ],
+            [
+                48,
+                32,
+                16,
+                16
+            ],
+            [
+                64,
+                32,
+                16,
+                16
+            ],
+            [
+                80,
+                32,
+                16,
+                16
+            ],
+            [
+                96,
+                32,
+                16,
+                16
+            ],
+            [
+                112,
+                32,
+                16,
+                16
+            ],
+            [
+                0,
+                48,
+                16,
+                16
+            ],
+            [
+                16,
+                48,
+                16,
+                16
+            ],
+            [
+                32,
+                48,
+                16,
+                16
+            ],
+            [
+                48,
+                48,
+                16,
+                16
+            ],
+            [
+                64,
+                48,
+                16,
+                16
+            ],
+            [
+                80,
+                48,
+                16,
+                16
+            ],
+            [
+                96,
+                48,
+                16,
+                16
+            ],
+            [
+                112,
+                48,
+                16,
+                16
+            ],
+            [
+                0,
+                64,
+                16,
+                16
+            ],
+            [
+                16,
+                64,
+                16,
+                16
+            ],
+            [
+                32,
+                64,
+                16,
+                16
+            ],
+            [
+                48,
+                64,
+                16,
+                16
+            ],
+            [
+                64,
+                64,
+                16,
+                16
+            ],
+            [
+                80,
+                64,
+                16,
+                16
+            ],
+            [
+                96,
+                64,
+                16,
+                16
+            ],
+            [
+                112,
+                64,
+                16,
+                16
+            ],
+            [
+                0,
+                80,
+                16,
+                16
+            ],
+            [
+                16,
+                80,
+                16,
+                16
+            ],
+            [
+                32,
+                80,
+                16,
+                16
+            ],
+            [
+                48,
+                80,
+                16,
+                16
+            ],
+            [
+                64,
+                80,
+                16,
+                16
+            ],
+            [
+                80,
+                80,
+                16,
+                16
+            ],
+            [
+                96,
+                80,
+                16,
+                16
+            ],
+            [
+                112,
+                80,
+                16,
+                16
+            ],
+            [
+                0,
+                96,
+                16,
+                16
+            ],
+            [
+                16,
+                96,
+                16,
+                16
+            ],
+            [
+                32,
+                96,
+                16,
+                16
+            ],
+            [
+                48,
+                96,
+                16,
+                16
+            ],
+            [
+                64,
+                96,
+                16,
+                16
+            ],
+            [
+                80,
+                96,
+                16,
+                16
+            ],
+            [
+                96,
+                96,
+                16,
+                16
+            ],
+            [
+                112,
+                96,
+                16,
+                16
+            ]
+        ]
+    }
+}

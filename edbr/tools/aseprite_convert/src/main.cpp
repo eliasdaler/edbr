@@ -206,9 +206,15 @@ int main(int argc, char** argv)
 
     if (!std::filesystem::exists(outAnimDir)) {
         std::filesystem::create_directory(outAnimDir);
+    } else {
+        std::filesystem::remove_all(outAnimDir);
+        std::filesystem::create_directory(outAnimDir);
     }
 
     if (!std::filesystem::exists(outImgDir)) {
+        std::filesystem::create_directory(outImgDir);
+    } else {
+        std::filesystem::remove_all(outImgDir);
         std::filesystem::create_directory(outImgDir);
     }
 

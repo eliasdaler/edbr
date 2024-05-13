@@ -16,16 +16,16 @@ void SpriteAnimationData::load(const std::filesystem::path& path)
         SpriteAnimation anim;
         animLoader.get("startFrame", anim.startFrame);
         animLoader.get("endFrame", anim.endFrame);
-        animLoader.get("frameDuration", anim.frameDuration);
-        animLoader.get("origin", anim.origin);
+
+        int frameDurationMS{};
+        animLoader.get("frameDurationMS", frameDurationMS);
+        anim.frameDuration = frameDurationMS / 1000.f;
+
+        animLoader.getIfExists("origin", anim.origin);
+
         animations.emplace(animName, std::move(anim));
     }
 
-    const auto& ssLoader = loader.getLoader("spriteSheet");
-    for (const auto& frameLoader : ssLoader.getVector()) {
-        SpriteSheet::Frame frame;
-        frameLoader.get("frameNum", frame.frameNum);
-        frameLoader.get("frame", frame.frameRect);
-        spriteSheet.frames.push_back(std::move(frame));
-    }
+    const auto& ssLoader = loader.getLoader("spriteSheet").getLoader("frames");
+    spriteSheet.frames = ssLoader.asVectorOf<math::IntRect>();
 }
