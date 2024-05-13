@@ -210,3 +210,6 @@ endif()
 
 ## CLI11
 add_subdirectory(CLI11)
+
+# cute_headers (Aseprite support)
+add_subdirectory(cute_headers)

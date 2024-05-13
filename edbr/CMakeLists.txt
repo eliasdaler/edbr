@@ -1,4 +1,5 @@
 add_subdirectory(third_party)
+add_subdirectory(tools)
 
 add_library(edbr
   # Core
