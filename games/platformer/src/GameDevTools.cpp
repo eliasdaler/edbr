@@ -119,27 +119,27 @@ void Game::devToolsUpdate(float dt)
         DisplayProperty("Game screen pos", gameScreenPos);
         const auto mouseWorldPos = getMouseWorldPos();
         DisplayProperty("Mouse wolrd pos", mouseWorldPos);
-        DisplayProperty("Tile index", TileMap::GetTileIndex(mouseWorldPos));
+        DisplayProperty("Tile index", edbr::tilemap::worldPosToTileIndex(mouseWorldPos));
         EndPropertyTable();
-        ImGui::End();
     }
+    ImGui::End();
 
     if (ImGui::Begin("UI")) {
         ImGui::Checkbox("Draw UI bounding boxes", &uiInspector.drawUIElementBoundingBoxes);
         uiInspector.updateUI(dt);
-        ImGui::End();
     }
+    ImGui::End();
 
     if (ImGui::Begin("Entities")) {
         entityTreeView.update(registry, dt);
-        ImGui::End();
     }
+    ImGui::End();
 
     if (entityTreeView.hasSelectedEntity()) {
         if (ImGui::Begin("Selected entity")) {
             entityInfoDisplayer.displayEntityInfo(entityTreeView.getSelectedEntity(), dt);
-            ImGui::End();
         }
+        ImGui::End();
     }
 }
 

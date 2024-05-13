@@ -7,12 +7,8 @@
 
 #include "Spawner.h"
 
-class LevelState;
-
 class Level {
 public:
-    void load(const std::filesystem::path& path, GfxDevice& gfxDevice);
-
     TileMap& getTileMap() { return tileMap; }
     const TileMap& getTileMap() const { return tileMap; }
 
@@ -22,8 +18,6 @@ public:
     void setName(const std::string& n) { name = n; }
     const std::filesystem::path& getPath() const { return path; }
     const std::string& getName() const { return name; }
-
-    LevelState* state{nullptr};
 
 private:
     std::filesystem::path path;

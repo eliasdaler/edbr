@@ -32,7 +32,7 @@ bool isOnGround(const entt::const_handle& e, const TileMap& tileMap)
     bool onGround = false;
 
     for (const auto& p : {cp1, cp2, cp3}) {
-        const auto ti = TileMap::GetTileIndex(p);
+        const auto ti = edbr::tilemap::worldPosToTileIndex(p);
         if (isSolidTile(tileMap, ti)) {
             onGround = true;
         }
@@ -96,12 +96,12 @@ inline void tileCollisionSystemUpdate(entt::registry& registry, float dt, const 
 
             glm::vec2 minMtv{};
             bool minMTVSet = false;
-            for (const auto& ti : tileMap.getTileIndicesInRect(eBB)) {
+            for (const auto& ti : edbr::tilemap::getTileIndicesInRect(eBB)) {
                 if (!isSolidTile(tileMap, ti)) {
                     continue;
                 }
 
-                const auto tileBB = TileMap::GetTileAABB(ti);
+                const auto tileBB = edbr::tilemap::getTileAABB(ti);
                 auto mtv = math::getIntersectionDepth(eBB, tileBB);
 
                 if (std::abs(mtv.x) > std::abs(mtv.y)) {

@@ -11,10 +11,6 @@ void TileMapRenderer::drawTileMapLayers(
     const TileMap& tileMap,
     int z) const
 {
-    if (!tileMap.layerExists(z)) {
-        return;
-    }
-
     for (const auto& layer : tileMap.getLayers()) {
         if (layer.z != z || !layer.isVisible) {
             continue;

@@ -34,14 +34,14 @@ public:
     };
 
     struct TileMapLayer {
+        // returns a tile with NULL_TILE_ID and NULL_TILESET_ID if tile is not
+        // present on a layer
+        const Tile& getTile(const TileIndex& tileIndex) const;
+
         std::string name;
         int z{false};
         bool isVisible{true};
         std::unordered_map<TileIndex, Tile, math::hash<TileIndex>> tiles;
-
-        // returns a tile with NULL_TILE_ID and NULL_TILESET_ID if tile is not
-        // present on a layer
-        const Tile& getTile(const TileIndex& tileIndex) const;
 
         struct AnimatedTileInfo {
             TileId originalTileId;
@@ -61,9 +61,11 @@ public:
     };
 
     struct Tileset {
+        void initAnimations();
+
         std::string name;
         ImageId texture;
-        glm::ivec2 textureSize;
+        glm::ivec2 textureSize; // to be able to calculate uvs without fetching the image
 
         std::unordered_map<TileId, TilesetAnimation> animations; // first tile id -> animation
         std::unordered_map<TileId, SpriteAnimator> tileAnimators;
@@ -71,17 +73,12 @@ public:
 
     static constexpr auto CollisionLayerName = "Collision";
 
-    void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
+public:
     void clear();
-
     void update(float dt);
 
     int getMinLayerZ() const;
     int getMaxLayerZ() const;
-    bool layerExists(int z) const;
-
-    static TileIndex GetTileIndex(const glm::vec2& worldPos);
-    static math::FloatRect GetTileAABB(const TileIndex& tileIndex);
 
     TileMap::TileMapLayer& addLayer(TileMapLayer layer);
     const TileMap::TileMapLayer& getLayer(const std::string& name) const;
@@ -91,23 +88,24 @@ public:
     // present on a layer
     const Tile& getTile(const std::string& layerName, const TileIndex& tileIndex) const;
 
-    math::IndexRange2 getTileIndicesInRect(const math::FloatRect& rect) const;
-
     void addTileset(TilesetId tilesetId, Tileset tileset);
     ImageId getTilesetImageId(TilesetId tilesetId) const;
 
-    // should be called when tile layers change
+    // should be called when any tile in any layer changes
     void updateAnimatedTileIndices();
 
 private:
-    std::vector<TileMapLayer> layers;
-
     std::unordered_map<TilesetId, Tileset> tilesets;
+    std::vector<TileMapLayer> layers;
 };
 
 namespace edbr::tilemap
 {
+TileMap::TileIndex worldPosToTileIndex(const glm::vec2& worldPos);
 glm::vec2 tileIndexToWorldPos(const TileMap::TileIndex& tileIndex);
+math::FloatRect getTileAABB(const TileMap::TileIndex& tileIndex);
+math::IndexRange2 getTileIndicesInRect(const math::FloatRect& rect);
+
 std::pair<glm::vec2, glm::vec2> tileIdToUVs(
     TileMap::TileId tileId,
     const glm::ivec2& tilesetTextureSize);
