@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include <CLI/CLI.hpp>
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
@@ -5,8 +7,6 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
-
-#include <filesystem>
 
 #include <nlohmann/json.hpp>
 
@@ -64,6 +64,11 @@ bool isImageFile(const std::filesystem::path& p)
     return p.extension() == ".png";
 }
 
+void writeAnimationsFile(
+    const std::filesystem::path& outAnimPath,
+    const std::vector<Animation>& animations,
+    const SpriteSheet& spriteSheet);
+
 void processFile(
     const std::filesystem::path& inDir,
     const std::filesystem::path& outAnimDir,
@@ -92,6 +97,9 @@ void processFile(
     }
 
     ase_t* ase = cute_aseprite_load_from_file(path.c_str(), NULL);
+
+    // make an image close to square in dimensions
+    // e.g. if 16 frames, 4x4 spritesheet will be made
     const auto spriteSheetDim = std::ceil(std::sqrt(ase->frame_count));
 
     SpriteSheet spriteSheet;
@@ -100,12 +108,13 @@ void processFile(
 
     const auto frameWidth = ase->w;
     const auto frameHeight = ase->h;
-    std::vector<std::uint8_t> pixelData(spriteSheet.width * spriteSheet.height * 4, 0);
-    int startX = 0;
-    int startY = 0;
+    const auto numChannels = 4;
+    std::vector<std::uint8_t> pixelData(spriteSheet.width * spriteSheet.height * numChannels, 0);
 
     spriteSheet.rects.reserve(ase->frame_count);
 
+    int startX = 0;
+    int startY = 0;
     for (int frameIdx = 0; frameIdx < ase->frame_count; ++frameIdx) {
         // write frame
         const auto& frame = ase->frames[frameIdx];
@@ -135,9 +144,9 @@ void processFile(
         outImgPath.string().c_str(),
         spriteSheet.width,
         spriteSheet.height,
-        4,
+        numChannels,
         pixelData.data(),
-        spriteSheet.width * 4);
+        spriteSheet.width * numChannels);
     if (res == 0) {
         std::cout << "failed to write image " << outImgPath << std::endl;
     }
@@ -158,8 +167,17 @@ void processFile(
             .frameDuration = frameDuration,
         });
     }
-    cute_aseprite_free(ase);
 
+    writeAnimationsFile(outAnimPath, animations, spriteSheet);
+
+    cute_aseprite_free(ase);
+}
+
+void writeAnimationsFile(
+    const std::filesystem::path& outAnimPath,
+    const std::vector<Animation>& animations,
+    const SpriteSheet& spriteSheet)
+{
     nlohmann::json root;
     auto& animationsObj = root["animations"];
     for (const auto& animation : animations) {
@@ -193,8 +211,8 @@ int main(int argc, char** argv)
     std::string outImgDir;
     std::string outAnimDir;
     app.add_option("in", inDir, "Input directory");
-    app.add_option("out_anim", outAnimDir, "Output animations directory");
-    app.add_option("out", outImgDir, "Output images directory");
+    app.add_option("out_anim_dir", outAnimDir, "Output animations directory");
+    app.add_option("out_img_dir", outImgDir, "Output images directory");
     app.validate_positionals();
 
     CLI11_PARSE(app, argc, argv);
