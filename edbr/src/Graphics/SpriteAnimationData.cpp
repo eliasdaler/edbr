@@ -16,10 +16,7 @@ void SpriteAnimationData::load(const std::filesystem::path& path)
         SpriteAnimation anim;
         animLoader.get("startFrame", anim.startFrame);
         animLoader.get("endFrame", anim.endFrame);
-
-        int frameDurationMS{};
-        animLoader.get("frameDurationMS", frameDurationMS);
-        anim.frameDuration = frameDurationMS / 1000.f;
+        animLoader.get("frameDuration", anim.frameDuration);
 
         animLoader.getIfExists("origin", anim.origin);
 

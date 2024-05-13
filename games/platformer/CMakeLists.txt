@@ -37,22 +37,28 @@ target_link_libraries(platformer PRIVATE
   edbr::edbr
 )
 
+set(GAME_RAW_ASSETS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/raw_assets")
+set(GAME_ASSETS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+
+# Build spritesheets and animations
+set(GAME_RAW_TEXTURES_PATH "${GAME_RAW_ASSETS_PATH}/images")
+set(GAME_OUT_ANIMATIONS_PATH "${GAME_ASSETS_PATH}/animations")
+set(GAME_OUT_TEXTURES_PATH "${GAME_ASSETS_PATH}/images")
+add_custom_target(platformer_resouces_build ALL
+  COMMENT "Generating game animations and spritesheets using images from '${GAME_RAW_TEXTURES_PATH}'"
+  COMMAND $<TARGET_FILE:image_resource_builder> "${GAME_RAW_TEXTURES_PATH}" "${GAME_OUT_ANIMATIONS_PATH}" "${GAME_OUT_TEXTURES_PATH}"
+  VERBATIM
+)
+
 # Symlink assets.
 # Symlinking (instead of copying) allows you to change resources and have the
 # changes be instantly visible when reloading the game
 add_custom_command(TARGET platformer POST_BUILD
   COMMENT "Symlink mtp assets to $<TARGET_FILE_DIR:platformer>/assets"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:platformer>/assets"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${GAME_ASSETS_PATH}" "$<TARGET_FILE_DIR:platformer>/assets"
 )
 
-# Symlink raw_assets
-# Temporary until Tiled converter is in unfinished state
-add_custom_command(TARGET platformer POST_BUILD
-  COMMENT "Symlink mtp assets to $<TARGET_FILE_DIR:platformer>/assets/raw"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/raw_assets" "$<TARGET_FILE_DIR:platformer>/assets/raw"
-)
-
-# build shaders
+# Build shaders
 set(SHADERS
   fullscreen_triangle.vert
   sprite.vert

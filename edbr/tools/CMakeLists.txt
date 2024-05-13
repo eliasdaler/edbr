@@ -1,1 +1,1 @@
-add_subdirectory(aseprite_convert)
+add_subdirectory(image_resource_builder)

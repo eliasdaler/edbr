@@ -421,7 +421,7 @@ void Game::doLevelChange()
     tileMap.clear();
 
     TiledImporter importer;
-    const auto levelPath = std::filesystem::path{"assets/raw/levels/" + newLevelToLoad + ".tmj"};
+    const auto levelPath = std::filesystem::path{"assets/levels/" + newLevelToLoad + ".tmj"};
     importer.loadLevel(gfxDevice, levelPath, tileMap);
 
     auto& spawners = level.getSpawners();

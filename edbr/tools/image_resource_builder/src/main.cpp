@@ -71,7 +71,6 @@ void processFile(
     const std::filesystem::path& path)
 {
     const auto relPath = path.lexically_relative(inDir);
-    std::cout << "Processing " << relPath << std::endl;
 
     auto outImgPath = outImgDir / relPath;
     outImgPath.replace_extension(".png");
@@ -80,7 +79,7 @@ void processFile(
         std::filesystem::create_directories(outImgPath.parent_path());
     }
 
-    if (!isAsepriteFile(path)) {
+    if (!isAsepriteFile(path)) { // just copy as-is, no need for processing
         std::filesystem::copy(path, outImgPath);
         return;
     }
@@ -167,7 +166,7 @@ void processFile(
         auto& animObj = animationsObj[animation.name];
         animObj["startFrame"] = animation.startFrame;
         animObj["endFrame"] = animation.endFrame;
-        animObj["frameDurationMS"] = animation.frameDuration;
+        animObj["frameDuration"] = animation.frameDuration / 1000.f;
     }
 
     auto spriteSheetArr = nlohmann::json::array();
@@ -178,15 +177,16 @@ void processFile(
 
     std::ofstream jsonFile(outAnimPath);
     assert(jsonFile.good());
-    jsonFile << std::setw(4) << root << std::endl;
+    jsonFile << root << std::endl;
 }
 
 }
 
 int main(int argc, char** argv)
 {
-    CLI::App app{"aseprite_convert - a tool for converting .aseprite files to internal engine "
-                 ".json format and .png spritesheet"};
+    CLI::App app{
+        "image_resource_builder - a tool for converting .aseprite files to internal engine "
+        ".json format and .png spritesheet (.png files are just copied as-is)"};
     argv = app.ensure_utf8(argv);
 
     std::string inDir;
@@ -200,7 +200,7 @@ int main(int argc, char** argv)
     CLI11_PARSE(app, argc, argv);
 
     if (inDir.empty() || outAnimDir.empty() || outImgDir.empty()) {
-        std::cout << "usage: aseprite_convert IN_DIR OUT_ANIM_DIR OUT_IMAGES_DIR\n";
+        std::cout << "usage: image_resource_builder IN_DIR OUT_ANIM_DIR OUT_IMAGES_DIR\n";
         std::exit(1);
     }
 

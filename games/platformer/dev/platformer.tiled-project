@@ -5,7 +5,8 @@
     "compatibilityVersion": 1100,
     "extensionsPath": "extensions",
     "folders": [
-        "."
+        "../assets/levels",
+        "../assets/tilesets"
     ],
     "properties": [
     ],
