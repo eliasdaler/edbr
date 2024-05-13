@@ -21,7 +21,7 @@ struct RGBColor {
 
 void setPixel(std::vector<std::uint8_t>& pixels, int imgWidth, int x, int y, const RGBColor& color)
 {
-    auto idx = static_cast<std::size_t>((x + y * imgWidth) * 4);
+    const auto idx = static_cast<std::size_t>((x + y * imgWidth) * 4);
     pixels[idx + 0] = color.r;
     pixels[idx + 1] = color.g;
     pixels[idx + 2] = color.b;
@@ -157,8 +157,7 @@ void processFile(
         const auto& tag = ase->tags[i];
 
         // TODO: support animations with different frame rates?
-        int frameDuration = 0;
-        frameDuration = ase->frames[tag.from_frame].duration_milliseconds;
+        const auto frameDuration = ase->frames[tag.from_frame].duration_milliseconds;
 
         animations.push_back(Animation{
             .name = tag.name,
@@ -210,6 +209,7 @@ int main(int argc, char** argv)
     std::string inDir;
     std::string outImgDir;
     std::string outAnimDir;
+
     app.add_option("in", inDir, "Input directory");
     app.add_option("out_anim_dir", outAnimDir, "Output animations directory");
     app.add_option("out_img_dir", outImgDir, "Output images directory");
