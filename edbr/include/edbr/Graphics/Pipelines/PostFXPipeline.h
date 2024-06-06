@@ -10,7 +10,6 @@ struct GPUBuffer;
 
 class PostFXPipeline {
 public:
-public:
     void init(GfxDevice& gfxDevice, VkFormat drawImageFormat);
     void cleanup(VkDevice device);
 

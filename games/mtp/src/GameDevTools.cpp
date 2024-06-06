@@ -277,8 +277,8 @@ void Game::devToolsUpdate(float dt)
 
     if (ImGui::Begin("UI")) {
         ui.updateDevTools(dt);
-        ImGui::End();
     }
+    ImGui::End();
 
     if (ImGui::Begin("Action lists")) {
         for (const auto& [name, al] : actionListManager.getActionLists()) {
@@ -470,7 +470,7 @@ void Game::devToolsDrawUI(SpriteRenderer& spriteRenderer)
             .drawText(ui.getDefaultFont(), "Paused", {32.f, 32.f}, LinearColor{1.f, 1.f, 1.f});
     }
     if (freeCameraMode) {
-        spriteRenderer
-            .drawText(ui.getDefaultFont(), "Free cam", {32.f, 64.f}, LinearColor{1.f, 1.f, 1.f});
+        // spriteRenderer
+        //     .drawText(ui.getDefaultFont(), "Free cam", {32.f, 64.f}, LinearColor{1.f, 1.f, 1.f});
     }
 }
