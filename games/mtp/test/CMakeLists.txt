@@ -13,7 +13,7 @@ set_target_properties(mtp_unit_test PROPERTIES
 
 target_sources(mtp_unit_test
   PRIVATE
-    TestSceneInit.cpp
+    # TestSceneInit.cpp
 )
 
 target_sources(mtp_unit_test

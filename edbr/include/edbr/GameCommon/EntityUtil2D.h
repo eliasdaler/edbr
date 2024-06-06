@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <entt/entity/fwd.hpp>
 #include <glm/fwd.hpp>
 

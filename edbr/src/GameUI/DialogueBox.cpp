@@ -109,7 +109,7 @@ void DialogueBox::init(
     letterSoundSpeed = defaultLetterSoundSpeed;
     punctuationDelayTime = dbStyle.punctuationDelay;
 
-    defaultVoiceSound = dbStyle.defaultLetterSoundPath;
+    defaultVoiceSound = dbStyle.defaultLetterSoundPath.string();
     voiceSound = defaultVoiceSound;
     showChoicesSoundPath = dbStyle.showChoicesSoundPath;
     choiceSelectSoundPath = dbStyle.choiceSelectSoundPath;
@@ -124,7 +124,7 @@ void DialogueBox::handleInput(const ActionMapping& actionMapping)
     if (actionMapping.wasJustPressed(interactAction)) {
         if (!isWholeTextDisplayed()) {
             if (!skipTextSoundPath.empty()) {
-                audioManager->playSound(skipTextSoundPath);
+                audioManager->playSound(skipTextSoundPath.string());
             }
             displayWholeText();
         } else if (!hasChoices) {
@@ -195,7 +195,7 @@ void DialogueBox::update(float dt)
     if (isWholeTextDisplayed() && hasChoices && !choicesDisplayed) {
         setChoicesDisplayed(true);
         if (!showChoicesSoundPath.empty()) {
-            audioManager->playSound(showChoicesSoundPath);
+            audioManager->playSound(showChoicesSoundPath.string());
         }
     }
 
@@ -321,7 +321,7 @@ void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice
             auto choiceButton = std::make_unique<
                 ui::ButtonElement>(dbStyle.choiceButtonStyle, defaultFont, "", [this, i]() {
                 if (!choiceSelectSoundPath.empty()) {
-                    audioManager->playSound(choiceSelectSoundPath);
+                    audioManager->playSound(choiceSelectSoundPath.string());
                 }
                 choiceSelectionIndex = i;
             });

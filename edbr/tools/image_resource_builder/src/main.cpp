@@ -96,7 +96,7 @@ void processFile(
         std::filesystem::create_directories(outAnimPath.parent_path());
     }
 
-    ase_t* ase = cute_aseprite_load_from_file(path.c_str(), NULL);
+    ase_t* ase = cute_aseprite_load_from_file(path.string().c_str(), NULL);
 
     // make an image close to square in dimensions
     // e.g. if 16 frames, 4x4 spritesheet will be made

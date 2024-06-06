@@ -6,7 +6,7 @@
 
 #include <edbr/Graphics/Color.h>
 
-class Font;
+struct Font;
 
 namespace ui
 {

@@ -11,12 +11,12 @@ function (target_shaders target shaders)
 	cmake_policy(SET CMP0116 NEW)
 
   set(SHADERS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
-  if (MSVC)
-    # FIXME: do the same for all multi-config builds
+  if (NOT MSVC)
+	file(MAKE_DIRECTORY "${SHADERS_BUILD_DIR}")
+  else()
+    # FIXME: make the dir beforehand for all multi-config builds
     set(SHADERS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/shaders")
   endif()
-
-  file(MAKE_DIRECTORY "${SHADERS_BUILD_DIR}")
 
   foreach (SHADER_PATH ${SHADERS})
     get_filename_component(SHADER_FILENAME "${SHADER_PATH}" NAME)
