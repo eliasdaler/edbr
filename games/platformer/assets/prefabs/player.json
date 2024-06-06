@@ -1,0 +1,48 @@
+{
+  "movement": {
+    "maxSpeed": [
+      120,
+      200
+    ]
+  },
+  "data": {
+    "ladder_climb_speed": 60
+  },
+  "collision": {
+      "mass": 30,
+      "size": [8, 12],
+      "group": "Player"
+  },
+  "character_controller": {
+  },
+  "hurtbox": {
+      "size": [8, 8]
+  },
+  "sprite": {
+    "texture": "assets/images/player.png",
+    "z": 1
+  },
+  "animation": {
+    "data": "player"
+  },
+  "health": {
+      "max_hp": 3
+  },
+  "coin_holder": {
+      "max_coins": 999
+  },
+  "state_machine": {
+      "FSM": "player"
+  },
+  "sound": {
+      "sounds": {
+          "step": "step",
+          "jump": "jump",
+          "land": "land",
+          "shoot": "shoot2",
+          "hurt": "player_hurt",
+          "died": "player_died",
+          "stairs": "stairs"
+      }
+  }
+}

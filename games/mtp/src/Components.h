@@ -19,24 +19,6 @@
 
 #include "VirtualCharacterParams.h"
 
-struct TransformComponent {
-    Transform transform; // local (relative to parent)
-    glm::mat4 worldTransform{1.f};
-};
-
-struct TagComponent {
-    friend class Game;
-
-public:
-    // call Game::setEntityTag to set the tag
-    const std::string& getTag() const { return tag; }
-
-private:
-    void setTag(const std::string& t) { tag = t; }
-
-    std::string tag;
-};
-
 struct MeshComponent {
     std::vector<MeshId> meshes;
     std::vector<Transform> meshTransforms;
@@ -44,20 +26,6 @@ struct MeshComponent {
 };
 
 struct ColliderComponent {};
-
-struct MovementComponent {
-    glm::vec3 kinematicVelocity; // manual velocity for kinematic objects
-    glm::vec3 maxSpeed; // only for kinematic speed
-
-    glm::vec3 prevFramePosition;
-    glm::vec3 effectiveVelocity;
-
-    // smooth rotation
-    glm::quat startHeading;
-    glm::quat targetHeading;
-    float rotationProgress{0.f}; // from [0 to rotationTime] (used for slerp)
-    float rotationTime{0.f};
-};
 
 struct SkeletonComponent {
     Skeleton skeleton;
@@ -85,10 +53,6 @@ struct PlayerComponent {};
 struct InteractComponent {
     enum class Type { None, Interact, Talk, Save };
     Type type{Type::Interact};
-};
-
-struct NPCComponent {
-    LocalizedStringTag name;
 };
 
 struct PhysicsComponent {

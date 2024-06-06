@@ -38,6 +38,8 @@
 
 #include <edbr/DevTools/Im3dState.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/CPUMesh.h>
 #include <edbr/Input/InputManager.h>
@@ -614,8 +616,8 @@ void PhysicsSystem::addEntity(entt::handle e, SceneCache& sceneCache)
         // need to compute AABB from the mesh if not initialized still
         if (params.min == params.max && params.min == glm::vec3{}) {
             const auto& mc = e.get<MeshComponent>();
-            const auto& mic = e.get<MetaInfoComponent>();
-            const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+            const auto& sc = e.get<SceneComponent>();
+            const auto& scene = sceneCache.loadOrGetScene(sc.creationSceneName);
             const auto aabb = edbr::calculateBoundingBoxLocal(scene, mc.meshes);
             params.min = aabb.min;
             params.max = aabb.max;
@@ -640,8 +642,8 @@ void PhysicsSystem::addEntity(entt::handle e, SceneCache& sceneCache)
             new JPH::RotatedTranslatedShape({0.f, offsetY, 0.f}, JPH::Quat().sIdentity(), shape);
     } break;
     case PhysicsComponent::BodyType::ConvexHull: {
-        const auto& mic = e.get<MetaInfoComponent>();
-        const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+        const auto& sc = e.get<SceneComponent>();
+        const auto& scene = sceneCache.loadOrGetScene(sc.creationSceneName);
         const auto& mc = e.get<MeshComponent>();
         assert(mc.meshes.size() == 1 && "TODO: support multiple meshes");
         const auto& mesh = scene.cpuMeshes.at(mc.meshes[0]);
@@ -657,8 +659,8 @@ void PhysicsSystem::addEntity(entt::handle e, SceneCache& sceneCache)
         shape = res.Get();
     } break;
     case PhysicsComponent::BodyType::TriangleMesh: {
-        const auto& mic = e.get<MetaInfoComponent>();
-        const auto& scene = sceneCache.loadOrGetScene(mic.creationSceneName);
+        const auto& sc = e.get<SceneComponent>();
+        const auto& scene = sceneCache.loadOrGetScene(sc.creationSceneName);
         std::vector<const CPUMesh*> meshes;
         const auto& mc = e.get<MeshComponent>();
         for (const auto& meshId : mc.meshes) {

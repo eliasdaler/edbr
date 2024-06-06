@@ -9,6 +9,7 @@ namespace ui
 
 ButtonElement::ButtonElement(
     const ButtonStyle& bs,
+    const Font& font,
     std::string text,
     std::function<void()> onButtonPress) :
     normalColor(bs.normalColor), selectedColor(bs.selectedColor), disabledColor(bs.disabledColor)
@@ -16,7 +17,7 @@ ButtonElement::ButtonElement(
     autoSize = true;
     cursorSelectionOffset = bs.cursorOffset;
 
-    auto textElement = std::make_unique<ui::TextElement>(std::move(text), bs.font, bs.normalColor);
+    auto textElement = std::make_unique<ui::TextElement>(std::move(text), font, bs.normalColor);
     if (bs.textAlignment == ButtonStyle::TextAlignment::Center) {
         textElement->origin = {0.5f, 0.5f};
         textElement->relativePosition = {0.5f, 0.5f};

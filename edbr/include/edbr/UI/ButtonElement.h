@@ -6,6 +6,8 @@
 
 #include <edbr/Graphics/Color.h>
 
+class Font;
+
 namespace ui
 {
 
@@ -14,7 +16,11 @@ class TextElement;
 
 class ButtonElement : public Element {
 public:
-    ButtonElement(const ButtonStyle& bs, std::string text, std::function<void()> onButtonPress);
+    ButtonElement(
+        const ButtonStyle& bs,
+        const Font& font,
+        std::string text,
+        std::function<void()> onButtonPress);
 
     ui::Element& getFrameElement();
     const ui::Element& getFrameElement() const;

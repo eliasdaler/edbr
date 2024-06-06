@@ -103,7 +103,7 @@ void Application::init(const Params& ps)
         params.windowSize.y,
         SDL_WINDOW_VULKAN);
 
-    // SDL_SetWindowResizable(window, SDL_TRUE);
+    SDL_SetWindowResizable(window, SDL_TRUE);
 
     if (!window) {
         printf("Failed to create window. SDL Error: %s\n", SDL_GetError());

@@ -1,0 +1,60 @@
+{
+  "positionAndSize": {
+    "relativePosition": [0.075, 0.1]
+  },
+  "nineSliceStyle": {
+    "texture": "assets/images/ui/nine_slice.png",
+    "textureCoords": {
+      "contents": [ 5, 5, 1, 1]
+    }
+  },
+  "mainText": {
+    "font": {
+      "path": "assets/fonts/JF-Dot-Kappa20B.ttf",
+      "size": 40
+    },
+    "color": { "rgb": [255, 255, 255 ] },
+    "padding": [24, 12],
+    "shadow": true,
+    "maxNumCharsLine": 30,
+    "maxLines": 4
+  },
+  "typewriter": {
+    "charsSpeed": 15,
+    "letterSoundSpeed": 0.08,
+    "punctuationDelay": 0.1
+  },
+  "speakerNameText": {
+    "font": {
+      "path": "assets/fonts/JF-Dot-Kappa20B.ttf",
+      "size": 40
+    },
+    "color": { "rgb": [254, 214, 124] },
+    "shadow": true,
+    "offset": [20, -40]
+  },
+  "choiceButtonStyle": {
+    "normalColor": { "rgb": [255, 255, 255 ] },
+    "selectedColor": { "rgb": [254, 174, 52] },
+    "disabledColor": { "rgb": [128, 128, 128] },
+    "textAlignment": "Left",
+    "padding": [8, 0],
+    "cursorOffset": [0, 20]
+  },
+  "choiceButtonsPadding": [32, 8],
+  "moreTextImage": {
+    "image": "assets/images/ui/more_text.png",
+    "offset": [-16, -12],
+    "bouncer": {
+      "maxOffset": 2,
+      "moveDuration": 0.5,
+      "tweenType": "quadraticEaseInOut"
+    }
+  },
+  "sounds": {
+    "defaultLetter": "assets/sounds/ui/text.wav",
+    "choiceSelect": "assets/sounds/ui/menu_select.wav",
+    "showChoices": "assets/sounds/ui/menu_open.wav",
+    "skipText": "assets/sounds/ui/skip_text.wav"
+  }
+}

@@ -7,6 +7,10 @@
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+
+#include <edbr/GameCommon/CommonComponentDisplayers.h>
 
 #include <entt/entity/handle.hpp>
 #include <entt/entity/registry.hpp>
@@ -19,24 +23,19 @@ void Game::registerComponentDisplayers()
 
     auto& eid = entityInfoDisplayer;
 
-    eid.registerDisplayer("Meta", [](entt::const_handle e, const MetaInfoComponent& tc) {
+    edbr::registerMetaInfoComponentDisplayer(eid);
+
+    eid.registerDisplayer("Scene", [](entt::const_handle e, const SceneComponent& sc) {
         BeginPropertyTable();
         {
-            DisplayProperty("Prefab", tc.prefabName);
-            DisplayProperty("Prefab scene name", tc.sceneName);
-            DisplayProperty("Creation scene name", tc.creationSceneName);
-            DisplayProperty("glTF node name", tc.sceneNodeName);
+            DisplayProperty("Prefab scene name", sc.sceneName);
+            DisplayProperty("Creation scene name", sc.creationSceneName);
+            DisplayProperty("glTF node name", sc.sceneNodeName);
         }
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {
-        BeginPropertyTable();
-        if (!tc.getTag().empty()) {
-            DisplayProperty("Tag", tc.getTag());
-        }
-        EndPropertyTable();
-    });
+    edbr::registerTagComponentDisplayer(eid);
 
     eid.registerDisplayer("Name", [](entt::const_handle e, const NameComponent& nc) {
         BeginPropertyTable();
@@ -56,23 +55,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer(
-        "Movement",
-        [](entt::const_handle e, const MovementComponent& mc) {
-            BeginPropertyTable();
-            {
-                DisplayProperty("Velocity (kinematic)", mc.kinematicVelocity);
-                DisplayProperty("MaxSpeed", mc.maxSpeed);
-                // don't display for now: too noisy
-                // DisplayProperty("Velocity (effective)", mc.effectiveVelocity);
-                DisplayProperty("Start heading", mc.startHeading);
-                DisplayProperty("Target heading", mc.targetHeading);
-                DisplayProperty("Rotation progress", mc.rotationProgress);
-                DisplayProperty("Rotation time", mc.rotationTime);
-            }
-            EndPropertyTable();
-        },
-        EntityInfoDisplayer::DisplayStyle::CollapsedByDefault);
+    edbr::registerMovementComponentDisplayer(eid);
 
     eid.registerDisplayer(
         "Physics",
@@ -224,6 +207,8 @@ void Game::registerComponentDisplayers()
     eid.registerEmptyDisplayer<PersistentComponent>("Persistent");
     eid.registerEmptyDisplayer<ColliderComponent>("Collider");
 
+    edbr::registerNPCComponentDisplayer(eid);
+
     eid.registerEmptyDisplayer<CameraComponent>("Camera", [this](entt::const_handle e) {
         if (ImGui::Button("Make current")) {
             setCurrentCamera(e);
@@ -244,16 +229,6 @@ void Game::registerComponentDisplayers()
                 }
             }(ic.type);
             DisplayProperty("Type", typeString);
-        }
-        EndPropertyTable();
-    });
-
-    eid.registerDisplayer("NPC", [](entt::const_handle e, const NPCComponent& npcc) {
-        BeginPropertyTable();
-        {
-            if (!npcc.name.tag.empty()) {
-                DisplayProperty("Name", npcc.name.tag);
-            }
         }
         EndPropertyTable();
     });

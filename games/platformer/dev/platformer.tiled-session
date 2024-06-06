@@ -1,0 +1,30 @@
+{
+    "activeFile": "/home/eliasdaler/work/edbr/games/platformer/assets/levels/HouseInside.tmj",
+    "expandedProjectPaths": [
+        "/home/eliasdaler/work/edbr/games/platformer/assets/tilesets",
+        "/home/eliasdaler/work/edbr/games/platformer/assets/levels"
+    ],
+    "fileStates": {
+        "/home/eliasdaler/work/edbr/games/platformer/assets/levels/HouseInside.tmj": {
+            "scale": 6.7725,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 116.20524178663715,
+                "y": 63.34440753045404
+            }
+        },
+        "/home/eliasdaler/work/edbr/games/platformer/assets/tilesets/Collision.tsj": {
+            "scaleInDock": 1
+        },
+        "/home/eliasdaler/work/edbr/games/platformer/assets/tilesets/Tileset.tsj": {
+            "scaleInDock": 1
+        }
+    },
+    "openFiles": [
+        "/home/eliasdaler/work/edbr/games/platformer/assets/levels/HouseInside.tmj"
+    ],
+    "project": "platformer.tiled-project",
+    "recentFiles": [
+        "/home/eliasdaler/work/edbr/games/platformer/assets/levels/HouseInside.tmj"
+    ]
+}

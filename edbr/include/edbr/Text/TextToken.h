@@ -14,6 +14,7 @@ struct TextToken {
     LocalizedStringTag name;
     std::vector<LocalizedStringTag> choices;
     std::string voiceSound;
+    float voiceSoundSpeed;
 
     using ChoiceFuncType = std::function<ActionList(std::size_t choiceIndex)>;
     ChoiceFuncType onChoice;

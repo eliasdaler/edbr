@@ -5,7 +5,10 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
-#include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+
 #include <edbr/Event/EventManager.h>
 
 namespace entityutil
@@ -16,16 +19,6 @@ EventManager* eventManager{nullptr};
 void setEventManager(EventManager& em)
 {
     eventManager = &em;
-}
-
-void makePersistent(entt::handle e)
-{
-    e.emplace<PersistentComponent>();
-}
-
-void makeNonPersistent(entt::handle e)
-{
-    e.erase<PersistentComponent>();
 }
 
 void addChild(entt::handle parent, entt::handle child)
@@ -72,7 +65,9 @@ void setPosition(entt::handle e, const glm::vec3& pos)
 
 void teleportEntity(entt::handle e, const glm::vec3& pos)
 {
-    assert(!e.get<HierarchyComponent>().hasParent() && "can't set position on parented entity");
+    assert(
+        !e.get<HierarchyComponent>().hasParent() &&
+        "can't set position on an entity with a parent");
     assert(e.all_of<PhysicsComponent>() && "call setPosition instead");
     auto& tc = e.get<TransformComponent>();
     tc.transform.setPosition(pos);
@@ -105,13 +100,6 @@ void rotateSmoothlyTo(entt::handle e, const glm::quat& targetHeading, float rota
     mc.rotationProgress = 0.f;
 }
 
-void stopRotation(entt::handle e)
-{
-    auto& mc = e.get<MovementComponent>();
-    mc.rotationProgress = mc.rotationTime;
-    mc.rotationTime = 0.f;
-}
-
 void setAnimation(entt::handle e, const std::string& name)
 {
     auto scPtr = e.try_get<SkeletonComponent>();
@@ -125,7 +113,7 @@ void setAnimation(entt::handle e, const std::string& name)
 
 entt::handle findEntityBySceneNodeName(entt::registry& registry, const std::string& name)
 {
-    for (auto&& [e, mic] : registry.view<MetaInfoComponent>().each()) {
+    for (auto&& [e, mic] : registry.view<SceneComponent>().each()) {
         if (mic.sceneNodeName == name) {
             return {registry, e};
         }
@@ -179,15 +167,6 @@ void spawnPlayer(entt::registry& registry, const std::string& spawnName)
     teleportEntity(player, spawnTC.transform.getPosition());
 }
 
-const std::string& getTag(entt::const_handle e)
-{
-    static const std::string emptyString{};
-    if (auto tcPtr = e.try_get<TagComponent>(); tcPtr && !tcPtr->getTag().empty()) {
-        return tcPtr->getTag();
-    }
-    return emptyString;
-}
-
 const std::string& getMetaName(entt::const_handle e)
 {
     // try tag first
@@ -202,7 +181,7 @@ const std::string& getMetaName(entt::const_handle e)
     }
 
     // if everything failed - use scene node name
-    return e.get<MetaInfoComponent>().sceneNodeName;
+    return e.get<SceneComponent>().sceneNodeName;
 }
 
 }

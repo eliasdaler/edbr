@@ -156,6 +156,9 @@ endif()
 # then it won't work on systems without PipeWire
 option(ALSOFT_BACKEND_PIPEWIRE "Enable PipeWire backend" OFF)
 
+# disabled SNDIO, most Linuxes should have ALSA or PulseAudio
+option(ALSOFT_BACKEND_SNDIO "Enable SndIO backend" OFF)
+
 option(ALSOFT_UTILS "Build utility programs"  OFF)
 option(ALSOFT_EXAMPLES  "Build example programs"  OFF)
 option(ALSOFT_INSTALL "Install main library" OFF)
@@ -165,15 +168,14 @@ option(ALSOFT_INSTALL_AMBDEC_PRESETS "Install AmbDec preset files" OFF)
 option(ALSOFT_INSTALL_EXAMPLES "Install example programs (alplay, alstream, ...)" OFF)
 option(ALSOFT_INSTALL_UTILS "Install utility programs (openal-info, alsoft-config, ...)" OFF)
 option(ALSOFT_UPDATE_BUILD_VERSION "Update git build version info" OFF)
-# disabled SNDIO, most Linuxes should have ALSA or PulseAudio
-option(ALSOFT_BACKEND_SNDIO "Enable SndIO backend" OFF)
-# For some reason these checks pass... TODO: investigate!
+
 add_subdirectory(openal-soft)
 if (MSVC)
   target_compile_definitions(alcommon PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
   target_compile_definitions(OpenAL PRIVATE $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=1>)
 endif()
 
+# mute some annoying warnings
 include(OpenALSoftFlags)
 open_al_soft_flags(alcommon)
 open_al_soft_flags(OpenAL)
@@ -210,3 +212,6 @@ endif()
 
 ## CLI11
 add_subdirectory(CLI11)
+
+# cute_headers (Aseprite support)
+add_subdirectory(cute_headers)

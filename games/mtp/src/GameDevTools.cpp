@@ -4,8 +4,14 @@
 #include "EntityUtil.h"
 #include "FollowCameraController.h"
 
-#include <edbr/DevTools/ImGuiPropertyTable.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+
+#include <edbr/DevTools/ImGuiPropertyTable.h>
+
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/Util/Im3dUtil.h>
@@ -206,6 +212,7 @@ void Game::devToolsUpdate(float dt)
                 mousePos, gameWindowPos, gameWindowSize, params.renderSize);
             DisplayProperty("Mouse pos", mousePos);
             DisplayProperty("Game screen pos", gameScreenPos);
+            DisplayProperty("Game screen pos", gameScreenPos);
         }
         EndPropertyTable();
 
@@ -378,7 +385,7 @@ void Game::devToolsUpdate(float dt)
             auto e = entt::const_handle(registry, entity);
             const auto& metaName = entityutil::getMetaName(e);
             if (e.any_of<TagComponent, NameComponent>() && !metaName.empty()) {
-                auto& mic = registry.get<MetaInfoComponent>(e);
+                auto& sc = registry.get<SceneComponent>(e);
                 if (e.any_of<
                         PlayerSpawnComponent,
                         ColliderComponent,
@@ -390,7 +397,7 @@ void Game::devToolsUpdate(float dt)
                         e.get<TransformComponent>().transform.getPosition(),
                         1.f,
                         RGBColor{255, 255, 255},
-                        mic.sceneNodeName.c_str());
+                        sc.sceneNodeName.c_str());
                 } else {
                     Im3dText(
                         e.get<TransformComponent>().transform.getPosition(),
@@ -463,7 +470,7 @@ void Game::devToolsDrawUI(SpriteRenderer& spriteRenderer)
             .drawText(ui.getDefaultFont(), "Paused", {32.f, 32.f}, LinearColor{1.f, 1.f, 1.f});
     }
     if (freeCameraMode) {
-        spriteRenderer
-            .drawText(ui.getDefaultFont(), "Free cam", {32.f, 64.f}, LinearColor{1.f, 1.f, 1.f});
+        // spriteRenderer
+        //     .drawText(ui.getDefaultFont(), "Free cam", {32.f, 64.f}, LinearColor{1.f, 1.f, 1.f});
     }
 }

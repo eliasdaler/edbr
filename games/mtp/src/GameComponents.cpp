@@ -1,38 +1,38 @@
 #include "Game.h"
 
-#include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+#include <edbr/GameCommon/CommonComponentLoaders.h>
 
 namespace
 {
 void loadPhysicsComponent(entt::handle e, PhysicsComponent& pc, const JsonDataLoader& loader);
 }
 
-void Game::registerComponents(ComponentFactory& componentFactory)
+void Game::registerComponents(ComponentFactory& cf)
 {
-    componentFactory.registerComponent<TriggerComponent>("trigger");
-    componentFactory.registerComponent<CameraComponent>("camera");
-    componentFactory.registerComponent<PlayerSpawnComponent>("player_spawn");
-    componentFactory.registerComponent<ColliderComponent>("collider");
+    edbr::registerMovementComponentLoader(cf);
+    edbr::registerNPCComponentLoader(cf);
 
-    componentFactory.registerComponentLoader(
-        "meta", [](entt::handle e, MetaInfoComponent& mic, const JsonDataLoader& loader) {
-            loader.getIfExists("scene", mic.sceneName);
-            loader.getIfExists("node", mic.sceneNodeName);
+    cf.registerComponent<TriggerComponent>("trigger");
+    cf.registerComponent<CameraComponent>("camera");
+    cf.registerComponent<PlayerSpawnComponent>("player_spawn");
+    cf.registerComponent<ColliderComponent>("collider");
+
+    cf.registerComponentLoader(
+        "scene", [](entt::handle e, SceneComponent& sc, const JsonDataLoader& loader) {
+            loader.getIfExists("scene", sc.sceneName);
+            loader.getIfExists("node", sc.sceneNodeName);
         });
 
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "mesh", [](entt::handle e, MeshComponent& mc, const JsonDataLoader& loader) {
             loader.getIfExists("castShadow", mc.castShadow);
         });
 
-    componentFactory.registerComponentLoader(
-        "movement", [](entt::handle e, MovementComponent& mc, const JsonDataLoader& loader) {
-            loader.get("maxSpeed", mc.maxSpeed);
-        });
+    cf.registerComponentLoader("physics", loadPhysicsComponent);
 
-    componentFactory.registerComponentLoader("physics", loadPhysicsComponent);
-
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "interact", [](entt::handle e, InteractComponent& ic, const JsonDataLoader& loader) {
             // type
             std::string type;
@@ -46,16 +46,7 @@ void Game::registerComponents(ComponentFactory& componentFactory)
             }
         });
 
-    componentFactory.registerComponentLoader(
-        "npc", [this](entt::handle e, NPCComponent& npcc, const JsonDataLoader& loader) {
-            // type
-            loader.getIfExists("name", npcc.name.tag);
-            if (!npcc.name.tag.empty()) {
-                assert(textManager.stringLoaded(npcc.name));
-            }
-        });
-
-    componentFactory.registerComponentLoader(
+    cf.registerComponentLoader(
         "animation_event_sound",
         [](entt::handle e, AnimationEventSoundComponent& sc, const JsonDataLoader& loader) {
             sc.eventSounds = loader.getLoader("events").getKeyValueMapString();

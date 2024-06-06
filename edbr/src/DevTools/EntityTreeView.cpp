@@ -7,6 +7,7 @@
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
 
 void EntityTreeView::update(entt::registry& registry, float dt)
 {
@@ -25,8 +26,13 @@ void EntityTreeView::update(entt::registry& registry, float dt)
 
 const std::string& EntityTreeView::getEntityDisplayName(entt::const_handle e) const
 {
+    if (auto scPtr = e.try_get<SceneComponent>(); scPtr) {
+        if (!scPtr->sceneNodeName.empty()) {
+            return scPtr->sceneNodeName;
+        }
+    }
     const auto& mic = e.get<MetaInfoComponent>();
-    return !mic.sceneNodeName.empty() ? mic.sceneNodeName : mic.prefabName;
+    return mic.prefabName;
 }
 
 void EntityTreeView::updateEntityTreeUI(entt::handle e)

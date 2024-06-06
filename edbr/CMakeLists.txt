@@ -1,4 +1,5 @@
 add_subdirectory(third_party)
+add_subdirectory(tools)
 
 add_library(edbr
   # Core
@@ -25,8 +26,11 @@ add_library(edbr
   # ECS
   src/ECS/ComponentFactory.cpp
   src/ECS/EntityFactory.cpp
+  src/ECS/Systems/MovementSystem.cpp
+  src/ECS/Systems/TransformSystem.cpp
 
   # Math
+  src/Math/IndexRange2.cpp
   src/Math/Transform.cpp
   src/Math/Util.cpp
 
@@ -63,6 +67,8 @@ add_library(edbr
   src/Graphics/SkeletalAnimation.cpp
   src/Graphics/SkeletalAnimationCache.cpp
   src/Graphics/Sprite.cpp
+  src/Graphics/SpriteAnimator.cpp
+  src/Graphics/SpriteAnimationData.cpp
 
   # Graphics/Pipeline
   src/Graphics/Pipelines/CSMPipeline.cpp
@@ -146,6 +152,20 @@ add_library(edbr
   # Save
   src/Save/SaveFile.cpp
   src/Save/SaveFileManager.cpp
+
+  # TileMap
+  src/TileMap/TileMap.cpp
+  src/TileMap/TileMapRenderer.cpp
+  src/TileMap/TiledImporter.cpp
+
+  # GameCommon
+  src/GameCommon/CommonComponentDisplayers.cpp
+  src/GameCommon/CommonComponentDisplayers2D.cpp
+  src/GameCommon/CommonComponentLoaders.cpp
+  src/GameCommon/CommonComponentLoaders2D.cpp
+  src/GameCommon/DialogueActions.cpp
+  src/GameCommon/EntityUtil2D.cpp
+  src/GameCommon/EntityUtil.cpp
 
   src/Application.cpp
   src/SceneCache.cpp

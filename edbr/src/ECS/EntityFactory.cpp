@@ -4,6 +4,19 @@
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 
+namespace
+{
+nlohmann::json mergeJson(const nlohmann::json& a, const nlohmann::json& b)
+{
+    auto result = a.flatten();
+    const auto tmp = b.flatten();
+    for (const auto& [k, v] : tmp.items()) {
+        result[k] = v;
+    }
+    return result.unflatten();
+}
+}
+
 const std::string EntityFactory::emptyString{};
 
 void EntityFactory::setCreateDefaultEntityFunc(std::function<CreateDefaultEntityFuncType>&& f)
@@ -46,24 +59,42 @@ entt::handle EntityFactory::createDefaultEntity(entt::registry& registry, bool p
     return e;
 }
 
-entt::handle EntityFactory::createEntity(entt::registry& registry, const std::string& prefabName)
-    const
+entt::handle EntityFactory::createEntity(
+    entt::registry& registry,
+    const std::string& prefabName,
+    const nlohmann::json& overridePrefabData) const
 {
     const auto& mappedPrefabName = getMappedPrefabName(prefabName);
     const auto& actualPrefabName = !mappedPrefabName.empty() ? mappedPrefabName : prefabName;
     const auto prefabLoader = getPrefabDataLoader(actualPrefabName);
 
+    // merge override data (if present)
+    if (!overridePrefabData.empty()) {
+        const auto& originalData = prefabLoader.getJson();
+        const auto jsonData = mergeJson(originalData, overridePrefabData);
+        JsonDataLoader loader{jsonData, prefabLoader.getName() + "(+ overload data)"};
+        return createEntity(registry, actualPrefabName, loader);
+    }
+
+    return createEntity(registry, actualPrefabName, prefabLoader);
+}
+
+entt::handle EntityFactory::createEntity(
+    entt::registry& registry,
+    const std::string& prefabName,
+    const JsonDataLoader& prefabLoader) const
+{
     auto e = createDefaultEntity(registry, false);
     for (const auto& [componentName, loader] : prefabLoader.getKeyValueMap()) {
         if (!componentFactory.componentRegistered(componentName)) {
-            std::cout << "prefabName=" << actualPrefabName << ": component '" << componentName
+            std::cout << "prefabName=" << prefabName << ": component '" << componentName
                       << "' was not registered. Skipping..." << std::endl;
             continue;
         }
         componentFactory.makeComponent(componentName, e, loader);
     }
 
-    e.get<MetaInfoComponent>().prefabName = actualPrefabName;
+    e.get<MetaInfoComponent>().prefabName = prefabName;
 
     if (postInitEntityFunc) {
         postInitEntityFunc(e);

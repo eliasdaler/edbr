@@ -82,7 +82,7 @@ glm::mat4 Camera::getView() const
 {
     assert(initialized);
     if (orthographic2D) {
-        return glm::mat4{1.f};
+        return glm::translate(glm::mat4{1.f}, -transform.getPosition());
     }
     const auto up = transform.getLocalUp();
     const auto target = getPosition() + transform.getLocalFront();

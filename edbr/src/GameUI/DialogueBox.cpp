@@ -23,14 +23,99 @@ const std::string DialogueBox::MoreTextImageTag{"more_text"};
 const std::string DialogueBox::Choice1Tag{"choice1"};
 const std::string DialogueBox::Choice2Tag{"choice2"};
 
-void DialogueBox::init(GfxDevice& gfxDevice, AudioManager& audioManager)
+void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
+{
+    positionAndSize.load(loader.getLoader("positionAndSize"));
+    nineSliceStyle.load(loader.getLoader("nineSliceStyle"), gfxDevice);
+
+    { // main text
+        const auto& mtLoader = loader.getLoader("mainText");
+        mainTextFontStyle.load(mtLoader.getLoader("font"));
+        mtLoader.get("color", mainTextColor);
+        mtLoader.getIfExists("padding", mainTextPadding);
+        mtLoader.getIfExists("shadow", mainTextShadow);
+        mtLoader.get("maxNumCharsLine", mainTextMaxNumCharsLine);
+        mtLoader.get("maxLines", mainTextMaxLines);
+        if (mtLoader.hasKey("positionAndSize")) {
+            mainTextPositionAndSize.load(mtLoader.getLoader("positionAndSize"));
+        }
+    }
+
+    { // typewriter
+        const auto& twLoader = loader.getLoader("typewriter");
+        twLoader.get("charsSpeed", charsDisplaySpeed);
+        twLoader.get("letterSoundSpeed", letterSoundSpeed);
+        twLoader.get("punctuationDelay", punctuationDelay);
+    }
+
+    { // speaker name
+        const auto& snLoader = loader.getLoader("speakerNameText");
+        speakerNameTextFontStyle.load(snLoader.getLoader("font"));
+        snLoader.get("color", speakerNameTextColor);
+        snLoader.getIfExists("shadow", speakerNameTextShadow);
+        snLoader.getIfExists("offset", speakerNameTextOffset);
+        if (snLoader.hasKey("positionAndSize")) {
+            speakerNamePositionAndSize.load(snLoader.getLoader("positionAndSize"));
+        }
+    }
+
+    { // choices
+        choiceButtonStyle.load(loader.getLoader("choiceButtonStyle"));
+        loader.get("choiceButtonsPadding", choiceButtonsPadding);
+    }
+
+    { // more text image
+        const auto& mtLoader = loader.getLoader("moreTextImage");
+        mtLoader.get("image", moreTextImagePath);
+        mtLoader.get("offset", moreTextImageOffset);
+        moreTextImageBouncerParams.load(mtLoader.getLoader("bouncer"));
+    }
+
+    { // sounds
+        const auto& soundsLoader = loader.getLoader("sounds");
+        soundsLoader.getIfExists("defaultLetter", defaultLetterSoundPath);
+        soundsLoader.getIfExists("showChoices", showChoicesSoundPath);
+        soundsLoader.getIfExists("choiceSelect", choiceSelectSoundPath);
+        soundsLoader.getIfExists("skipText", skipTextSoundPath);
+    }
+}
+
+void DialogueBox::init(
+    const DialogueBoxStyle& dbStyle,
+    GfxDevice& gfxDevice,
+    AudioManager& audioManager)
 {
     this->audioManager = &audioManager;
 
-    bool ok = defaultFont.load(gfxDevice, "assets/fonts/JF-Dot-Kappa20B.ttf", 40, false);
-
+    bool ok = defaultFont.load(
+        gfxDevice,
+        dbStyle.mainTextFontStyle.path,
+        dbStyle.mainTextFontStyle.size,
+        dbStyle.mainTextFontStyle.antialiasing);
+    if (dbStyle.mainTextFontStyle.lineSpacing != 0.f) {
+        defaultFont.lineSpacing = dbStyle.mainTextFontStyle.lineSpacing;
+    }
     assert(ok && "font failed to load");
-    createUI(gfxDevice);
+
+    ok = speakerNameFont.load(
+        gfxDevice,
+        dbStyle.speakerNameTextFontStyle.path,
+        dbStyle.speakerNameTextFontStyle.size,
+        dbStyle.speakerNameTextFontStyle.antialiasing);
+    assert(ok && "font failed to load");
+
+    charsSpeed = dbStyle.charsDisplaySpeed;
+    defaultLetterSoundSpeed = dbStyle.letterSoundSpeed;
+    letterSoundSpeed = defaultLetterSoundSpeed;
+    punctuationDelayTime = dbStyle.punctuationDelay;
+
+    defaultVoiceSound = dbStyle.defaultLetterSoundPath;
+    voiceSound = defaultVoiceSound;
+    showChoicesSoundPath = dbStyle.showChoicesSoundPath;
+    choiceSelectSoundPath = dbStyle.choiceSelectSoundPath;
+    skipTextSoundPath = dbStyle.skipTextSoundPath;
+
+    createUI(dbStyle, gfxDevice);
 }
 
 void DialogueBox::handleInput(const ActionMapping& actionMapping)
@@ -38,7 +123,9 @@ void DialogueBox::handleInput(const ActionMapping& actionMapping)
     static const auto interactAction = actionMapping.getActionTagHash("PrimaryAction");
     if (actionMapping.wasJustPressed(interactAction)) {
         if (!isWholeTextDisplayed()) {
-            audioManager->playSound("assets/sounds/ui/skip_text.wav");
+            if (!skipTextSoundPath.empty()) {
+                audioManager->playSound(skipTextSoundPath);
+            }
             displayWholeText();
         } else if (!hasChoices) {
             advanceTextPressed = true;
@@ -55,7 +142,7 @@ bool isPunctuation(char c)
 
 }
 
-void DialogueBox::update(const glm::vec2& screenSize, float dt)
+void DialogueBox::update(float dt)
 {
     if (!isWholeTextDisplayed()) {
         if (currentTextDelay != 0.f) {
@@ -63,7 +150,7 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             if (delayValue > currentTextDelay) {
                 delayValue = 0.f;
                 currentTextDelay = 0.f;
-                textSoundTriggerValue = textSoundTriggerSpeed;
+                textSoundTriggerValue = letterSoundSpeed;
             } else {
                 return;
             }
@@ -74,7 +161,8 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             numGlyphsToDraw = static_cast<float>(numberOfGlyphs);
         }
 
-        const auto glyphIdx = static_cast<std::size_t>(std::max(std::floor(numGlyphsToDraw), 1.f) - 1);
+        const auto glyphIdx =
+            static_cast<std::size_t>(std::max(std::floor(numGlyphsToDraw), 1.f) - 1);
         // TODO: should do getGlyph(text, charIdx) here
         const auto lastLetter = glyphIdx > 0 ? text[glyphIdx] : '\0';
         bool punctuation = isPunctuation(lastLetter);
@@ -84,10 +172,10 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
             textSoundTriggerValue += dt;
             if (wasPunctuation) {
                 // trigger sound immediately if punctuation was previously displayed
-                textSoundTriggerValue = textSoundTriggerSpeed;
+                textSoundTriggerValue = letterSoundSpeed;
             }
-            if (textSoundTriggerValue >= textSoundTriggerSpeed) {
-                textSoundTriggerValue -= textSoundTriggerSpeed;
+            if (textSoundTriggerValue >= letterSoundSpeed) {
+                textSoundTriggerValue -= letterSoundSpeed;
                 if (!muted && !voiceSound.empty()) {
                     audioManager->playSound(voiceSound);
                 }
@@ -106,7 +194,9 @@ void DialogueBox::update(const glm::vec2& screenSize, float dt)
 
     if (isWholeTextDisplayed() && hasChoices && !choicesDisplayed) {
         setChoicesDisplayed(true);
-        audioManager->playSound("assets/sounds/ui/menu_open.wav");
+        if (!showChoicesSoundPath.empty()) {
+            audioManager->playSound(showChoicesSoundPath);
+        }
     }
 
     if (isWholeTextDisplayed() && !choicesDisplayed) {
@@ -152,7 +242,7 @@ void DialogueBox::resetState()
     setSpeakerName("");
 
     voiceSound = defaultVoiceSound;
-    textSoundTriggerSpeed = 0.08f;
+    letterSoundSpeed = defaultLetterSoundSpeed;
 
     // handle choices
     hasChoices = false;
@@ -171,27 +261,25 @@ void DialogueBox::setSpeakerName(const std::string t)
     getMenuNameTextElement().text = t;
 }
 
-void DialogueBox::createUI(GfxDevice& gfxDevice)
+void DialogueBox::createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice)
 {
-    ui::NineSliceStyle nsStyle;
-
-    JsonFile file(std::filesystem::path{"assets/ui/nine_slice.json"});
-    nsStyle.load(file.getLoader(), gfxDevice);
-
     dialogueBoxUI = std::make_unique<ui::Element>();
-    dialogueBoxUI->relativePosition = {0.075f, 0.1f};
+    dialogueBoxUI->relativePosition = dbStyle.positionAndSize.relativePosition;
+    dialogueBoxUI->offsetPosition = dbStyle.positionAndSize.offsetPosition;
+    dialogueBoxUI->origin = dbStyle.positionAndSize.origin;
     dialogueBoxUI->autoSize = true;
 
-    auto dialogueBox = std::make_unique<ui::NineSliceElement>(nsStyle);
+    auto dialogueBox = std::make_unique<ui::NineSliceElement>(dbStyle.nineSliceStyle);
     dialogueBox->autoSize = true;
 
     const auto fontHeight = defaultFont.lineSpacing;
     { // main text
-        auto mainTextElement = std::make_unique<ui::TextElement>(defaultFont, LinearColor::White());
+        auto mainTextElement =
+            std::make_unique<ui::TextElement>(defaultFont, dbStyle.mainTextColor);
         mainTextElement->tag = MainTextTag;
         { // calculate fixed max size
-            int maxNumCharsLine = 30;
-            int maxLines = 4;
+            int maxNumCharsLine = dbStyle.mainTextMaxNumCharsLine;
+            int maxLines = dbStyle.mainTextMaxLines;
             std::string fixedSizeString{};
             fixedSizeString.reserve(maxNumCharsLine * maxLines + maxLines);
             for (int y = 0; y < maxLines; ++y) {
@@ -205,15 +293,15 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
             mainTextElement->setFixedSize(fixedSizeString);
         }
 
+        mainTextElement->setPositionAndSize(dbStyle.mainTextPositionAndSize);
         // some padding is added on both sides
-        const auto padding = glm::vec2{
-            std::round(fontHeight * 0.6f),
-            std::round(fontHeight * 0.3f),
-        };
+        const auto& padding = dbStyle.mainTextPadding;
+        if (padding != glm::vec2{}) {
+            mainTextElement->offsetPosition = padding;
+            mainTextElement->offsetSize = -padding * 2.f;
+        }
 
-        mainTextElement->offsetPosition = padding;
-        mainTextElement->offsetSize = -padding * 2.f;
-        mainTextElement->shadow = true;
+        mainTextElement->shadow = dbStyle.mainTextShadow;
         dialogueBox->addChild(std::move(mainTextElement));
     }
 
@@ -224,24 +312,17 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
         // place on bottom-left of the dialogue box
         listElement->origin = {0.f, 1.f};
         listElement->relativePosition = {0.f, 1.f};
-        // TODO: don't hardcode in pixels?
-        listElement->offsetPosition = {32.f, -8.f};
-        listElement->offsetSize = {-64.f, -16.f};
 
-        const auto buttonPadding = glm::vec2{8.f, 0.f};
-        const auto bs = ui::ButtonStyle{
-            .font = defaultFont,
-            .normalColor = LinearColor{1.f, 1.f, 1.f},
-            .selectedColor = edbr::rgbToLinear(254, 174, 52),
-            .disabledColor = edbr::rgbToLinear(128, 128, 128),
-            .textAlignment = ui::ButtonStyle::TextAlignment::Left,
-            .padding = buttonPadding,
-            .cursorOffset = {0.f, buttonPadding.y + defaultFont.lineSpacing / 2.f},
-        };
+        const auto& padding = dbStyle.choiceButtonsPadding;
+        listElement->offsetPosition = {padding.x, -padding.y};
+        listElement->offsetSize = {-padding.x * 2.f, -padding.y * 2.f};
 
-        for (int i = 0; i < 2; ++i) {
-            auto choiceButton = std::make_unique<ui::ButtonElement>(bs, "CHOICE", [this, i]() {
-                audioManager->playSound("assets/sounds/ui/menu_select.wav");
+        for (int i = 0; i < NumChoices; ++i) {
+            auto choiceButton = std::make_unique<
+                ui::ButtonElement>(dbStyle.choiceButtonStyle, defaultFont, "", [this, i]() {
+                if (!choiceSelectSoundPath.empty()) {
+                    audioManager->playSound(choiceSelectSoundPath);
+                }
                 choiceSelectionIndex = i;
             });
             choiceButton->tag = (i == 0) ? Choice1Tag : Choice2Tag;
@@ -264,31 +345,33 @@ void DialogueBox::createUI(GfxDevice& gfxDevice)
 
     { // menu/speaker name
         auto menuName =
-            std::make_unique<ui::TextElement>(defaultFont, LinearColor::FromRGB(254, 214, 124));
+            std::make_unique<ui::TextElement>(speakerNameFont, dbStyle.speakerNameTextColor);
         menuName->tag = MenuNameTag;
-        menuName->offsetPosition = {std::round(fontHeight / 2.f), -fontHeight};
-        menuName->shadow = true;
+        menuName->setPositionAndSize(dbStyle.speakerNamePositionAndSize);
+        if (dbStyle.speakerNameTextOffset != glm::vec2{}) {
+            menuName->offsetPosition = dbStyle.speakerNameTextOffset;
+        }
+        menuName->shadow = dbStyle.speakerNameTextShadow;
+
         dialogueBox->addChild(std::move(menuName));
     }
 
     { // more text image
-        const auto moreTextImageId = gfxDevice.loadImageFromFile("assets/images/ui/more_text.png");
+        const auto moreTextImageId = gfxDevice.loadImageFromFile(dbStyle.moreTextImagePath);
         const auto& moreTextImage = gfxDevice.getImage(moreTextImageId);
         auto moreTextImageElement = std::make_unique<ui::ImageElement>(moreTextImage);
         moreTextImageElement->tag = MoreTextImageTag;
+
         moreTextImageElement->origin = glm::vec2{1.f, 1.f};
         moreTextImageElement->relativePosition = glm::vec2{1.f, 1.f};
-        // TODO: set based on image/border size?
-        moreTextImageOffsetPosition = {-16.f, -12.f};
+
+        moreTextImageOffsetPosition = dbStyle.moreTextImageOffset;
         moreTextImageElement->offsetPosition = moreTextImageOffsetPosition;
+
         moreTextImageElement->visible = false;
         dialogueBox->addChild(std::move(moreTextImageElement));
 
-        moreTextImageBouncer = Bouncer({
-            .maxOffset = 2.f,
-            .moveDuration = 0.5f,
-            .tween = glm::quadraticEaseInOut<float>,
-        });
+        moreTextImageBouncer = Bouncer(dbStyle.moreTextImageBouncerParams);
     }
 
     // finish setup
@@ -372,14 +455,8 @@ void DialogueBox::displayDebugInfo()
     EndPropertyTable();
 }
 
-void DialogueBox::setDefaultVoiceSound(const std::string& soundName)
-{
-    defaultVoiceSound = soundName;
-    voiceSound = defaultVoiceSound;
-}
-
-void DialogueBox::setTempVoiceSound(const std::string& soundName)
+void DialogueBox::setTempVoiceSound(const std::string& soundName, float letterSoundSpeed)
 {
     voiceSound = soundName;
-    textSoundTriggerSpeed = 0.15f;
+    this->letterSoundSpeed = letterSoundSpeed != 0 ? letterSoundSpeed : defaultLetterSoundSpeed;
 }

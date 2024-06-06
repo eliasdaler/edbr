@@ -1,0 +1,1 @@
+{"animations":{"idle.down":{"endFrame":5,"frameDuration":0.10000000149011612,"startFrame":4},"idle.side":{"endFrame":1,"frameDuration":0.10000000149011612,"startFrame":0},"idle.up":{"endFrame":3,"frameDuration":0.10000000149011612,"startFrame":2}},"spriteSheet":{"frames":[[0,0,8,8],[8,0,8,8],[16,0,8,8],[0,8,8,8],[8,8,8,8],[16,8,8,8]]}}

@@ -1,0 +1,1 @@
+add_subdirectory(image_resource_builder)

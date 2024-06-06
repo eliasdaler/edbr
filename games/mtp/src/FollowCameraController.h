@@ -42,7 +42,7 @@ public:
     float maxCameraOffsetFactorRun{7.5f};
     float cameraDelay{0.3f};
     bool drawCameraTrackPoint{false};
-    bool smoothSmartCamera{true};
+    bool smoothSmartCamera{false};
 
     float defaultYaw{glm::radians(-135.f)};
     float defaultPitch{glm::radians(-20.f)};

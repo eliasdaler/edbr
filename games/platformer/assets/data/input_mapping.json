@@ -1,0 +1,133 @@
+{
+	"keyboard": {
+		"action": {
+      "Jump": [ "Space" ],
+      "Interact": [ "S" ],
+      "Pause": [ "Escape" ],
+      "CursorLeft": [ "A", "Left" ],
+      "CursorRight": [ "D", "Right" ],
+      "CursorUp": [ "W", "Up" ],
+      "CursorDown": [ "S", "Down" ],
+      "MenuConfirm": [ "F", "Return" ],
+      "PrimaryAction": [ "F", "Return" ],
+      "MenuBack": [ "Escape" ]
+    },
+		"axisButton": [
+			{
+				"key": "A",
+				"tag": "MoveX",
+				"scale": -1.0
+			},
+			{
+				"key": "D",
+				"tag": "MoveX",
+				"scale": 1.0
+			},
+			{
+				"key": "W",
+				"tag": "MoveY",
+				"scale": -1.0
+			},
+			{
+				"key": "S",
+				"tag": "MoveY",
+				"scale": 1.0
+			},
+			{
+				"key": "A",
+				"tag": "CameraMoveX",
+				"scale": -1.0
+			},
+			{
+				"key": "D",
+				"tag": "CameraMoveX",
+				"scale": 1.0
+			},
+			{
+				"key": "W",
+				"tag": "CameraMoveY",
+				"scale": -1.0
+			},
+			{
+				"key": "S",
+				"tag": "CameraMoveY",
+				"scale": 1.0
+			},
+			{
+				"key": "Up",
+				"tag": "CameraRotateY",
+				"scale": 1.0
+			},
+			{
+				"key": "Down",
+				"tag": "CameraRotateY",
+				"scale": -1.0
+			},
+			{
+				"key": "Left",
+				"tag": "CameraRotateX",
+				"scale": -1.0
+			},
+			{
+				"key": "Right",
+				"tag": "CameraRotateX",
+				"scale": 1.0
+			}
+		]
+	},
+	"gamepad": {
+		"action": {
+      "Jump": [ "A" ],
+      "Interact": [ "DPadDown", "LeftY+" ],
+      "Pause": [ "Start" ],
+      "CursorLeft": [ "DPadLeft", "LeftX-" ],
+      "CursorRight": [ "DPadRight", "LeftX+" ],
+      "CursorUp": [ "DPadUp", "LeftY-" ],
+      "CursorDown": [ "DPadDown", "LeftY+" ],
+      "MenuConfirm": [ "A" ],
+      "PrimaryAction": [ "A" ],
+      "MenuBack": [ "B" ]
+    },
+		"axis": [
+			{
+				"axis": "LeftX",
+				"tag": "MoveX"
+			},
+			{
+				"axis": "LeftY",
+				"tag": "MoveY"
+			},
+			{
+				"axis": "RightX",
+				"tag": "CameraMoveX"
+			},
+			{
+				"axis": "RightY",
+				"tag": "CameraMoveY"
+			}
+		],
+		"axisButton": [
+			{
+				"button": "DPadUp",
+				"tag": "MoveY",
+				"scale": -1.0
+			},
+			{
+				"button": "DPadDown",
+				"tag": "MoveY",
+				"scale": 1.0
+			},
+			{
+				"button": "DPadLeft",
+				"tag": "MoveX",
+				"scale": -1.0
+			},
+			{
+				"button": "DPadRight",
+				"tag": "MoveX",
+				"scale": 1.0
+			}
+		]
+	}
+}
+

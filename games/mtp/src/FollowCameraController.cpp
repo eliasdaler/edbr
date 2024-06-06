@@ -2,12 +2,13 @@
 
 #include <edbr/ActionList/ActionWrappers.h>
 #include <edbr/DevTools/Im3dState.h>
+#include <edbr/ECS/Components/MovementComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
 #include <edbr/Graphics/Camera.h>
 #include <edbr/Math/Util.h>
 #include <edbr/Util/CameraUtil.h>
 #include <edbr/Util/Im3dUtil.h>
 
-#include "Components.h"
 #include "PhysicsSystem.h"
 
 #include <im3d.h>

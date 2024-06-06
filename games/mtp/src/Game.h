@@ -81,10 +81,6 @@ public:
     void handlePlayerInput(float dt);
     void handlePlayerInteraction();
 
-    void setEntityTag(entt::handle entity, const std::string& tag);
-    entt::handle findEntityByTag(const std::string& tag);
-    entt::const_handle findEntityByTag(const std::string& tag) const;
-
     entt::const_handle findDefaultCamera();
     void setCurrentCamera(entt::const_handle camera, float transitionTime = 0.f);
     void setCurrentCamera(const std::string& cameraTag, float transitionTime = 0.f);
@@ -95,18 +91,22 @@ public:
     void generateDrawList();
 
     MTPSaveFile& getSaveFile();
+    void writeSaveFile();
+
     const std::string& getCurrentLevelName() const;
     const std::string& getLastSpawnName() const;
 
+    const TextManager& getTextManager() const { return textManager; }
     entt::registry& getEntityRegistry() { return registry; }
-    void stopPlayerMovement();
-    void writeSaveFile();
 
+    // high level functions for scripts
+    void stopPlayerMovement();
+
+    // dialogue
     [[nodiscard]] ActionList say(const LocalizedStringTag& text, entt::handle speaker = {});
     [[nodiscard]] ActionList say(const dialogue::TextToken& textToken, entt::handle speaker = {});
-
     [[nodiscard]] ActionList say(
-        const std::vector<dialogue::TextToken>& textTokens,
+        std::span<const dialogue::TextToken> textTokens,
         entt::handle speaker = {});
 
     [[nodiscard]] ActionList saveGameSequence();
@@ -114,8 +114,6 @@ public:
 
     // Do task with some delay. The taskName should be unique for each task
     void doWithDelay(const std::string& taskName, float delay, std::function<void()> task);
-
-    const TextManager& getTextManager() const { return textManager; }
 
 public:
     // game states
@@ -133,7 +131,6 @@ public:
 
 private:
     void initEntityFactory();
-    void loadPrefabs(const std::filesystem::path& prefabsDir);
     void registerComponents(ComponentFactory& componentFactory);
     void registerComponentDisplayers();
 
@@ -155,7 +152,7 @@ private:
     void initEntityAnimation(entt::handle e);
 
     void destroyNonPersistentEntities();
-    void destroyEntity(entt::handle e, bool removeFromRegistry = true);
+    void destroyEntity(entt::handle e);
 
     void onCollisionStarted(const CharacterCollisionStartedEvent& event);
     void onCollisionEnded(const CharacterCollisionEndedEvent& event);
@@ -182,7 +179,6 @@ private:
     SkeletalAnimationCache animationCache;
 
     entt::registry registry;
-    std::unordered_map<std::string, entt::entity> taggedEntities;
     EntityFactory entityFactory;
     EntityCreator entityCreator;
 

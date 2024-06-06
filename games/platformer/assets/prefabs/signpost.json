@@ -1,0 +1,12 @@
+{
+  "collision": {
+      "group": "NPC",
+      "size": [16, 16]
+  },
+  "sprite": {
+    "texture": "assets/images/signpost.png",
+    "z": -1
+  },
+  "npc": {},
+  "interaction": { "type": "Examine" }
+}

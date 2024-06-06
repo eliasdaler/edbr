@@ -8,9 +8,19 @@
 
 #include <edbr/ActionList/ActionWrappers.h>
 #include <edbr/Camera/FreeCameraController.h>
+
 #include <edbr/ECS/Components/HierarchyComponent.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
+#include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/PersistentComponent.h>
+#include <edbr/ECS/Components/SceneComponent.h>
+#include <edbr/ECS/Components/TagComponent.h>
+#include <edbr/ECS/Components/TransformComponent.h>
+
+#include <edbr/ECS/Systems/MovementSystem.h>
+#include <edbr/ECS/Systems/TransformSystem.h>
+
+#include <edbr/GameCommon/DialogueActions.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/Cubemap.h>
 #include <edbr/Graphics/Letterbox.h>
@@ -67,9 +77,8 @@ void Game::loadAppSettings()
 
 void Game::customInit()
 {
-    inputManager.getActionMapping().loadActions("assets/data/input_actions.json");
-    inputManager.loadMapping("assets/data/input_mapping.json");
     textManager.loadText("en", "assets/text/en.json", "");
+    inputManager.loadMapping("assets/data/input_actions.json", "assets/data/input_mapping.json");
     handleSaveFiles();
 
     animationCache.loadAnimationData("assets/data/animation_data.json");
@@ -130,6 +139,31 @@ void Game::customInit()
             startLoadedGame();
         }
     }
+}
+
+void Game::customCleanup()
+{
+    for (auto entity : registry.view<entt::entity>()) {
+        if (!registry.get<HierarchyComponent>(entity).hasParent()) {
+            destroyEntity({registry, entity});
+        }
+    }
+
+    // unsub from physics events
+    eventManager.removeListener<CharacterCollisionStartedEvent>(this);
+    eventManager.removeListener<CharacterCollisionEndedEvent>(this);
+
+    animationSoundSystem.cleanup(eventManager);
+
+    physicsSystem->cleanup();
+    physicsSystem.reset();
+
+    gfxDevice.waitIdle();
+    im3d.cleanup(gfxDevice);
+    spriteRenderer.cleanup();
+    renderer.cleanup();
+    materialCache.cleanup(gfxDevice);
+    meshCache.cleanup(gfxDevice);
 }
 
 void Game::startNewGame()
@@ -329,7 +363,7 @@ glm::vec2 Game::getMouseGameScreenCoord() const
 void Game::updateGameLogic(float dt)
 {
     // movement
-    movementSystemUpdate(registry, dt);
+    edbr::ecs::movementSystemUpdate(registry, dt);
 
     { // physics
         // get player heading (if player exist)
@@ -361,8 +395,8 @@ void Game::updateGameLogic(float dt)
         }
     }
 
-    transformSystemUpdate(registry, dt);
-    movementSystemPostPhysicsUpdate(registry, dt);
+    edbr::ecs::transformSystemUpdate(registry, dt);
+    edbr::ecs::movementSystemPostPhysicsUpdate(registry, dt);
     if (auto player = entityutil::getPlayerEntity(registry); player.entity() != entt::null) {
         playerAnimationSystemUpdate(player, *physicsSystem, dt);
     }
@@ -445,7 +479,7 @@ void Game::handlePlayerInput(float dt)
         eu::rotateSmoothlyTo(player, targetHeading, 0.12f);
     } else {
         moveDir = {};
-        eu::stopRotation(player);
+        eu::stopKinematicRotation(player);
     }
 
     // handle movement
@@ -475,64 +509,9 @@ void Game::handlePlayerInteraction()
         const auto& tokens = std::get<std::vector<dialogue::TextToken>>(res);
         actionListManager.addActionList(say(tokens, interactEntity));
     } else if (std::holds_alternative<ActionList>(res)) {
-        actionListManager.addActionList(std::move(std::get<ActionList>(res)));
+        auto list = std::move(std::get<ActionList>(res));
+        actionListManager.addActionList(std::move(list));
     }
-}
-
-void Game::customCleanup()
-{
-    for (auto entity : registry.view<entt::entity>()) {
-        if (!registry.get<HierarchyComponent>(entity).hasParent()) {
-            destroyEntity({registry, entity}, false);
-        }
-    }
-    registry.clear();
-
-    // unsub from physics events
-    eventManager.removeListener<CharacterCollisionStartedEvent>(this);
-    eventManager.removeListener<CharacterCollisionEndedEvent>(this);
-
-    animationSoundSystem.cleanup(eventManager);
-
-    physicsSystem->cleanup();
-    physicsSystem.reset();
-
-    gfxDevice.waitIdle();
-    im3d.cleanup(gfxDevice);
-    spriteRenderer.cleanup();
-    renderer.cleanup();
-    materialCache.cleanup(gfxDevice);
-    meshCache.cleanup(gfxDevice);
-}
-
-void Game::setEntityTag(entt::handle e, const std::string& tag)
-{
-    auto& tc = e.get_or_emplace<TagComponent>();
-    if (!tc.tag.empty()) {
-        taggedEntities.erase(tc.tag);
-    }
-
-    tc.tag = tag;
-    auto [it, inserted] = taggedEntities.emplace(tc.tag, e.entity());
-    assert(inserted);
-}
-
-entt::handle Game::findEntityByTag(const std::string& tag)
-{
-    auto it = taggedEntities.find(tag);
-    if (it != taggedEntities.end()) {
-        return entt::handle{registry, it->second};
-    }
-    return {};
-}
-
-entt::const_handle Game::findEntityByTag(const std::string& tag) const
-{
-    auto it = taggedEntities.find(tag);
-    if (it != taggedEntities.end()) {
-        return entt::const_handle{registry, it->second};
-    }
-    return {};
 }
 
 void Game::setCurrentCamera(entt::const_handle cameraEnt, float transitionTime)
@@ -629,9 +608,9 @@ void Game::customDraw()
             drawImGui = false;
         }
 
+        const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
         const auto endFrameProps = GfxDevice::EndFrameProps{
-            .clearColor = gameDrawnInWindow ? edbr::rgbToLinear(97, 120, 159) :
-                                              LinearColor{0.f, 0.f, 0.f, 1.f},
+            .clearColor = gameDrawnInWindow ? devClearBgColor : LinearColor::Black(),
             .copyImageIntoSwapchain = !gameDrawnInWindow,
             .drawImageBlitRect =
                 {gameWindowPos.x, gameWindowPos.y, gameWindowSize.x, gameWindowSize.y},
@@ -740,7 +719,9 @@ void Game::loadLevel(const std::filesystem::path& path)
     const auto& scene = sceneCache.loadOrGetScene(level.getSceneModelPath());
     auto createdEntities = entityCreator.createEntitiesFromScene(scene);
     (void)createdEntities; // maybe will do something with them later...
-    transformSystemUpdate(registry, 0.f); // this will update worldTransforms to actual state
+
+    // this will update worldTransforms to actual state
+    edbr::ecs::transformSystemUpdate(registry, 0.f);
 
     if (loadedFromModel) {
         destroyEntity(eu::getPlayerEntity(registry));
@@ -868,19 +849,11 @@ void Game::initEntityFactory()
         auto e = registry.create();
         registry.emplace<TransformComponent>(e);
         registry.emplace<HierarchyComponent>(e);
+        registry.emplace<SceneComponent>(e);
         return entt::handle(registry, e);
     });
 
     const auto prefabsDir = std::filesystem::path{"assets/prefabs"};
-    loadPrefabs(prefabsDir);
-
-    entityFactory.addMappedPrefabName("guardrail", "static_geometry_no_coll");
-    entityFactory.addMappedPrefabName("stairs", "static_geometry_no_coll");
-    entityFactory.addMappedPrefabName("railing", "static_geometry_no_coll");
-}
-
-void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
-{
     // Automatically load all prefabs from the directory
     // Prefab from "assets/prefabs/npc/guy.json" is named "npc/guy"
     util::foreachFileInDir(prefabsDir, [this, &prefabsDir](const std::filesystem::path& p) {
@@ -888,6 +861,10 @@ void Game::loadPrefabs(const std::filesystem::path& prefabsDir)
         const auto prefabName = relPath.replace_extension("").string();
         entityFactory.registerPrefab(prefabName, p);
     });
+
+    entityFactory.addMappedPrefabName("guardrail", "static_geometry_no_coll");
+    entityFactory.addMappedPrefabName("stairs", "static_geometry_no_coll");
+    entityFactory.addMappedPrefabName("railing", "static_geometry_no_coll");
 }
 
 void Game::destroyNonPersistentEntities()
@@ -901,13 +878,13 @@ void Game::destroyNonPersistentEntities()
         auto e = entt::handle{registry, entity};
         if (!e.get<HierarchyComponent>().hasParent()) {
             if (!e.all_of<PersistentComponent>()) {
-                destroyEntity({registry, entity}, true);
+                destroyEntity({registry, entity});
             }
         }
     }
 }
 
-void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
+void Game::destroyEntity(entt::handle e)
 {
     auto& hc = e.get<HierarchyComponent>();
     if (hc.hasParent()) {
@@ -917,13 +894,7 @@ void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
     }
     // destory children before removing itself
     for (const auto& child : hc.children) {
-        destroyEntity(child, removeFromRegistry);
-    }
-
-    if (auto tcPtr = e.try_get<TagComponent>(); tcPtr) {
-        if (!tcPtr->getTag().empty()) {
-            taggedEntities.erase(tcPtr->getTag());
-        }
+        destroyEntity(child);
     }
 
     if (auto scPtr = e.try_get<SkeletonComponent>(); scPtr) {
@@ -936,9 +907,7 @@ void Game::destroyEntity(entt::handle e, bool removeFromRegistry)
         physicsSystem->onEntityDestroyed(e);
     }
 
-    if (removeFromRegistry) {
-        e.destroy();
-    }
+    e.destroy();
 }
 
 void Game::onCollisionStarted(const CharacterCollisionStartedEvent& event)
@@ -975,7 +944,7 @@ const std::string& Game::getLastSpawnName() const
 void Game::stopPlayerMovement()
 {
     auto player = eu::getPlayerEntity(registry);
-    eu::stopRotation(player);
+    eu::stopKinematicRotation(player);
     physicsSystem->stopCharacterMovement();
 }
 
@@ -994,89 +963,6 @@ LevelScript& Game::getLevelScript()
     return emptyLevelScript;
 }
 
-namespace
-{
-LocalizedStringTag getSpeakerName(entt::handle e)
-{
-    if (auto npcc = e.try_get<NPCComponent>(); npcc) {
-        if (!npcc->name.empty()) {
-            return npcc->name;
-        }
-    }
-    return LST{};
-}
-}
-
-ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
-{
-    using namespace actions;
-
-    // speaker name
-    auto speakerName = textToken.name; // has higher precendence than speaker's name
-    if (speakerName.empty() && speaker.entity() != entt::null) {
-        speakerName = getSpeakerName(speaker);
-    }
-
-    auto dialogueDebugName = fmt::format("Dialogue: {}", textToken.text.tag);
-
-    auto l = ActionList(
-        std::move(dialogueDebugName),
-        doNamed(
-            "Open dialogue",
-            [this, textToken, speakerName]() {
-                auto& db = ui.getDialogueBox();
-
-                if (!speakerName.empty()) {
-                    db.setSpeakerName(textManager.getString(speakerName));
-                }
-
-                // text
-                db.setText(textManager.getString(textToken.text));
-
-                // choices
-                if (!textToken.choices.empty()) {
-                    assert(textToken.choices.size() <= DialogueBox::MaxChoices);
-                    for (std::size_t i = 0; i < textToken.choices.size(); ++i) {
-                        db.setChoiceText(i, textManager.getString(textToken.choices[i]));
-                    }
-                }
-
-                // voice
-                if (!textToken.voiceSound.empty()) {
-                    db.setTempVoiceSound(textToken.voiceSound);
-                }
-
-                // open
-                ui.openDialogueBox();
-            }),
-        waitWhile(
-            "Wait dialogue input",
-            [this](float dt) {
-                auto& db = ui.getDialogueBox();
-                return !ui.getDialogueBox().wantsClose();
-            }),
-        doNamed("Close dialogue box", [this]() { ui.closeDialogueBox(); }));
-
-    auto onChoice = textToken.onChoice;
-    if (onChoice) {
-        l.addAction(actions::make("Dialogue choice", [this, onChoice]() {
-            auto lastChoice = ui.getDialogueBox().getLastChoiceSelectionIndex();
-            return actions::doList(onChoice(lastChoice));
-        }));
-    }
-
-    return l;
-}
-
-ActionList Game::say(const std::vector<dialogue::TextToken>& textTokens, entt::handle speaker)
-{
-    auto l = ActionList("interaction");
-    for (const auto& token : textTokens) {
-        l.addAction(say(token, speaker));
-    }
-    return l;
-}
-
 ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
 {
     const auto textToken = dialogue::TextToken{
@@ -1085,21 +971,33 @@ ActionList Game::say(const LocalizedStringTag& text, entt::handle speaker)
     return say(textToken, speaker);
 }
 
+ActionList Game::say(const dialogue::TextToken& textToken, entt::handle speaker)
+{
+    return say({&textToken, 1}, speaker);
+}
+
+ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::handle speaker)
+{
+    auto speakerName = speaker.entity() == entt::null ? LST{} : entityutil::getNPCName(speaker);
+    return actions::say(textManager, ui, textTokens, speakerName);
+}
+
 [[nodiscard]] ActionList Game::saveGameSequence()
 {
-    std::vector<dialogue::TextToken> tokens{
-        {.text = LST{"DO_YOU_WANT_TO_SAVE"},
-         .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
-         .onChoice =
-             [this](std::size_t index) {
-                 if (index == 0) {
-                     writeSaveFile();
-                     return say(LST{"GAME_SAVED"});
-                 }
-                 return actions::doNothingList();
-             }},
+    const auto token = dialogue::TextToken{
+        .text = LST{"DO_YOU_WANT_TO_SAVE"},
+        .choices = {LST{"YES_CHOICE"}, LST{"NO_CHOICE"}},
+        .onChoice =
+            [this](std::size_t index) {
+                if (index == 0) {
+                    writeSaveFile();
+                    return say(LST{"GAME_SAVED"});
+                }
+                return actions::doNothingList();
+            },
+
     };
-    return say(tokens);
+    return say(token);
 }
 
 void Game::playSound(const std::string& soundName)

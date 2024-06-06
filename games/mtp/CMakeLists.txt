@@ -89,7 +89,7 @@ get_target_property(EDBR_SOURCE_DIR edbr SOURCE_DIR)
 set(EDBR_SHADERS_DIR "${EDBR_SOURCE_DIR}/src/shaders/")
 list(TRANSFORM SHADERS PREPEND "${EDBR_SHADERS_DIR}")
 
-target_shaders(edbr ${SHADERS})
+target_shaders(mtpgame ${SHADERS})
 
 include(CTest)
 if(EDBR_BUILD_TESTING)
@@ -99,7 +99,7 @@ endif()
 
 if(WIN32)
   set_target_properties(mtpgame
-    PROPERTIES 
+    PROPERTIES
       LINK_FLAGS_DEBUG   "/SUBSYSTEM:CONSOLE"
       LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
   )

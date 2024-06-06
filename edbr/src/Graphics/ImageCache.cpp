@@ -2,8 +2,6 @@
 
 #include <edbr/Graphics/GfxDevice.h>
 
-#include <iostream>
-
 ImageCache::ImageCache(GfxDevice& gfxDevice) : gfxDevice(gfxDevice)
 {}
 
@@ -17,13 +15,17 @@ ImageId ImageCache::loadImageFromFile(
         // TODO: calculate some hash to not have to linear search every time?
         if (info.path == path && info.format == format && info.usage == usage &&
             info.mipMap == mipMap) {
-            std::cout << "Already loaded: " << path << std::endl;
+            // std::cout << "Already loaded: " << path << std::endl;
             return id;
         }
     }
 
-    const auto id = getFreeImageId();
     auto image = gfxDevice.loadImageFromFileRaw(path, format, usage, mipMap);
+    if (image.isInitialized() && image.getBindlessId() == errorImageId) {
+        return errorImageId;
+    }
+
+    const auto id = getFreeImageId();
     addImage(id, std::move(image));
 
     loadedImagesInfo.emplace(
@@ -34,7 +36,6 @@ ImageId ImageCache::loadImageFromFile(
             .usage = usage,
             .mipMap = mipMap,
         });
-
     return id;
 }
 

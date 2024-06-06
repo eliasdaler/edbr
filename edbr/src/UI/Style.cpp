@@ -3,6 +3,16 @@
 
 namespace ui
 {
+
+void ElementPositionAndSize::load(const JsonDataLoader& loader)
+{
+    loader.getIfExists("relativePosition", relativePosition);
+    loader.getIfExists("relativeSize", relativeSize);
+    loader.getIfExists("offsetPosition", offsetPosition);
+    loader.getIfExists("offsetSize", offsetSize);
+    loader.getIfExists("origin", origin);
+}
+
 void NineSliceStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 {
     // load texture
@@ -82,6 +92,34 @@ void NineSliceStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
                 (contentsTextureRect.top + contentsTextureRect.height),
         };
     }
+}
+
+void ButtonStyle::load(const JsonDataLoader& loader)
+{
+    loader.get("normalColor", normalColor);
+    loader.get("selectedColor", selectedColor);
+    loader.get("disabledColor", disabledColor);
+
+    std::string taString;
+    loader.get("textAlignment", taString);
+    if (taString == "Left") {
+        textAlignment = TextAlignment::Left;
+    } else if (taString == "Center") {
+        textAlignment = TextAlignment::Center;
+    } else {
+        throw std::runtime_error(fmt::format("unknown alignment type '{}", taString));
+    }
+
+    loader.get("padding", padding);
+    loader.get("cursorOffset", cursorOffset);
+}
+
+void FontStyle::load(const JsonDataLoader& loader)
+{
+    loader.get("path", path);
+    loader.get("size", size);
+    loader.getIfExists("aa", antialiasing);
+    loader.getIfExists("lineSpacing", lineSpacing);
 }
 
 }

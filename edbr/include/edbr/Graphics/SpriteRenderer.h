@@ -23,8 +23,10 @@ public:
     void cleanup();
 
     void beginDrawing();
-    void draw(VkCommandBuffer cmd, const GPUImage& drawImage);
     void endDrawing();
+
+    void draw(VkCommandBuffer cmd, const GPUImage& drawImage);
+    void draw(VkCommandBuffer cmd, const GPUImage& drawImage, const glm::mat4& viewProj);
 
     void drawSprite(
         const Sprite& sprite,
@@ -79,6 +81,7 @@ public:
 
 private:
     GfxDevice& gfxDevice;
+    bool initialized{false};
 
     SpriteDrawingPipeline uiDrawingPipeline;
 

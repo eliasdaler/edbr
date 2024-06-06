@@ -55,6 +55,7 @@ public:
         const LinearColor clearColor{0.f, 0.f, 0.f, 1.f};
         bool copyImageIntoSwapchain{true};
         glm::ivec4 drawImageBlitRect{}; // where to blit draw image to
+        bool drawImageLinearBlit{true}; // if false - nearest filter will be used
         bool drawImGui{true};
     };
     void endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const EndFrameProps& props);
@@ -87,18 +88,22 @@ public:
         const char* debugName = nullptr,
         void* pixelData = nullptr,
         ImageId imageId = NULL_IMAGE_ID);
+
+    // create a color image which can be used as a draw target
+    [[nodiscard]] ImageId createDrawImage(VkFormat format, glm::ivec2 size, const char* debugName);
+
     [[nodiscard]] ImageId loadImageFromFile(
         const std::filesystem::path& path,
         VkFormat format = VK_FORMAT_R8G8B8A8_SRGB,
         VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT,
         bool mipMap = false);
+
     ImageId addImageToCache(GPUImage image);
 
     [[nodiscard]] const GPUImage& getImage(ImageId id) const;
-
     void uploadImageData(const GPUImage& image, void* pixelData, std::uint32_t layer = 0) const;
 
-    ImageId getWhiteTextureID() { return whiteTextureID; }
+    ImageId getWhiteTextureID() { return whiteImageId; }
 
     // createImageRaw is mostly intended for low level usage. In most cases,
     // createImage should be preferred as it will automatically
@@ -167,7 +172,8 @@ private: // data
 
     ImageCache imageCache;
 
-    ImageId whiteTextureID;
+    ImageId whiteImageId{NULL_IMAGE_ID};
+    ImageId errorImageId{NULL_IMAGE_ID};
 
     bool vSync{true};
 };

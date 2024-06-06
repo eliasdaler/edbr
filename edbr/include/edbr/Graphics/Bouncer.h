@@ -4,11 +4,15 @@
 
 #include <glm/gtx/easing.hpp>
 
+class JsonDataLoader;
+
 class Bouncer {
 public:
     using TweenFuncType = std::function<float(float time)>;
 
     struct Params {
+        void load(const JsonDataLoader& loader);
+
         float maxOffset{0.f};
         float moveDuration{0.f};
         TweenFuncType tween = glm::linearInterpolation<float>;
@@ -17,6 +21,7 @@ public:
 public:
     Bouncer() = default;
     Bouncer(Params params);
+
     void update(float dt);
     float getOffset() const { return offset; };
 

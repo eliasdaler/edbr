@@ -43,7 +43,8 @@ void copyImageToImage(
     VkImage source,
     VkImage destination,
     VkExtent2D srcSize,
-    VkExtent2D dstSize);
+    VkExtent2D dstSize,
+    VkFilter filter);
 
 void copyImageToImage(
     VkCommandBuffer cmd,
@@ -53,7 +54,8 @@ void copyImageToImage(
     int destX,
     int destY,
     int destW,
-    int destH);
+    int destH,
+    VkFilter filter);
 
 void generateMipmaps(
     VkCommandBuffer cmd,
@@ -88,6 +90,12 @@ struct RenderInfo {
 };
 
 RenderInfo createRenderingInfo(const RenderingInfoParams& params);
+
+void clearColorImage(
+    VkCommandBuffer cmd,
+    VkExtent2D colorImageExtent,
+    VkImageView colorImageView,
+    const glm::vec4& clearColor);
 
 int sampleCountToInt(VkSampleCountFlagBits count);
 const char* sampleCountToString(VkSampleCountFlagBits count);

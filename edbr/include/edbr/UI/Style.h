@@ -10,7 +10,20 @@ struct Font;
 
 namespace ui
 {
+
+struct ElementPositionAndSize {
+    void load(const JsonDataLoader& loader);
+
+    glm::vec2 relativePosition;
+    glm::vec2 relativeSize{1.f};
+    glm::vec2 offsetPosition;
+    glm::vec2 offsetSize;
+    glm::vec2 origin;
+};
+
 struct NineSliceStyle {
+    void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
+
     std::filesystem::path textureFilename;
     ImageId texture{NULL_IMAGE_ID};
 
@@ -29,14 +42,13 @@ struct NineSliceStyle {
         math::IntRect bottomRightBorder;
     };
     TextureCoords textureCoords;
-
-    void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
 };
 
 struct ButtonStyle {
+    void load(const JsonDataLoader& loader);
+
     const NineSliceStyle* nineSliceStyle{nullptr}; // if null - the button will have invisible
                                                    // border
-    const Font& font;
 
     LinearColor normalColor; // when not selected
     LinearColor selectedColor;
@@ -47,6 +59,15 @@ struct ButtonStyle {
 
     glm::vec2 padding; // padding of text around the nine-patch/invisible frame
     glm::vec2 cursorOffset; // cursor offset relative to top-left corner of the button
+};
+
+struct FontStyle {
+    void load(const JsonDataLoader& loader);
+
+    std::filesystem::path path;
+    int size{16};
+    bool antialiasing{false};
+    float lineSpacing{0.f}; // if not 0 - custom line spacing is used
 };
 
 } // end of namespace ui

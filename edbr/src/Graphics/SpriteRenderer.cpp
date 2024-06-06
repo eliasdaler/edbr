@@ -21,6 +21,7 @@ void SpriteRenderer::init(VkFormat drawImageFormat)
 {
     spriteDrawCommands.reserve(MAX_SPRITES);
     uiDrawingPipeline.init(gfxDevice, drawImageFormat, MAX_SPRITES);
+    initialized = true;
 }
 
 void SpriteRenderer::cleanup()
@@ -30,6 +31,7 @@ void SpriteRenderer::cleanup()
 
 void SpriteRenderer::beginDrawing()
 {
+    assert(initialized && "SpriteRenderer::init not called");
     spriteDrawCommands.clear();
 }
 
@@ -40,16 +42,22 @@ void SpriteRenderer::endDrawing()
 
 void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage)
 {
+    Camera uiCamera;
+    uiCamera.initOrtho2D(static_cast<glm::vec2>(drawImage.getSize2D()));
+    draw(cmd, drawImage, uiCamera.getViewProj());
+}
+
+void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage, const glm::mat4& viewProj)
+{
+    assert(initialized && "SpriteRenderer::init not called");
+    // TODO: check that begin/endFrame are called
+
     TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Sprite renderer", tracy::Color::Purple);
 
     const auto drawImageExtent = drawImage.getExtent2D();
     const auto drawSize = glm::vec2{drawImageExtent.width, drawImageExtent.height};
 
-    Camera uiCamera;
-    uiCamera.initOrtho2D(drawSize);
-    const auto vp = uiCamera.getViewProj();
-
-    uiDrawingPipeline.draw(cmd, gfxDevice, drawImage, vp, spriteDrawCommands);
+    uiDrawingPipeline.draw(cmd, gfxDevice, drawImage, viewProj, spriteDrawCommands);
 }
 
 void SpriteRenderer::drawSprite(
@@ -98,6 +106,7 @@ void SpriteRenderer::drawText(
     const LinearColor& color,
     int maxNumGlyphsToDraw)
 {
+    assert(font.glyphAtlasID != NULL_IMAGE_ID && "font wasn't loaded");
     const auto& atlasTexture = gfxDevice.getImage(font.glyphAtlasID);
     Sprite glyphSprite(atlasTexture);
     glyphSprite.color = color;

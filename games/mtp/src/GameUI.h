@@ -14,6 +14,7 @@
 
 #include <edbr/GameUI/Cursor.h>
 #include <edbr/GameUI/DialogueBox.h>
+#include <edbr/GameUI/IGameUI.h>
 #include <edbr/GameUI/MenuStack.h>
 
 #include "Components.h"
@@ -36,7 +37,7 @@ struct ButtonStyle;
 
 class Game;
 
-class GameUI {
+class GameUI : public IGameUI {
 public:
     struct UIContext {
         const Camera& camera;
@@ -58,7 +59,10 @@ public:
 
     void draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
 
-    DialogueBox& getDialogueBox() { return dialogueBox; }
+    DialogueBox& getDialogueBox() override { return dialogueBox; }
+    void openDialogueBox() override;
+    void closeDialogueBox() override;
+    bool isDialogueBoxOpen() const override;
 
     void doFadeInFromBlack(float duration);
     void doFadeOutToBlack(float duration);
@@ -73,10 +77,6 @@ public:
     void enterPauseMenu();
     void closePauseMenu();
     bool isInPauseMenu() const;
-
-    void openDialogueBox();
-    void closeDialogueBox();
-    bool isDialogueBoxOpen() const;
 
     const Font& getDefaultFont() const { return defaultFont; }
 

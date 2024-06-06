@@ -53,7 +53,7 @@ void GfxDevice::init(SDL_Window* window, const char* appName, const Version& ver
 
     { // create white texture
         std::uint32_t pixel = 0xFFFFFFFF;
-        whiteTextureID = createImage(
+        whiteImageId = createImage(
             {
                 .format = VK_FORMAT_R8G8B8A8_UNORM,
                 .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -61,6 +61,22 @@ void GfxDevice::init(SDL_Window* window, const char* appName, const Version& ver
             },
             "white texture",
             &pixel);
+    }
+
+    { // create error texture (black/magenta checker)
+        const auto black = 0xFF000000;
+        const auto magenta = 0xFFFF00FF;
+
+        std::array<std::uint32_t, 4> pixels{black, magenta, magenta, black};
+        errorImageId = createImage(
+            {
+                .format = VK_FORMAT_R8G8B8A8_UNORM,
+                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                .extent = VkExtent3D{2, 2, 1},
+            },
+            "error texture",
+            pixels.data());
+        imageCache.setErrorImageId(errorImageId);
     }
 
     // Dear ImGui
@@ -83,7 +99,7 @@ void GfxDevice::initVulkan(SDL_Window* window, const char* appName, const Versio
     instance = vkb::InstanceBuilder{}
                    .set_app_name(appName)
                    .set_app_version(appVersion.major, appVersion.major, appVersion.patch)
-                   // .request_validation_layers()
+                   .request_validation_layers()
                    .use_default_debug_messenger()
                    .require_api_version(1, 3, 0)
                    .build()
@@ -262,6 +278,7 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
             cmd, swapchainImage, swapchainLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         swapchainLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
+        const auto filter = props.drawImageLinearBlit ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
         if (props.drawImageBlitRect != glm::ivec4{}) {
             vkutil::copyImageToImage(
                 cmd,
@@ -271,7 +288,8 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
                 props.drawImageBlitRect.x,
                 props.drawImageBlitRect.y,
                 props.drawImageBlitRect.z,
-                props.drawImageBlitRect.w);
+                props.drawImageBlitRect.w,
+                filter);
         } else {
             // will stretch image to swapchain
             vkutil::copyImageToImage(
@@ -279,7 +297,8 @@ void GfxDevice::endFrame(VkCommandBuffer cmd, const GPUImage& drawImage, const E
                 drawImage.image,
                 swapchainImage,
                 drawImage.getExtent2D(),
-                getSwapchainExtent());
+                getSwapchainExtent(),
+                filter);
         }
     }
 
@@ -476,6 +495,28 @@ ImageId GfxDevice::createImage(
     return addImageToCache(std::move(image));
 }
 
+ImageId GfxDevice::createDrawImage(VkFormat format, glm::ivec2 size, const char* debugName)
+{
+    const auto extent = VkExtent3D{
+        .width = (std::uint32_t)size.x,
+        .height = (std::uint32_t)size.y,
+        .depth = 1,
+    };
+
+    VkImageUsageFlags usages{};
+    usages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    usages |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    const auto createImageInfo = vkutil::CreateImageInfo{
+        .format = format,
+        .usage = usages,
+        .extent = extent,
+    };
+    return createImage(createImageInfo, debugName);
+}
+
 ImageId GfxDevice::loadImageFromFile(
     const std::filesystem::path& path,
     VkFormat format,
@@ -639,7 +680,10 @@ GPUImage GfxDevice::loadImageFromFileRaw(
     bool mipMap) const
 {
     auto data = util::loadImage(path);
-    assert(data.pixels);
+    if (!data.pixels) {
+        fmt::println("[error] failed to load image from '{}'", path.string());
+        return getImage(errorImageId);
+    }
 
     auto image = createImageRaw({
         .format = format,

@@ -27,6 +27,7 @@ void to_json(nlohmann::json& j, const glm::vec<2, T>& obj)
 template<typename T>
 void from_json(const nlohmann::json& j, glm::vec<2, T>& obj)
 {
+    assert(j.is_array());
     assert(j.size() == 2);
     obj = {j[0].get<T>(), j[1].get<T>()};
 }
@@ -40,8 +41,14 @@ void to_json(nlohmann::json& j, const glm::vec<3, T>& obj)
 template<typename T>
 void from_json(const nlohmann::json& j, glm::vec<3, T>& obj)
 {
-    assert(j.size() == 3);
-    obj = {j[0].get<T>(), j[1].get<T>(), j[2].get<T>()};
+    assert(j.is_array());
+    if (j.size() == 3) {
+        obj = {j[0].get<T>(), j[1].get<T>(), j[2].get<T>()};
+    } else if (j.size() == 2) {
+        obj = {j[0].get<T>(), j[1].get<T>(), T(0)};
+    } else {
+        throw std::runtime_error("invalid array size: should be 2 or 3");
+    }
 }
 
 template<typename T>

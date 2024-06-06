@@ -2,6 +2,8 @@
 
 #include <imgui.h>
 
+#include <edbr/ECS/Components/MovementComponent.h>
+
 #include "Components.h"
 #include "EntityUtil.h"
 

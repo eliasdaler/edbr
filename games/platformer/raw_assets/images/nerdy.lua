@@ -1,0 +1,5 @@
+return {
+    ["loading"] = {
+        looped = false
+    },
+}

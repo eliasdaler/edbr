@@ -176,7 +176,7 @@ void UIInspector::draw(SpriteRenderer& spriteRenderer) const
     }
     if (focusUIElement) {
         drawBorderAroundElement(
-            spriteRenderer, *focusUIElement, LinearColor{1.f, 0.f, 0.f, 0.5f}, 4.f);
+            spriteRenderer, *focusUIElement, LinearColor{1.f, 0.f, 0.f, 0.5f}, 1.f);
     }
 }
 
@@ -213,7 +213,7 @@ void UIInspector::drawSelectedElement(SpriteRenderer& spriteRenderer) const
         bbColor.b *= v;
         bbColor.a = 0.5f;
     }
-    drawBorderAroundElement(spriteRenderer, element, bbColor, 4.f);
+    drawBorderAroundElement(spriteRenderer, element, bbColor, 1.f);
 }
 
 void UIInspector::drawBorderAroundElement(
@@ -223,5 +223,5 @@ void UIInspector::drawBorderAroundElement(
     float borderWidth) const
 {
     const auto bb = math::FloatRect{element.absolutePosition, element.absoluteSize};
-    spriteRenderer.drawRect(bb, color, borderWidth);
+    spriteRenderer.drawInsetRect(bb, color, borderWidth);
 }

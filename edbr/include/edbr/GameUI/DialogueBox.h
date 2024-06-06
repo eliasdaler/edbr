@@ -5,6 +5,7 @@
 #include <edbr/Graphics/Bouncer.h>
 #include <edbr/Graphics/Font.h>
 #include <edbr/UI/Element.h>
+#include <edbr/UI/Style.h>
 
 class GfxDevice;
 class SpriteRenderer;
@@ -19,13 +20,56 @@ class ButtonElement;
 class AudioManager;
 class ActionMapping;
 
+struct DialogueBoxStyle {
+    void load(const JsonDataLoader& loader, GfxDevice& gfxDevice);
+
+    ui::ElementPositionAndSize positionAndSize;
+    ui::NineSliceStyle nineSliceStyle;
+
+    // main text
+    ui::FontStyle mainTextFontStyle;
+    LinearColor mainTextColor;
+    bool mainTextShadow{false};
+    glm::vec2 mainTextPadding;
+    int mainTextMaxNumCharsLine{};
+    int mainTextMaxLines{};
+    ui::ElementPositionAndSize mainTextPositionAndSize;
+
+    // typewriter
+    float charsDisplaySpeed{15.f};
+    float letterSoundSpeed{0.08f};
+    float punctuationDelay{0.1f};
+
+    // speaker name text
+    ui::FontStyle speakerNameTextFontStyle;
+    LinearColor speakerNameTextColor;
+    glm::vec2 speakerNameTextOffset;
+    bool speakerNameTextShadow{false};
+    ui::ElementPositionAndSize speakerNamePositionAndSize;
+
+    // choice buttons
+    ui::ButtonStyle choiceButtonStyle;
+    glm::vec2 choiceButtonsPadding;
+
+    // more text image
+    std::filesystem::path moreTextImagePath;
+    glm::vec2 moreTextImageOffset; // offset from bottom right corner of dialogue box
+    Bouncer::Params moreTextImageBouncerParams;
+
+    // sounds
+    std::filesystem::path defaultLetterSoundPath;
+    std::filesystem::path choiceSelectSoundPath;
+    std::filesystem::path showChoicesSoundPath;
+    std::filesystem::path skipTextSoundPath;
+};
+
 class DialogueBox {
 public:
-    void init(GfxDevice& gfxDevice, AudioManager& audioManager);
+    void init(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice, AudioManager& audioManager);
 
     void handleInput(const ActionMapping& actionMapping);
 
-    void update(const glm::vec2& screenSize, float dt);
+    void update(float dt);
 
     void draw(SpriteRenderer& spriteRenderer) const;
 
@@ -50,11 +94,10 @@ public:
     static const std::string DialogueBoxMenuTag;
     static const std::size_t MaxChoices = 2;
 
-    void setDefaultVoiceSound(const std::string& soundName);
-    void setTempVoiceSound(const std::string& soundName);
+    void setTempVoiceSound(const std::string& soundName, float letterSoundSpeed);
 
 private:
-    void createUI(GfxDevice& gfxDevice);
+    void createUI(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice);
     ui::TextElement& getMainTextElement();
     ui::TextElement& getMenuNameTextElement();
     ui::ButtonElement& getChoiceButton(std::size_t index);
@@ -63,11 +106,13 @@ private:
     void setChoicesDisplayed(bool b);
 
     Font defaultFont;
+    Font speakerNameFont;
     std::unique_ptr<ui::Element> dialogueBoxUI;
 
     std::string text;
 
-    float textSoundTriggerSpeed{0.08f};
+    float defaultLetterSoundSpeed{0.08f};
+    float letterSoundSpeed{0.08f};
     float textSoundTriggerValue{0.f};
 
     float currentTextDelay{0.f};
@@ -96,8 +141,15 @@ private:
     static const std::string Choice1Tag;
     static const std::string Choice2Tag;
 
+    const int NumChoices = 2;
+
     Bouncer moreTextImageBouncer;
     glm::vec2 moreTextImageOffsetPosition;
 
     AudioManager* audioManager{nullptr};
+
+    // sounds
+    std::filesystem::path showChoicesSoundPath;
+    std::filesystem::path choiceSelectSoundPath;
+    std::filesystem::path skipTextSoundPath;
 };

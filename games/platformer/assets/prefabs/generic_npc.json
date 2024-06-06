@@ -1,0 +1,16 @@
+{
+  "animation": {
+    "data": "crafty"
+  },
+  "sprite": {
+    "texture": "assets/images/crafty.png"
+  },
+  "interaction": {
+    "type": "Talk"
+  },
+  "collision": {
+      "group": "NPC",
+      "size": [12, 16]
+  },
+  "npc": { }
+}
