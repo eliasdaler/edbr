@@ -6,6 +6,8 @@ This is a monorepo and contains both the engine (in `edbr` directory) and variou
 
 Playable demo of cat adventure game: https://eliasdaler.itch.io/project-mtp-dev
 
+The article which explains some implementation details: https://edw.is/learning-vulkan/
+
 ## Build dependencies
 
 * Vulkan SDK
