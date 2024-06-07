@@ -14,6 +14,14 @@ Playable demo of cat adventure game: https://eliasdaler.itch.io/project-mtp-dev
 * CMake 3.21+
 * Linux: whatever SDL2 needs
 
+## License and contributions
+
+This is a "source available" repository and not open source (yet). Feel free to look around and use code for inspiration. When the time comes, I might release this under a more friendly open source license (possibly even public domain).
+
+Feel free to open issues if something doesn't work.
+
+**Sorry, but I currently won't accept any PRs until the project has a real license. It might be hard to re-license it later with external contributions.**
+
 ## Current progress
 
 ![dev_tools](screenshots/10_dev_tools.png)
@@ -50,6 +58,3 @@ https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724
 * Bindless textures (aka descriptor indexing)
 * Using Vulkan Memory Allocator, volk and vk-bootstrap to make the code simpler
 
-## License
-
-This is a "source available" repository and not open source (yet). Feel free to look around and use code for inspiration. When the time comes, I might release this under a more friendly open source license (possibly even public domain).
