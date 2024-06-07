@@ -50,7 +50,7 @@ SoundDevice::SoundDevice()
 
     auto devices = enumerateOpenALDevices();
     for (const auto& d : devices) {
-        // std::cout << "Found OpenAL device: " << d << std::endl;
+        AUDIO_DEBUG_PRINT("Found OpenAL device: {}", d);
     }
 
     const auto defaultDeviceName = alcGetString(NULL, ALC_DEFAULT_ALL_DEVICES_SPECIFIER);
