@@ -1,5 +1,10 @@
 #pragma once
 
+#include <filesystem>
+#include <span>
+#include <string>
+#include <unordered_map>
+
 #include <vulkan/vulkan.h>
 
 #include <glm/vec2.hpp>
