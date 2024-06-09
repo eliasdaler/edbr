@@ -21,7 +21,7 @@
 
 class SpriteRenderer;
 class Camera;
-class AudioManager;
+class IAudioManager;
 class ActionListManager;
 class Action;
 class InputManager;
@@ -47,9 +47,13 @@ public:
     };
 
 public:
-    GameUI(ActionListManager& am, AudioManager& audioManager);
+    GameUI(ActionListManager& am);
 
-    void init(Game& game, GfxDevice& gfxDevice, const glm::ivec2& screenSize);
+    void init(
+        Game& game,
+        GfxDevice& gfxDevice,
+        const glm::ivec2& screenSize,
+        IAudioManager& audioManager);
     bool capturesInput() const;
     void handleInput(const InputManager& inputManager, float dt);
     void update(float dt);
@@ -133,6 +137,7 @@ private:
     glm::vec2 screenSize;
     float fadeLevel{0.f};
 
+    // DI
     ActionListManager& actionListManager;
-    AudioManager& audioManager;
+    IAudioManager* audioManager{nullptr};
 };

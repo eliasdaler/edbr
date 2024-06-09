@@ -93,7 +93,7 @@ void Game::devToolsHandleInput(float dt)
     }
 
     if (kb.wasJustPressed(SDL_SCANCODE_M)) {
-        audioManager.setMuted(!audioManager.isMuted());
+        getAudioManager().setMuted(!getAudioManager().isMuted());
     }
 
     if (kb.wasJustPressed(SDL_SCANCODE_P)) {

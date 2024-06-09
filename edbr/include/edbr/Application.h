@@ -1,7 +1,11 @@
 #pragma once
 
+#include <filesystem>
+#include <memory>
+#include <string>
+
 #include <edbr/ActionList/ActionListManager.h>
-#include <edbr/Audio/AudioManager.h>
+#include <edbr/Audio/IAudioManager.h>
 #include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Input/InputManager.h>
@@ -42,6 +46,8 @@ public:
 
     const Version& getVersion() const { return params.version; }
 
+    IAudioManager& getAudioManager();
+
 protected:
     virtual void loadAppSettings(){};
     virtual void loadDevSettings(const std::filesystem::path& configPath);
@@ -67,9 +73,11 @@ protected:
 
     CLI::App cliApp{};
 
-    AudioManager audioManager;
     InputManager inputManager;
     EventManager eventManager;
     ActionListManager actionListManager;
     TextManager textManager;
+
+private:
+    std::unique_ptr<IAudioManager> audioManager;
 };

@@ -1,6 +1,6 @@
 #include <edbr/GameUI/DialogueBox.h>
 
-#include <edbr/Audio/AudioManager.h>
+#include <edbr/Audio/IAudioManager.h>
 #include <edbr/Core/JsonFile.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Input/ActionMapping.h>
@@ -83,7 +83,7 @@ void DialogueBoxStyle::load(const JsonDataLoader& loader, GfxDevice& gfxDevice)
 void DialogueBox::init(
     const DialogueBoxStyle& dbStyle,
     GfxDevice& gfxDevice,
-    AudioManager& audioManager)
+    IAudioManager& audioManager)
 {
     this->audioManager = &audioManager;
 

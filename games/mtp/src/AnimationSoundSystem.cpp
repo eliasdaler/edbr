@@ -1,6 +1,6 @@
 #include "AnimationSoundSystem.h"
 
-#include <edbr/Audio/AudioManager.h>
+#include <edbr/Audio/IAudioManager.h>
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/Camera.h>
@@ -11,12 +11,13 @@
 
 #include <fmt/format.h>
 
-AnimationSoundSystem::AnimationSoundSystem(AudioManager& audioManager) : audioManager(audioManager)
-{}
-
-void AnimationSoundSystem::init(EventManager& em, const std::filesystem::path& soundsPath)
+void AnimationSoundSystem::init(
+    EventManager& em,
+    IAudioManager& audioManager,
+    const std::filesystem::path& soundsPath)
 {
     assert(std::filesystem::exists(soundsPath));
+    this->audioManager = &audioManager;
     this->soundsPath = soundsPath;
 
     em.addListener(this, &AnimationSoundSystem::onAnimationEvent);
@@ -29,15 +30,17 @@ void AnimationSoundSystem::cleanup(EventManager& em)
 
 void AnimationSoundSystem::update(entt::registry& registry, const Camera& camera, float dt)
 {
+    assert(audioManager && "init not called");
+
     { // update listener transform
         const auto listenerTransform = camera.getTransform();
-        audioManager.setListenerPosition(
+        audioManager->setListenerPosition(
             listenerTransform.getPosition().x,
             listenerTransform.getPosition().y,
             listenerTransform.getPosition().z);
         const auto f = listenerTransform.getLocalFront();
         const auto u = listenerTransform.getLocalUp();
-        audioManager.setListenerOrientation({f.x, f.y, f.z, u.x, u.y, u.z});
+        audioManager->setListenerOrientation({f.x, f.y, f.z, u.x, u.y, u.z});
     }
 
     for (const auto& event : queuedEvents) {
@@ -49,13 +52,13 @@ void AnimationSoundSystem::update(entt::registry& registry, const Camera& camera
             }
         }
         if (soundName.starts_with("step")) {
-            handleStepSounds(audioManager, event.entity, soundName);
+            handleStepSounds(*audioManager, event.entity, soundName);
         } else {
             // TODO: sound component?
             // e.g. to be able to map "step1" to "cat_step1"
             const auto soundPath = soundsPath / (soundName + ".wav");
             const auto& pos = entityutil::getWorldPosition(event.entity);
-            audioManager.playSound(soundPath.string(), pos.x, pos.y, pos.z);
+            audioManager->playSound(soundPath.string(), pos.x, pos.y, pos.z);
         }
     }
     queuedEvents.clear();
@@ -67,7 +70,7 @@ void AnimationSoundSystem::onAnimationEvent(const EntityAnimationEvent& event)
 }
 
 void AnimationSoundSystem::handleStepSounds(
-    AudioManager& am,
+    IAudioManager& am,
     const entt::handle& e,
     const std::string& soundName)
 {

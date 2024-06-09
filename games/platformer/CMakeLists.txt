@@ -44,7 +44,7 @@ set(GAME_ASSETS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 set(GAME_RAW_TEXTURES_PATH "${GAME_RAW_ASSETS_PATH}/images")
 set(GAME_OUT_ANIMATIONS_PATH "${GAME_ASSETS_PATH}/animations")
 set(GAME_OUT_TEXTURES_PATH "${GAME_ASSETS_PATH}/images")
-add_custom_target(platformer_resouces_build ALL
+add_custom_target(TARGET platformer POST_BUILD
   COMMENT "Generating game animations and spritesheets"
   COMMAND $<TARGET_FILE:image_resource_builder> "${GAME_RAW_TEXTURES_PATH}" "${GAME_OUT_ANIMATIONS_PATH}" "${GAME_OUT_TEXTURES_PATH}"
   VERBATIM

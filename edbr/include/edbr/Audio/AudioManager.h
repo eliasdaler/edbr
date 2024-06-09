@@ -11,9 +11,11 @@
 #include <edbr/Audio/Sound.h>
 #include <edbr/Audio/SoundDevice.h>
 
+#include <edbr/Audio/IAudioManager.h>
+
 class SoundCache {
 public:
-    void exit();
+    void cleanup();
 
     std::shared_ptr<nuaudio::SoundBuffer> loadOrGetSound(const std::filesystem::path& path);
 
@@ -21,40 +23,41 @@ private:
     std::unordered_map<std::filesystem::path, std::shared_ptr<nuaudio::SoundBuffer>> sounds;
 };
 
-class AudioManager {
+class AudioManager : public IAudioManager {
 public:
-    void exit();
+    bool init() override;
+    void cleanup() override;
 
-    void loadSettings(const std::filesystem::path& settingsPath);
+    void loadSettings(const std::filesystem::path& settingsPath) override;
+    void setMusicDirectory(const std::filesystem::path& dir) override { musicDirectory = dir; }
+    void setMusicExt(const std::string& ext) override { musicExt = ext; }
 
-    bool playSound(const std::string& name);
-    bool playSound(const std::string& name, float x, float y, float z, float pitch = 1.f);
+    void update() override;
 
-    void stopSound(const std::string& soundTag);
+    // sound
+    bool playSound(const std::string& name) override;
+    bool playSound(const std::string& name, float x, float y, float z, float pitch = 1.f) override;
+    void stopSound(const std::string& soundTag) override;
 
-    void playMusic(const std::string& name);
-    void setMusicVolume(const std::string& name, float value);
+    // music
+    void playMusic(const std::string& name) override;
+    void setMusicVolume(const std::string& name, float value) override;
+    void resumeMusic(const std::string& name) override;
+    void pauseMusic(const std::string& name) override;
+    void stopMusic(const std::string& name) override;
+    bool isMusicPlaying(const std::string& name) const override;
+    float getMusicPosition() const override;
 
-    void resumeMusic(const std::string& name);
-    void pauseMusic(const std::string& name);
-    void stopMusic(const std::string& name);
-    bool isMusicPlaying(const std::string& name) const;
-    float getMusicPosition() const;
-
-    void setListenerPosition(float x, float y, float z);
+    // listener
+    void setListenerPosition(float x, float y, float z) override;
     // orientation = {f_x, f_y, f_z, u_x, u_y, u_z}, where f - forward vector, u - up vector
-    void setListenerOrientation(const std::array<float, 6>& orientation);
+    void setListenerOrientation(const std::array<float, 6>& orientation) override;
 
-    void update();
+    void pauseAllSound(bool pauseMusic = true) override;
+    void resumeAllSound() override;
 
-    void pauseAllSound(bool pauseMusic = true);
-    void resumeAllSound();
-
-    void setMuted(bool muted);
-    bool isMuted() const;
-
-    void setMusicDirectory(const std::filesystem::path& dir) { musicDirectory = dir; }
-    void setMusicExt(const std::string& ext) { musicExt = ext; }
+    void setMuted(bool muted) override;
+    bool isMuted() const override;
 
 private:
     // default stuff
@@ -69,8 +72,6 @@ private:
 
     std::filesystem::path musicDirectory;
     std::string musicExt;
-    std::unordered_map<std::string, nuaudio::Music> musics;
-    nuaudio::Music music;
 
     struct SoundInfo {
         std::unique_ptr<nuaudio::Sound> sound;
@@ -79,4 +80,7 @@ private:
     };
     std::vector<SoundInfo> sounds;
     std::vector<SoundInfo> soundQueue;
+
+    std::unordered_map<std::string, nuaudio::Music> musics;
+    nuaudio::Music music;
 };

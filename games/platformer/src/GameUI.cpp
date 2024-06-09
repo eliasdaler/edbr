@@ -1,6 +1,6 @@
 #include "GameUI.h"
 
-#include <edbr/Audio/AudioManager.h>
+#include <edbr/Audio/IAudioManager.h>
 #include <edbr/Core/JsonFile.h>
 #include <edbr/Graphics/CoordUtil.h>
 #include <edbr/Graphics/GfxDevice.h>
@@ -8,10 +8,10 @@
 
 #include "Components.h"
 
-GameUI::GameUI(AudioManager& audioManager) : menuStack(cursor), audioManager(audioManager)
+GameUI::GameUI() : menuStack(cursor)
 {}
 
-void GameUI::init(GfxDevice& gfxDevice)
+void GameUI::init(GfxDevice& gfxDevice, IAudioManager& audioManager)
 {
     { // dialogue box
         std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
@@ -70,8 +70,10 @@ bool GameUI::capturesInput() const
 
 void GameUI::handleInput(const ActionMapping& am)
 {
+    assert(audioManager && "init not called");
+
     if (cursor.visible) {
-        cursor.handleInput(am, audioManager);
+        cursor.handleInput(am, *audioManager);
     }
 
     if (isDialogueBoxOpen()) {
@@ -105,7 +107,7 @@ void GameUI::closeDialogueBox()
     assert(isDialogueBoxOpen());
     menuStack.popMenu();
     dialogueBox.resetState();
-    audioManager.playSound("assets/sounds/ui/menu_close.wav");
+    audioManager->playSound("assets/sounds/ui/menu_close.wav");
 }
 
 void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx)

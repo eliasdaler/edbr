@@ -1,12 +1,12 @@
 #include <edbr/GameUI/Cursor.h>
 
-#include <edbr/Audio/AudioManager.h>
+#include <edbr/Audio/IAudioManager.h>
 #include <edbr/Graphics/SpriteRenderer.h>
 #include <edbr/Input/ActionMapping.h>
 #include <edbr/UI/Element.h>
 #include <edbr/UI/InputEvent.h>
 
-void Cursor::handleInput(const ActionMapping& am, AudioManager& audioManager)
+void Cursor::handleInput(const ActionMapping& am, IAudioManager& audioManager)
 {
     static const auto cursorUpAction = am.getActionTagHash("CursorUp");
     static const auto cursorDownAction = am.getActionTagHash("CursorDown");

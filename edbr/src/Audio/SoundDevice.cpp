@@ -6,8 +6,6 @@
 #include <AL/efx-presets.h>
 #include <AL/efx.h>
 
-#include <iostream>
-
 #include <cassert>
 #include <cstring>
 
@@ -43,23 +41,32 @@ std::vector<std::string> enumerateOpenALDevices()
 
 }
 
-SoundDevice::SoundDevice()
+bool SoundDevice::init()
 {
-    const auto enumerationPresent = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
-    assert(enumerationPresent);
+    std::vector<std::string> devices;
 
-    auto devices = enumerateOpenALDevices();
-    for (const auto& d : devices) {
-        AUDIO_DEBUG_PRINT("Found OpenAL device: {}", d);
+    const auto enumExtPresent = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
+    if (enumExtPresent) {
+        devices = enumerateOpenALDevices();
+        for (const auto& d : devices) {
+            AUDIO_DEBUG_PRINT("Found OpenAL device: {}", d);
+        }
+    } else {
+        AUDIO_DEBUG_PRINT("ALC_ENUMERATION_EXT is not present");
     }
 
-    const auto defaultDeviceName = alcGetString(NULL, ALC_DEFAULT_ALL_DEVICES_SPECIFIER);
+    // try to open default device
+    const std::string defaultDeviceName = alcGetString(NULL, ALC_DEFAULT_ALL_DEVICES_SPECIFIER);
     AUDIO_DEBUG_PRINT("Default OpenAL device: {}", defaultDeviceName);
-    device = alcOpenDevice(defaultDeviceName);
+    device = alcOpenDevice(defaultDeviceName.c_str());
 
     if (!device) {
         // failed to open default device, try others...
         for (const auto& d : devices) {
+            if (d == defaultDeviceName) {
+                continue;
+            }
+
             AUDIO_DEBUG_PRINT("Trying to open OpenAL device: {}", d);
             device = alcOpenDevice(d.c_str());
             if (device) {
@@ -69,38 +76,41 @@ SoundDevice::SoundDevice()
     }
 
     if (!device) {
-        std::cerr << "ERROR: Failed to create OpenAL device" << std::endl;
+        fmt::println("[error] Failed to create OpenAL device");
+        return false;
     }
 
     loadHRTF();
 
-    if (!context) { // context was created when we loaded HRTF (Emscripten only)
-        if (!alcCall(alcCreateContext, context, device, device, nullptr) || !context) {
-            std::cerr << "ERROR: Could not create OpenAL audio context" << std::endl;
-            std::exit(1);
-        }
+    if (!alcCall(alcCreateContext, context, device, device, nullptr)) {
+        fmt::println("[error] Failed to create OpenAL audio context");
+        return false;
     }
 
     ALCboolean contextMadeCurrent = false;
     if (!alcCall(alcMakeContextCurrent, contextMadeCurrent, device, context) ||
         contextMadeCurrent != ALC_TRUE) {
-        std::cerr << "ERROR: Could not make audio context current" << std::endl;
-        std::exit(1);
+        fmt::println("[error] Failed to make OpenAL audio context current");
+        return false;
     }
 
-    assert(alGetString(AL_VERSION));
-    AUDIO_DEBUG_PRINT("OpenAL version: {}", alGetString(AL_VERSION));
-    AUDIO_DEBUG_PRINT("OpenAL vendor: {}", alGetString(AL_VENDOR));
-    AUDIO_DEBUG_PRINT("OpenAL renderer: {}", alGetString(AL_RENDERER));
+    { // print debug info
+        assert(alGetString(AL_VERSION));
+        AUDIO_DEBUG_PRINT("OpenAL version: {}", alGetString(AL_VERSION));
+        AUDIO_DEBUG_PRINT("OpenAL vendor: {}", alGetString(AL_VENDOR));
+        AUDIO_DEBUG_PRINT("OpenAL renderer: {}", alGetString(AL_RENDERER));
 
-    ALCint srate;
-    alcGetIntegerv(device, ALC_FREQUENCY, 1, &srate);
-    AUDIO_DEBUG_PRINT("Sample rate: {}", srate);
+        ALCint srate;
+        alcGetIntegerv(device, ALC_FREQUENCY, 1, &srate);
+        AUDIO_DEBUG_PRINT("Sample rate: {}", srate);
+    }
 
     // loadReverb();
+
+    return true;
 }
 
-SoundDevice::~SoundDevice()
+void SoundDevice::cleanup()
 {
     ALCboolean contextMadeCurrent = false;
     if (!alcCall(alcMakeContextCurrent, contextMadeCurrent, device, nullptr)) {
@@ -204,6 +214,7 @@ void SoundDevice::loadHRTF()
         attr[i] = 0;
 
         if (!alcResetDeviceSOFT(device, attr))
-            printf("Failed to reset device: %s\n", alcGetString(device, alcGetError(device)));
+            fmt::printf(
+                "[error] failed to reset device: %s\n", alcGetString(device, alcGetError(device)));
     }
 }

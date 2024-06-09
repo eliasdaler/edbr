@@ -17,7 +17,7 @@ class ImageElement;
 class ButtonElement;
 }
 
-class AudioManager;
+class IAudioManager;
 class ActionMapping;
 
 struct DialogueBoxStyle {
@@ -65,7 +65,7 @@ struct DialogueBoxStyle {
 
 class DialogueBox {
 public:
-    void init(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice, AudioManager& audioManager);
+    void init(const DialogueBoxStyle& dbStyle, GfxDevice& gfxDevice, IAudioManager& audioManager);
 
     void handleInput(const ActionMapping& actionMapping);
 
@@ -146,7 +146,8 @@ private:
     Bouncer moreTextImageBouncer;
     glm::vec2 moreTextImageOffsetPosition;
 
-    AudioManager* audioManager{nullptr};
+    // DI
+    IAudioManager* audioManager{nullptr};
 
     // sounds
     std::filesystem::path showChoicesSoundPath;

@@ -43,9 +43,8 @@ Game::Game() :
     spriteRenderer(gfxDevice),
     sceneCache(gfxDevice, meshCache, materialCache, animationCache),
     entityCreator(registry, "static_geometry", entityFactory, sceneCache),
-    animationSoundSystem(audioManager),
     cameraManager(actionListManager),
-    ui(actionListManager, audioManager)
+    ui(actionListManager)
 {}
 
 void Game::defineCLIArgs()
@@ -89,7 +88,7 @@ void Game::customInit()
     renderer.init(params.renderSize);
     spriteRenderer.init(renderer.getDrawImageFormat());
 
-    animationSoundSystem.init(eventManager, "assets/sounds");
+    animationSoundSystem.init(eventManager, getAudioManager(), "assets/sounds");
 
     im3d.init(gfxDevice, renderer.getDrawImageFormat(), renderer.getDepthImageFormat());
 
@@ -111,7 +110,7 @@ void Game::customInit()
     }
 
     // create UI
-    ui.init(*this, gfxDevice, params.renderSize);
+    ui.init(*this, gfxDevice, params.renderSize, getAudioManager());
 
     { // create camera
         static const float aspectRatio = (float)params.renderSize.x / (float)params.renderSize.y;
@@ -132,7 +131,7 @@ void Game::customInit()
     if (!isDevEnvironment) {
         enterMainMenu();
     } else {
-        audioManager.setMuted(true);
+        getAudioManager().setMuted(true);
         if (!saveFileManager.saveFileExists(0)) {
             startNewGame();
         } else {
@@ -264,7 +263,7 @@ void Game::exitToTitle()
 
     // TODO: stop ALL music and sounds
     if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
-        audioManager.stopMusic(bgmPath.string());
+        getAudioManager().stopMusic(bgmPath.string());
     }
 
     // destory level
@@ -791,12 +790,12 @@ ActionList Game::enterLevel(LevelTransitionType ltt)
             "Enter level",
             [this]() {
                 if (newLevelTransitionType == LevelTransitionType::EnterDoor) {
-                    audioManager.playSound("assets/sounds/door_close.wav");
+                    getAudioManager().playSound("assets/sounds/door_close.wav");
                 }
 
                 // play music
                 if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
-                    audioManager.playMusic(bgmPath.string());
+                    getAudioManager().playMusic(bgmPath.string());
                 }
 
                 // handle camera
@@ -828,11 +827,11 @@ ActionList Game::exitLevel(LevelTransitionType ltt)
             [this, ltt]() {
                 playerInputEnabled = false;
                 if (ltt == LevelTransitionType::EnterDoor) {
-                    audioManager.playSound("assets/sounds/door_open.wav");
+                    getAudioManager().playSound("assets/sounds/door_open.wav");
                 }
 
                 if (const auto& bgmPath = level.getBGMPath(); !bgmPath.empty()) {
-                    audioManager.stopMusic(bgmPath.string());
+                    getAudioManager().stopMusic(bgmPath.string());
                 }
 
                 getLevelScript().onLevelExit();
@@ -1002,7 +1001,7 @@ ActionList Game::say(std::span<const dialogue::TextToken> textTokens, entt::hand
 
 void Game::playSound(const std::string& soundName)
 {
-    audioManager.playSound(soundName);
+    getAudioManager().playSound(soundName);
 }
 
 void Game::doWithDelay(const std::string& taskName, float delay, std::function<void()> task)

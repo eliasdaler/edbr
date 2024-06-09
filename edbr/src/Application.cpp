@@ -1,5 +1,7 @@
 #include <edbr/Application.h>
 
+#include <edbr/Audio/AudioManager.h>
+#include <edbr/Audio/NullAudioManager.h>
 #include <edbr/Core/JsonFile.h>
 
 #include <chrono>
@@ -121,6 +123,13 @@ void Application::init(const Params& ps)
         ImGui::GetIO().IniFilename = nullptr;
     }
 
+    audioManager = std::make_unique<AudioManager>();
+    if (!audioManager->init()) {
+        fmt::println("[error] failed to init audio: using null audio manager instead");
+        audioManager = std::make_unique<NullAudioManager>();
+        assert(audioManager->init());
+    }
+
     customInit();
 }
 
@@ -209,7 +218,7 @@ void Application::run()
 
             actionListManager.update(dt, gamePaused);
             eventManager.update();
-            audioManager.update();
+            audioManager->update();
 
             accumulator -= dt;
 
@@ -236,10 +245,17 @@ void Application::cleanup()
 {
     customCleanup();
 
+    audioManager->cleanup();
+
     gfxDevice.cleanup();
     inputManager.cleanup();
 
     SDL_DestroyWindow(window);
     SDL_Quit();
-    audioManager.exit();
+}
+
+IAudioManager& Application::getAudioManager()
+{
+    assert(audioManager && "audio wasn't initialized");
+    return *audioManager;
 }

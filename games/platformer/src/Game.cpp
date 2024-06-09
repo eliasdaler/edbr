@@ -25,7 +25,7 @@
 #include "EntityUtil.h"
 #include "Systems.h"
 
-Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice), ui(audioManager)
+Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
 {}
 
 void Game::customInit()
@@ -39,7 +39,7 @@ void Game::customInit()
 
     devToolsFont.load(gfxDevice, "assets/fonts/at01.ttf", 16, false);
 
-    ui.init(gfxDevice);
+    ui.init(gfxDevice, getAudioManager());
     uiInspector.setInspectedUI(ui.getDialogueBox().getRootElement());
 
     loadAnimations("assets/animations");
@@ -151,7 +151,7 @@ void Game::customUpdate(float dt)
     auto player = entityutil::getPlayerEntity(registry);
     const auto& animator = player.get<SpriteAnimationComponent>().animator;
     if (animator.hasFrameChanged() && animator.getCurrentFrame() == 2) {
-        audioManager.playSound("assets/sounds/step.wav");
+        getAudioManager().playSound("assets/sounds/step.wav");
     }
 
     // update camera

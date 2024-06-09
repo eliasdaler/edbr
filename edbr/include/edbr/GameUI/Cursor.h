@@ -6,7 +6,7 @@
 #include <edbr/Graphics/Sprite.h>
 
 class ActionMapping;
-class AudioManager;
+class IAudioManager;
 class SpriteRenderer;
 
 namespace ui
@@ -15,7 +15,7 @@ struct Element;
 }
 
 struct Cursor {
-    void handleInput(const ActionMapping& am, AudioManager& audioManager);
+    void handleInput(const ActionMapping& am, IAudioManager& audioManager);
     void update(float dt);
     void draw(SpriteRenderer& spriteRenderer) const;
 

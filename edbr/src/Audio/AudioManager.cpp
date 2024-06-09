@@ -9,10 +9,12 @@
 
 #define EDBR_LOG_ERROR fmt::println
 
-void SoundCache::exit()
+void SoundCache::cleanup()
 {
-    sounds.clear(); // need to do this before destroying OpenAL device
-                    // (before AudioManager gets destroyed)
+    // Needs to be called before calling device.cleanup(),
+    // otherwise OpenAL device will be destroyed first and
+    // alDeleteBuffers call will be invalid.
+    sounds.clear();
 }
 
 std::shared_ptr<nuaudio::SoundBuffer> SoundCache::loadOrGetSound(const std::filesystem::path& path)
@@ -31,7 +33,12 @@ std::shared_ptr<nuaudio::SoundBuffer> SoundCache::loadOrGetSound(const std::file
     return it2.first->second;
 }
 
-void AudioManager::exit()
+bool AudioManager::init()
+{
+    return device.init();
+}
+
+void AudioManager::cleanup()
 {
     for (auto& sound : sounds) {
         sound.sound->stop();
@@ -44,7 +51,9 @@ void AudioManager::exit()
     }
 
     musics.clear();
-    soundCache.exit();
+    soundCache.cleanup();
+
+    device.cleanup();
 }
 
 void AudioManager::loadSettings(const std::filesystem::path& settingsPath)

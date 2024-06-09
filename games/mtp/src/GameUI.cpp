@@ -28,12 +28,16 @@
 
 #include "Game.h"
 
-GameUI::GameUI(ActionListManager& am, AudioManager& audioManager) :
-    menuStack(cursor), actionListManager(am), audioManager(audioManager)
+GameUI::GameUI(ActionListManager& am) : menuStack(cursor), actionListManager(am)
 {}
 
-void GameUI::init(Game& game, GfxDevice& gfxDevice, const glm::ivec2& screenSize)
+void GameUI::init(
+    Game& game,
+    GfxDevice& gfxDevice,
+    const glm::ivec2& screenSize,
+    IAudioManager& audioManager)
 {
+    this->audioManager = &audioManager;
     this->onScreenSizeChanged(screenSize);
 
     // bool ok = defaultFont.load(gfxDevice, "assets/fonts/DejaVuSerif.ttf", 20, neededCodePoints);
@@ -126,11 +130,13 @@ bool GameUI::capturesInput() const
 
 void GameUI::handleInput(const InputManager& inputManager, float dt)
 {
+    assert(audioManager && "init not called");
+
     const auto& am = inputManager.getActionMapping();
     static const auto menuBackAction = am.getActionTagHash("MenuBack");
 
     if (cursor.visible) {
-        cursor.handleInput(am, audioManager);
+        cursor.handleInput(am, *audioManager);
     }
 
     if (menuStack.hasMenus()) {
@@ -139,7 +145,7 @@ void GameUI::handleInput(const InputManager& inputManager, float dt)
         } else if (!isInPauseMenu()) { // pause menu inputs handled by the game itself
             if (am.wasJustPressed(menuBackAction)) {
                 menuStack.menuGoBack();
-                audioManager.playSound("assets/sounds/ui/menu_close.wav");
+                audioManager->playSound("assets/sounds/ui/menu_close.wav");
             }
         }
     }
@@ -486,14 +492,14 @@ void GameUI::enterPauseMenu()
 {
     assert(!menuStack.hasMenus());
     menuStack.pushMenu(*pauseMenu);
-    audioManager.playSound("assets/sounds/ui/pause.wav");
+    audioManager->playSound("assets/sounds/ui/pause.wav");
 }
 
 void GameUI::closePauseMenu()
 {
     assert(isInPauseMenu());
     menuStack.popMenu();
-    audioManager.playSound("assets/sounds/ui/menu_close.wav");
+    audioManager->playSound("assets/sounds/ui/menu_close.wav");
 }
 
 bool GameUI::isInPauseMenu() const
@@ -514,7 +520,7 @@ void GameUI::closeDialogueBox()
     assert(isDialogueBoxOpen());
     menuStack.popMenu();
     dialogueBox.resetState();
-    audioManager.playSound("assets/sounds/ui/menu_close.wav");
+    audioManager->playSound("assets/sounds/ui/menu_close.wav");
 }
 
 std::unique_ptr<ui::ButtonElement> GameUI::makeSimpleButton(
@@ -523,7 +529,7 @@ std::unique_ptr<ui::ButtonElement> GameUI::makeSimpleButton(
     std::function<void()> onPressed)
 {
     return std::make_unique<ui::ButtonElement>(buttonStyle, defaultFont, text, [this, onPressed]() {
-        audioManager.playSound("assets/sounds/ui/menu_select.wav");
+        audioManager->playSound("assets/sounds/ui/menu_select.wav");
         onPressed();
     });
 }

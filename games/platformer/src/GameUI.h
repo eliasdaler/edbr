@@ -19,8 +19,8 @@ public:
     };
 
 public:
-    GameUI(AudioManager& audioManager);
-    void init(GfxDevice& gfxDevice);
+    GameUI();
+    void init(GfxDevice& gfxDevice, IAudioManager& audioManager);
 
     bool capturesInput() const;
     void handleInput(const ActionMapping& am);
@@ -39,7 +39,9 @@ private:
     Font defaultFont;
     Cursor cursor;
     MenuStack menuStack;
-    AudioManager& audioManager;
+
+    // DI
+    IAudioManager* audioManager;
 
     Sprite examineTipSprite;
     Sprite talkTipSprite;

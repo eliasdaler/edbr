@@ -8,8 +8,8 @@
 
 class SoundDevice {
 public:
-    SoundDevice();
-    ~SoundDevice();
+    bool init();
+    void cleanup();
 
     ALCdevice* getDevice() const { return device; }
     ALCcontext* getContext() const { return context; }

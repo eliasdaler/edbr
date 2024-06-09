@@ -9,11 +9,14 @@
 class AudioManager;
 class EventManager;
 class Camera;
+class IAudioManager;
 
 class AnimationSoundSystem {
 public:
-    AnimationSoundSystem(AudioManager& audioManager);
-    void init(EventManager& em, const std::filesystem::path& soundsPath);
+    void init(
+        EventManager& em,
+        IAudioManager& audioManager,
+        const std::filesystem::path& soundsPath);
     void cleanup(EventManager& em);
 
     void update(entt::registry& registry, const Camera& camera, float dt);
@@ -21,12 +24,12 @@ public:
 private:
     void onAnimationEvent(const EntityAnimationEvent& event);
 
-    void handleStepSounds(AudioManager& am, const entt::handle& e, const std::string& soundName);
+    void handleStepSounds(IAudioManager& am, const entt::handle& e, const std::string& soundName);
 
     std::vector<EntityAnimationEvent> queuedEvents;
 
     std::mt19937 randomEngine;
-    AudioManager& audioManager;
+    IAudioManager* audioManager{nullptr};
 
     std::filesystem::path soundsPath;
 };
