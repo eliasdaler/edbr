@@ -2,6 +2,7 @@
 
 #include <edbr/Graphics/FrustumCulling.h>
 #include <edbr/Graphics/GfxDevice.h>
+#include <edbr/Graphics/MaterialCache.h>
 #include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/MeshDrawCommand.h>
 #include <edbr/Graphics/Vulkan/Init.h>
@@ -55,6 +56,7 @@ void MeshPipeline::draw(
     VkExtent2D renderExtent,
     const GfxDevice& gfxDevice,
     const MeshCache& meshCache,
+    const MaterialCache& materialCache,
     const Camera& camera,
     const GPUBuffer& sceneDataBuffer,
     const std::vector<MeshDrawCommand>& drawCommands,
@@ -79,7 +81,6 @@ void MeshPipeline::draw(
     };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    auto prevMaterialIdx = NULL_MATERIAL_ID;
     auto prevMeshId = NULL_MESH_ID;
 
     const auto frustum = edge::createFrustumFromCamera(camera);
@@ -91,10 +92,6 @@ void MeshPipeline::draw(
         }
 
         const auto& mesh = meshCache.getMesh(dc.meshId);
-        if (mesh.materialId != prevMaterialIdx) {
-            prevMaterialIdx = mesh.materialId;
-        }
-
         if (dc.meshId != prevMeshId) {
             prevMeshId = dc.meshId;
             vkCmdBindIndexBuffer(cmd, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -105,7 +102,9 @@ void MeshPipeline::draw(
             .sceneDataBuffer = sceneDataBuffer.address,
             .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                              mesh.vertexBuffer.address,
-            .materialId = (std::uint32_t)mesh.materialId,
+            .materialId = mesh.materialId != NULL_MATERIAL_ID ?
+                              (std::uint32_t)mesh.materialId :
+                              (std::uint32_t)materialCache.getPlaceholderMaterialId(),
         };
         vkCmdPushConstants(
             cmd,

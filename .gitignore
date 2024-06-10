@@ -4,3 +4,7 @@ build-release/
 build-static/
 .cache/
 *.blend1
+
+# private levels / content that doesn't belong to me
+games/mtp/assets/models/levels/cool_house/
+games/mtp/assets/levels/cool_house.json

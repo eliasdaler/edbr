@@ -269,6 +269,7 @@ void GameRenderer::draw(VkCommandBuffer cmd, const Camera& camera, const SceneDa
             drawImage.getExtent2D(),
             gfxDevice,
             meshCache,
+            materialCache,
             camera,
             sceneDataBuffer.getBuffer(),
             meshDrawCommands,
@@ -508,6 +509,7 @@ void GameRenderer::drawMesh(MeshId id, const glm::mat4& transform, bool castShad
     const auto& mesh = meshCache.getMesh(id);
     const auto worldBoundingSphere =
         edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, false);
+    assert(mesh.materialId != NULL_MATERIAL_ID);
 
     meshDrawCommands.push_back(MeshDrawCommand{
         .meshId = id,
@@ -530,6 +532,7 @@ void GameRenderer::drawSkinnedMesh(
     for (std::size_t i = 0; i < meshes.size(); ++i) {
         const auto& mesh = meshCache.getMesh(meshes[i]);
         assert(mesh.hasSkeleton);
+        assert(mesh.materialId != NULL_MATERIAL_ID);
 
         const auto worldBoundingSphere =
             edge::calculateBoundingSphereWorld(transform, mesh.boundingSphere, true);

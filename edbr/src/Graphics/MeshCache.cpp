@@ -7,6 +7,8 @@
 
 MeshId MeshCache::addMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh, MaterialId materialId)
 {
+    assert(materialId != NULL_MATERIAL_ID);
+
     auto gpuMesh = GPUMesh{
         .numVertices = (std::uint32_t)cpuMesh.vertices.size(),
         .numIndices = (std::uint32_t)cpuMesh.indices.size(),

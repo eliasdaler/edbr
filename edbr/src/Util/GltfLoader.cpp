@@ -646,10 +646,11 @@ Scene loadGltfFile(
             }
 
             // upload to GPU
-            auto materialId = NULL_MATERIAL_ID;
+            auto materialId = materialCache.getPlaceholderMaterialId();
             if (gltfPrimitive.material != -1) {
                 materialId = materialMapping.at(gltfPrimitive.material);
             }
+
             const auto meshId = meshCache.addMesh(gfxDevice, cpuMesh, materialId);
             mesh.primitives[primitiveIdx] = meshId;
             scene.cpuMeshes.emplace(meshId, std::move(cpuMesh));

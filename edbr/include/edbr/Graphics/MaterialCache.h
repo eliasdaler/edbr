@@ -20,6 +20,7 @@ public:
     const Material& getMaterial(MaterialId id) const;
 
     MaterialId getFreeMaterialId() const;
+    MaterialId getPlaceholderMaterialId() const;
 
     const GPUBuffer& getMaterialDataBuffer() const { return materialDataBuffer; }
     VkDeviceAddress getMaterialDataBufferAddress() const { return materialDataBuffer.address; }
@@ -29,6 +30,9 @@ private:
 
     static const auto MAX_MATERIALS = 1000;
     GPUBuffer materialDataBuffer;
+
+    // material which is used for meshes without materials
+    MaterialId placeholderMaterialId{NULL_MATERIAL_ID};
 
     ImageId defaultNormalMapTextureID{NULL_IMAGE_ID};
 };

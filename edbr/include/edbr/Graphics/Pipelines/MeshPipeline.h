@@ -8,6 +8,7 @@
 
 class GfxDevice;
 class MeshCache;
+class MaterialCache;
 class Camera;
 struct GPUImage;
 struct GPUBuffer;
@@ -27,6 +28,7 @@ public:
         VkExtent2D renderExtent,
         const GfxDevice& gfxDevice,
         const MeshCache& meshCache,
+        const MaterialCache& materialCache,
         const Camera& camera,
         const GPUBuffer& sceneDataBuffer,
         const std::vector<MeshDrawCommand>& drawCommands,

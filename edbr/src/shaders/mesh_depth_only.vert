@@ -9,8 +9,8 @@ layout (location = 0) out vec2 outUV;
 
 layout (push_constant) uniform constants
 {
-	mat4 mvp;
-	VertexBuffer vertexBuffer;
+    mat4 mvp;
+    VertexBuffer vertexBuffer;
     MaterialsBuffer materials;
     uint materialID;
 } pcs;

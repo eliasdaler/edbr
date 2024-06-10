@@ -21,6 +21,9 @@ void MaterialCache::init(GfxDevice& gfxDevice)
             "normal map placeholder texture",
             &normal);
     }
+
+    Material placeholderMaterial{.name = "PLACEHOLDER_MATERIAL"};
+    placeholderMaterialId = addMaterial(gfxDevice, placeholderMaterial);
 }
 
 void MaterialCache::cleanup(GfxDevice& gfxDevice)
@@ -63,4 +66,10 @@ const Material& MaterialCache::getMaterial(MaterialId id) const
 MaterialId MaterialCache::getFreeMaterialId() const
 {
     return materials.size();
+}
+
+MaterialId MaterialCache::getPlaceholderMaterialId() const
+{
+    assert(placeholderMaterialId != NULL_MATERIAL_ID && "MaterialCache::init not called");
+    return placeholderMaterialId;
 }
