@@ -1,0 +1,5 @@
+{
+  "windowSize": [1024, 896],
+  "renderResolution": [256, 224],
+  "vSync": true
+}

@@ -26,6 +26,27 @@
       "gravityFactor": 1.5,
       "smallJumpFactor": 4.0
     }
+  },
+  "face": {
+    "facesTexturesDir": "assets/models/cato_faces",
+    "defaultFace": "idle",
+    "faces": {
+      "angry": "face_angry",
+      "angryBlink": "face_angry_blink",
+      "blink": "face_chill",
+      "chill": "face_chill",
+      "idle": "face_default",
+      "think": "face_think"
+    }
+  },
+  "blink": {
+    "blinkPeriod": 3.0,
+    "blinkHold": 0.15,
+    "faces": {
+      "angry": "angryBlink",
+      "idle": "blink",
+      "think": "angryBlink"
+    }
   }
 }
 

@@ -3,6 +3,7 @@
 #include <edbr/DevTools/ImGuiPropertyTable.h>
 
 #include "Components.h"
+#include "EntityUtil.h"
 
 #include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
@@ -25,7 +26,7 @@ void Game::registerComponentDisplayers()
 
     edbr::registerMetaInfoComponentDisplayer(eid);
 
-    eid.registerDisplayer("Scene", [](entt::const_handle e, const SceneComponent& sc) {
+    eid.registerDisplayer("Scene", [](entt::handle e, const SceneComponent& sc) {
         BeginPropertyTable();
         {
             DisplayProperty("Prefab scene name", sc.sceneName);
@@ -37,7 +38,7 @@ void Game::registerComponentDisplayers()
 
     edbr::registerTagComponentDisplayer(eid);
 
-    eid.registerDisplayer("Name", [](entt::const_handle e, const NameComponent& nc) {
+    eid.registerDisplayer("Name", [](entt::handle e, const NameComponent& nc) {
         BeginPropertyTable();
         if (!nc.name.empty()) {
             DisplayProperty("Name", nc.name);
@@ -45,7 +46,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Transform", [](entt::const_handle e, const TransformComponent& tc) {
+    eid.registerDisplayer("Transform", [](entt::handle e, const TransformComponent& tc) {
         BeginPropertyTable();
         {
             DisplayProperty("Position", tc.transform.getPosition());
@@ -59,7 +60,7 @@ void Game::registerComponentDisplayers()
 
     eid.registerDisplayer(
         "Physics",
-        [this](entt::const_handle e, const PhysicsComponent& pc) {
+        [this](entt::handle e, const PhysicsComponent& pc) {
             BeginPropertyTable();
             {
                 DisplayProperty("bodyId", pc.bodyId.GetIndex());
@@ -145,7 +146,7 @@ void Game::registerComponentDisplayers()
 
     eid.registerDisplayer(
         "Mesh",
-        [](entt::const_handle e, const MeshComponent& mc) {
+        [](entt::handle e, const MeshComponent& mc) {
             BeginPropertyTable();
             {
                 DisplayProperty("Cast shadow", mc.castShadow);
@@ -157,7 +158,7 @@ void Game::registerComponentDisplayers()
         },
         EntityInfoDisplayer::DisplayStyle::CollapsedByDefault);
 
-    eid.registerDisplayer("Skeleton", [](entt::const_handle e, const SkeletonComponent& sc) {
+    eid.registerDisplayer("Skeleton", [](entt::handle e, const SkeletonComponent& sc) {
         const auto& animator = sc.skeletonAnimator;
         BeginPropertyTable();
         {
@@ -170,7 +171,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Light", [](entt::const_handle e, const LightComponent& lc) {
+    eid.registerDisplayer("Light", [](entt::handle e, const LightComponent& lc) {
         const auto& light = lc.light;
 
         const auto lightTypeString = [](LightType lt) {
@@ -209,13 +210,13 @@ void Game::registerComponentDisplayers()
 
     edbr::registerNPCComponentDisplayer(eid);
 
-    eid.registerEmptyDisplayer<CameraComponent>("Camera", [this](entt::const_handle e) {
+    eid.registerEmptyDisplayer<CameraComponent>("Camera", [this](entt::handle e) {
         if (ImGui::Button("Make current")) {
             setCurrentCamera(e);
         }
     });
 
-    eid.registerDisplayer("Interact", [](entt::const_handle e, const InteractComponent& ic) {
+    eid.registerDisplayer("Interact", [](entt::handle e, const InteractComponent& ic) {
         BeginPropertyTable();
         {
             const auto typeString = [](InteractComponent::Type t) {
@@ -235,7 +236,7 @@ void Game::registerComponentDisplayers()
 
     eid.registerDisplayer(
         "AnimationEventSound",
-        [](entt::const_handle e, const AnimationEventSoundComponent& sc) {
+        [](entt::handle e, const AnimationEventSoundComponent& sc) {
             BeginPropertyTable();
             {
                 for (const auto& [event, sound] : sc.eventSounds) {
@@ -245,4 +246,39 @@ void Game::registerComponentDisplayers()
             EndPropertyTable();
         },
         EntityInfoDisplayer::DisplayStyle::CollapsedByDefault);
+
+    eid.registerDisplayer("Face", [](entt::handle e, const FaceComponent& fc) {
+        BeginPropertyTable();
+
+        {
+            DisplayProperty("Face mesh index", fc.faceMeshIndex);
+            DisplayProperty("Default", fc.defaultFace);
+        }
+
+        {
+            DisplayPropertyCustomBegin("Face");
+            if (ImGui::BeginCombo("##Face", fc.currentFace.c_str())) {
+                for (const auto& [faceName, faceData] : fc.faces) {
+                    bool isSelected = (fc.currentFace == faceName);
+                    if (ImGui::Selectable(faceName.c_str(), isSelected)) {
+                        entityutil::setFace(e, faceName);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        EndPropertyTable();
+    });
+
+    eid.registerDisplayer("Blink", [](entt::handle e, const BlinkComponent& bc) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("blinkPeriod", bc.blinkPeriod);
+            DisplayProperty("blinkHold", bc.blinkHold);
+            DisplayProperty("timer", bc.timer);
+            DisplayProperty("isBlinking", bc.isBlinking);
+        }
+        EndPropertyTable();
+    });
 }

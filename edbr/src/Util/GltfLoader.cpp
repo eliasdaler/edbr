@@ -541,10 +541,8 @@ LightType fromGLTFLightType(const std::string& lt)
 
 float gltfIntensityConvert(float intensity)
 {
-    // not accurate conversion, but will do for now
     const auto PBR_WATTS_TO_LUMENS = 683.f;
-    // should be 4*PI, but it's too much
-    return intensity / (PBR_WATTS_TO_LUMENS * glm::pi<float>());
+    return intensity / PBR_WATTS_TO_LUMENS;
 }
 
 Light loadLight(const tinygltf::Light& tLight)
@@ -556,6 +554,12 @@ Light loadLight(const tinygltf::Light& tLight)
     light.intensity = gltfIntensityConvert((float)tLight.intensity);
     light.range = (float)tLight.range;
     light.setConeAngles((float)tLight.spot.innerConeAngle, (float)tLight.spot.outerConeAngle);
+
+    // HACK: for some reason this makes point light intensities closer to Blender's
+    if (light.type == LightType::Point) {
+        light.intensity /= 1.75f;
+    }
+
     return light;
 }
 
@@ -636,6 +640,7 @@ Scene loadGltfFile(
     for (const auto& gltfMesh : gltfModel.meshes) {
         SceneMesh mesh;
         mesh.primitives.resize(gltfMesh.primitives.size());
+        mesh.primitiveMaterials.resize(gltfMesh.primitives.size());
         for (std::size_t primitiveIdx = 0; primitiveIdx < gltfMesh.primitives.size();
              ++primitiveIdx) {
             // load on CPU
@@ -651,8 +656,9 @@ Scene loadGltfFile(
                 materialId = materialMapping.at(gltfPrimitive.material);
             }
 
-            const auto meshId = meshCache.addMesh(gfxDevice, cpuMesh, materialId);
+            const auto meshId = meshCache.addMesh(gfxDevice, cpuMesh);
             mesh.primitives[primitiveIdx] = meshId;
+            mesh.primitiveMaterials[primitiveIdx] = materialId;
             scene.cpuMeshes.emplace(meshId, std::move(cpuMesh));
         }
         scene.meshes.push_back(std::move(mesh));

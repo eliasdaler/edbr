@@ -71,7 +71,7 @@ public:
 
     void update(float dt);
 
-    void draw(SpriteRenderer& spriteRenderer) const;
+    void draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const;
 
     void setText(std::string t);
     void setSpeakerName(std::string t);

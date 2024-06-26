@@ -39,8 +39,7 @@ namespace eu = entityutil;
 
 Game::Game() :
     Application(),
-    renderer(gfxDevice, meshCache, materialCache),
-    spriteRenderer(gfxDevice),
+    renderer(meshCache, materialCache),
     sceneCache(gfxDevice, meshCache, materialCache, animationCache),
     entityCreator(registry, "static_geometry", entityFactory, sceneCache),
     cameraManager(actionListManager),
@@ -59,7 +58,7 @@ void Game::loadAppSettings()
     const std::filesystem::path appSettingsPath{"assets/data/default_app_settings.json"};
     JsonFile file(appSettingsPath);
     if (!file.isGood()) {
-        fmt::println("failed to load dev settings from {}", appSettingsPath.string());
+        fmt::println("failed to load app settings from {}", appSettingsPath.string());
         return;
     }
 
@@ -85,8 +84,8 @@ void Game::customInit()
     skyboxDir = "assets/images/skybox";
 
     materialCache.init(gfxDevice);
-    renderer.init(params.renderSize);
-    spriteRenderer.init(renderer.getDrawImageFormat());
+    renderer.init(gfxDevice, params.renderSize);
+    spriteRenderer.init(gfxDevice, renderer.getDrawImageFormat());
 
     animationSoundSystem.init(eventManager, getAudioManager(), "assets/sounds");
 
@@ -159,10 +158,15 @@ void Game::customCleanup()
 
     gfxDevice.waitIdle();
     im3d.cleanup(gfxDevice);
-    spriteRenderer.cleanup();
-    renderer.cleanup();
+    spriteRenderer.cleanup(gfxDevice);
+    renderer.cleanup(gfxDevice);
     materialCache.cleanup(gfxDevice);
     meshCache.cleanup(gfxDevice);
+}
+
+ImageId Game::getMainDrawImageId() const
+{
+    return renderer.getFinalDrawImageId();
 }
 
 void Game::startNewGame()
@@ -307,8 +311,9 @@ void Game::customUpdate(float dt)
     }
 
     if (!gameDrawnInWindow) {
-        const auto blitRect = util::
-            calculateLetterbox(renderer.getDrawImage().getSize2D(), gfxDevice.getSwapchainSize());
+        const auto drawImageSize = renderer.getDrawImage(gfxDevice).getSize2D();
+        const auto swapchainSize = gfxDevice.getSwapchainSize();
+        const auto blitRect = util::calculateLetterbox(drawImageSize, swapchainSize, true);
         gameWindowPos = {blitRect.x, blitRect.y};
         gameWindowSize = {blitRect.z, blitRect.w};
     }
@@ -400,6 +405,7 @@ void Game::updateGameLogic(float dt)
         playerAnimationSystemUpdate(player, *physicsSystem, dt);
     }
     skeletonAnimationSystemUpdate(registry, eventManager, dt);
+    blinkSystemUpdate(registry, dt);
 
     // camera update
     cameraManager.update(camera, dt);
@@ -582,15 +588,15 @@ void Game::customDraw()
         }
 
         auto cmd = gfxDevice.beginFrame();
-        renderer.draw(cmd, camera, sceneData);
+        renderer.draw(cmd, gfxDevice, camera, sceneData);
 
+        const auto& drawImage = renderer.getDrawImage(gfxDevice);
         { // UI
             vkutil::cmdBeginLabel(cmd, "UI");
-            spriteRenderer.draw(cmd, renderer.getDrawImage());
+            spriteRenderer.draw(cmd, gfxDevice, drawImage);
             vkutil::cmdEndLabel(cmd);
         }
 
-        const auto& drawImage = renderer.getDrawImage();
         { // Im3D
             vkutil::cmdBeginLabel(cmd, "im3d");
             im3d.draw(
@@ -598,7 +604,7 @@ void Game::customDraw()
                 gfxDevice,
                 drawImage.imageView,
                 drawImage.getExtent2D(),
-                renderer.getDepthImage().imageView);
+                renderer.getDepthImage(gfxDevice).imageView);
             vkutil::cmdEndLabel(cmd);
         }
 
@@ -622,7 +628,7 @@ void Game::customDraw()
 
 void Game::generateDrawList()
 {
-    renderer.beginDrawing();
+    renderer.beginDrawing(gfxDevice);
 
     // add lights
     const auto lights = registry.view<TransformComponent, LightComponent>();
@@ -639,7 +645,7 @@ void Game::generateDrawList()
             const auto meshTransform = mc.meshTransforms[i].isIdentity() ?
                                            tc.worldTransform :
                                            tc.worldTransform * mc.meshTransforms[i].asMatrix();
-            renderer.drawMesh(mc.meshes[i], meshTransform, mc.castShadow);
+            renderer.drawMesh(mc.meshes[i], meshTransform, mc.meshMaterials[i], mc.castShadow);
         }
     }
 
@@ -647,8 +653,16 @@ void Game::generateDrawList()
     const auto skinnedMeshes =
         registry.view<TransformComponent, MeshComponent, SkeletonComponent>();
     for (const auto&& [e, tc, mc, sc] : skinnedMeshes.each()) {
-        renderer.drawSkinnedMesh(
-            mc.meshes, sc.skinnedMeshes, tc.worldTransform, sc.skeletonAnimator.getJointMatrices());
+        const auto jointMatricesStartIndex =
+            renderer.appendJointMatrices(gfxDevice, sc.skeletonAnimator.getJointMatrices());
+        for (std::size_t i = 0; i < mc.meshes.size(); ++i) {
+            renderer.drawSkinnedMesh(
+                mc.meshes[i],
+                tc.worldTransform,
+                mc.meshMaterials[i],
+                sc.skinnedMeshes[i],
+                jointMatricesStartIndex);
+        }
 #ifndef NDEBUG
         // 1. Not all meshes for the entity might be skinned
         // 2. Different meshes can have different joint matrices sets
@@ -676,7 +690,7 @@ void Game::generateDrawList()
                 uiCtx.interactionType = ic.type;
             }
         }
-        ui.draw(spriteRenderer, uiCtx);
+        ui.draw(gfxDevice, spriteRenderer, uiCtx);
         devToolsDrawUI(spriteRenderer);
         spriteRenderer.endDrawing();
     }
@@ -898,7 +912,7 @@ void Game::destroyEntity(entt::handle e)
 
     if (auto scPtr = e.try_get<SkeletonComponent>(); scPtr) {
         for (const auto& skinnedMesh : scPtr->skinnedMeshes) {
-            renderer.getGfxDevice().destroyBuffer(skinnedMesh.skinnedVertexBuffer);
+            gfxDevice.destroyBuffer(skinnedMesh.skinnedVertexBuffer);
         }
     }
 

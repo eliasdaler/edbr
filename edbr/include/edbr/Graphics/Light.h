@@ -7,6 +7,7 @@
 #include <glm/vec3.hpp>
 
 #include <edbr/Graphics/Color.h>
+#include <edbr/Graphics/IdTypes.h>
 
 enum class LightType {
     None,
@@ -14,6 +15,13 @@ enum class LightType {
     Point,
     Spot,
 };
+
+namespace edbr
+{
+inline constexpr int TYPE_DIRECTIONAL_LIGHT = 0;
+inline constexpr int TYPE_POINT_LIGHT = 1;
+inline constexpr int TYPE_SPOT_LIGHT = 2;
+}
 
 struct Light {
     std::string name;
@@ -32,19 +40,16 @@ struct Light {
         scaleOffset.y = -std::cos(outerConeAngle) * scaleOffset.x;
     }
 
-    int getShaderType() const
+    int getGPUType() const
     {
         // see light.glsl - should be the same!
-        constexpr int TYPE_DIRECTIONAL_LIGHT = 0;
-        constexpr int TYPE_POINT_LIGHT = 1;
-        constexpr int TYPE_SPOT_LIGHT = 2;
         switch (type) {
         case LightType::Directional:
-            return TYPE_DIRECTIONAL_LIGHT;
+            return edbr::TYPE_DIRECTIONAL_LIGHT;
         case LightType::Point:
-            return TYPE_POINT_LIGHT;
+            return edbr::TYPE_POINT_LIGHT;
         case LightType::Spot:
-            return TYPE_SPOT_LIGHT;
+            return edbr::TYPE_SPOT_LIGHT;
         default:
             assert(false);
         }
@@ -63,6 +68,6 @@ struct GPULightData {
     LinearColorNoAlpha color;
     float intensity;
     glm::vec2 scaleOffset;
-    float shadowMapIndex;
+    ImageId shadowMapID;
     float unused;
 };

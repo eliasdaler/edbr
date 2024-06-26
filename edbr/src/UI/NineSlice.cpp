@@ -48,6 +48,7 @@ namespace
 }
 
 void NineSlice::draw(
+    GfxDevice& gfxDevice,
     SpriteRenderer& spriteRenderer,
     const glm::vec2& position,
     const glm::vec2& size) const
@@ -69,7 +70,7 @@ void NineSlice::draw(
     // 4 - contents
     // ... etc.
 
-    const auto& texture = spriteRenderer.getGfxDevice().getImage(style.texture);
+    const auto& texture = gfxDevice.getImage(style.texture);
 
     assert(style.texture && "style was not set?");
     const auto ts = texture.getSize2D();
@@ -78,13 +79,14 @@ void NineSlice::draw(
 
     // top left corner
     sprite.setTextureRect(style.textureCoords.topLeftCorner);
-    spriteRenderer.drawSprite(sprite, position);
+    spriteRenderer.drawSprite(gfxDevice, sprite, position);
 
     // top border
     sprite.setTextureRect(style.textureCoords.topBorder);
     float topBorderWidth =
         size.x - style.textureCoords.topLeftCorner.width - style.textureCoords.topRightCorner.width;
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position + glm::vec2{(float)style.textureCoords.topLeftCorner.width, 0.f},
         0.f,
@@ -93,6 +95,7 @@ void NineSlice::draw(
     // top right corner
     sprite.setTextureRect(style.textureCoords.topRightCorner);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position + glm::vec2{style.textureCoords.topLeftCorner.width + topBorderWidth, 0.f});
 
@@ -101,6 +104,7 @@ void NineSlice::draw(
                              style.textureCoords.bottomLeftCorner.height;
     sprite.setTextureRect(style.textureCoords.leftBorder);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position + glm::vec2{0.f, style.textureCoords.topLeftCorner.height},
         0.f,
@@ -109,6 +113,7 @@ void NineSlice::draw(
     // contents
     sprite.setTextureRect(style.textureCoords.contents);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position +
             glm::vec2{
@@ -120,6 +125,7 @@ void NineSlice::draw(
     // right border
     sprite.setTextureRect(style.textureCoords.rightBorder);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position +
             glm::vec2{
@@ -131,12 +137,14 @@ void NineSlice::draw(
     // bottom left corner
     sprite.setTextureRect(style.textureCoords.bottomLeftCorner);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position + glm::vec2{0.f, leftBorderHeight + style.textureCoords.topLeftCorner.height});
 
     // bottom border
     sprite.setTextureRect(style.textureCoords.bottomBorder);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position +
             glm::vec2{
@@ -148,6 +156,7 @@ void NineSlice::draw(
     // bottom right corner
     sprite.setTextureRect(style.textureCoords.bottomRightBorder);
     spriteRenderer.drawSprite(
+        gfxDevice,
         sprite,
         position + glm::vec2{
                        style.textureCoords.topLeftCorner.width + topBorderWidth,

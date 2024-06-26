@@ -153,7 +153,7 @@ void Game::devToolsUpdate(float dt)
     if (gameDrawnInWindow) {
         const auto windowFlags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize;
         if (ImGui::Begin(gameWindowLabel, nullptr, windowFlags)) {
-            auto& drawImage = renderer.getDrawImage();
+            auto& drawImage = renderer.getDrawImage(gfxDevice);
             const auto cursorPos = ImGui::GetCursorScreenPos();
             gameWindowPos = glm::ivec2{(int)cursorPos.x, (int)cursorPos.y};
             gameWindowSize = drawImage.getSize2D();
@@ -270,7 +270,7 @@ void Game::devToolsUpdate(float dt)
         }
 
         if (ImGui::CollapsingHeader("Renderer settings")) {
-            renderer.updateDevTools(dt);
+            renderer.updateDevTools(gfxDevice, dt);
         }
     }
     ImGui::End();
@@ -465,9 +465,12 @@ void Game::devToolsDrawUI(SpriteRenderer& spriteRenderer)
 {
     if (devPaused) {
         spriteRenderer.drawInsetRect(
-            {{}, static_cast<glm::vec2>(getGameScreenSize())}, LinearColor{1.f, 1.f, 1.f}, 4.f);
-        spriteRenderer
-            .drawText(ui.getDefaultFont(), "Paused", {32.f, 32.f}, LinearColor{1.f, 1.f, 1.f});
+            gfxDevice,
+            {{}, static_cast<glm::vec2>(getGameScreenSize())},
+            LinearColor{1.f, 1.f, 1.f},
+            4.f);
+        spriteRenderer.drawText(
+            gfxDevice, ui.getDefaultFont(), "Paused", {32.f, 32.f}, LinearColor{1.f, 1.f, 1.f});
     }
     if (freeCameraMode) {
         // spriteRenderer

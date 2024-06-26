@@ -51,6 +51,20 @@ void Game::registerComponents(ComponentFactory& cf)
         [](entt::handle e, AnimationEventSoundComponent& sc, const JsonDataLoader& loader) {
             sc.eventSounds = loader.getLoader("events").getKeyValueMapString();
         });
+
+    cf.registerComponentLoader(
+        "face", [](entt::handle e, FaceComponent& fc, const JsonDataLoader& loader) {
+            loader.get("facesTexturesDir", fc.facesTexturesDir);
+            fc.facesFilenames = loader.getLoader("faces").getKeyValueMapString();
+            loader.get("defaultFace", fc.defaultFace);
+        });
+
+    cf.registerComponentLoader(
+        "blink", [](entt::handle e, BlinkComponent& bc, const JsonDataLoader& loader) {
+            loader.get("blinkPeriod", bc.blinkPeriod);
+            loader.get("blinkHold", bc.blinkHold);
+            bc.faces = loader.getLoader("faces").getKeyValueMapString();
+        });
 }
 
 namespace

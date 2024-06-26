@@ -166,38 +166,40 @@ void UIInspector::showSelectedElementInfo()
     EndPropertyTable();
 }
 
-void UIInspector::draw(SpriteRenderer& spriteRenderer) const
+void UIInspector::draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const
 {
     if (inspectedUIElement && drawUIElementBoundingBoxes) {
-        drawBoundingBoxes(spriteRenderer, *inspectedUIElement);
+        drawBoundingBoxes(gfxDevice, spriteRenderer, *inspectedUIElement);
     }
     if (selectedUIElement) {
-        drawSelectedElement(spriteRenderer);
+        drawSelectedElement(gfxDevice, spriteRenderer);
     }
     if (focusUIElement) {
         drawBorderAroundElement(
-            spriteRenderer, *focusUIElement, LinearColor{1.f, 0.f, 0.f, 0.5f}, 1.f);
+            gfxDevice, spriteRenderer, *focusUIElement, LinearColor{1.f, 0.f, 0.f, 0.5f}, 1.f);
     }
 }
 
-void UIInspector::drawBoundingBoxes(SpriteRenderer& spriteRenderer, const ui::Element& element)
-    const
+void UIInspector::drawBoundingBoxes(
+    GfxDevice& gfxDevice,
+    SpriteRenderer& spriteRenderer,
+    const ui::Element& element) const
 {
     const auto bb = math::FloatRect{element.absolutePosition, element.absoluteSize};
 
     auto bbColor =
         edbr::rgbToLinear(util::pickRandomColor(util::LightColorsPalette, (void*)&element));
     bbColor.a = 0.25f;
-    spriteRenderer.drawFilledRect(bb, bbColor);
+    spriteRenderer.drawFilledRect(gfxDevice, bb, bbColor);
     bbColor.a = 1.f;
-    spriteRenderer.drawInsetRect(bb, bbColor);
+    spriteRenderer.drawInsetRect(gfxDevice, bb, bbColor);
 
     for (const auto& childPtr : element.children) {
-        drawBoundingBoxes(spriteRenderer, *childPtr);
+        drawBoundingBoxes(gfxDevice, spriteRenderer, *childPtr);
     }
 }
 
-void UIInspector::drawSelectedElement(SpriteRenderer& spriteRenderer) const
+void UIInspector::drawSelectedElement(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const
 {
     assert(hasSelectedElement());
     const auto& element = *selectedUIElement;
@@ -213,15 +215,16 @@ void UIInspector::drawSelectedElement(SpriteRenderer& spriteRenderer) const
         bbColor.b *= v;
         bbColor.a = 0.5f;
     }
-    drawBorderAroundElement(spriteRenderer, element, bbColor, 1.f);
+    drawBorderAroundElement(gfxDevice, spriteRenderer, element, bbColor, 1.f);
 }
 
 void UIInspector::drawBorderAroundElement(
+    GfxDevice& gfxDevice,
     SpriteRenderer& spriteRenderer,
     const ui::Element& element,
     const LinearColor& color,
     float borderWidth) const
 {
     const auto bb = math::FloatRect{element.absolutePosition, element.absoluteSize};
-    spriteRenderer.drawInsetRect(bb, color, borderWidth);
+    spriteRenderer.drawInsetRect(gfxDevice, bb, color, borderWidth);
 }

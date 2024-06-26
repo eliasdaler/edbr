@@ -26,6 +26,7 @@ public:
 
 private:
     std::unordered_map<std::string, Scene> sceneCache;
+
     GfxDevice& gfxDevice;
     MeshCache& meshCache;
     MaterialCache& materialCache;

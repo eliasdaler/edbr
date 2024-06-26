@@ -14,7 +14,7 @@ namespace edbr
 {
 void registerMetaInfoComponentDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer("Meta", [](entt::const_handle e, const MetaInfoComponent& tc) {
+    eid.registerDisplayer("Meta", [](entt::handle e, const MetaInfoComponent& tc) {
         BeginPropertyTable();
         {
             DisplayProperty("Prefab", tc.prefabName);
@@ -25,7 +25,7 @@ void registerMetaInfoComponentDisplayer(EntityInfoDisplayer& eid)
 
 void registerTagComponentDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer("Tag", [](entt::const_handle e, const TagComponent& tc) {
+    eid.registerDisplayer("Tag", [](entt::handle e, const TagComponent& tc) {
         BeginPropertyTable();
         DisplayProperty("Tag", tc.tag);
         EndPropertyTable();
@@ -34,7 +34,7 @@ void registerTagComponentDisplayer(EntityInfoDisplayer& eid)
 
 void registerMovementComponentDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer("Movement", [](entt::const_handle e, const MovementComponent& mc) {
+    eid.registerDisplayer("Movement", [](entt::handle e, const MovementComponent& mc) {
         BeginPropertyTable();
         {
             DisplayProperty("MaxSpeed", mc.maxSpeed);
@@ -54,7 +54,7 @@ void registerMovementComponentDisplayer(EntityInfoDisplayer& eid)
 
 void registerNPCComponentDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer("NPC", [](entt::const_handle e, const NPCComponent& npcc) {
+    eid.registerDisplayer("NPC", [](entt::handle e, const NPCComponent& npcc) {
         BeginPropertyTable();
         {
             if (!npcc.name.tag.empty()) {

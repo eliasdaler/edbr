@@ -41,6 +41,8 @@ public:
     void customUpdate(float dt) override;
     void customDraw() override;
 
+    ImageId getMainDrawImageId() const override { return drawImageId; }
+
 public:
     // high level functions for scripts
     [[nodiscard]] ActionList say(const LocalizedStringTag& text, entt::handle speaker = {});

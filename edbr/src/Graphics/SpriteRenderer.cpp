@@ -14,17 +14,14 @@ glm::vec2 getSpriteSize(const Sprite& sprite)
 }
 }
 
-SpriteRenderer::SpriteRenderer(GfxDevice& gfxDevice) : gfxDevice(gfxDevice)
-{}
-
-void SpriteRenderer::init(VkFormat drawImageFormat)
+void SpriteRenderer::init(GfxDevice& gfxDevice, VkFormat drawImageFormat)
 {
     spriteDrawCommands.reserve(MAX_SPRITES);
     uiDrawingPipeline.init(gfxDevice, drawImageFormat, MAX_SPRITES);
     initialized = true;
 }
 
-void SpriteRenderer::cleanup()
+void SpriteRenderer::cleanup(GfxDevice& gfxDevice)
 {
     uiDrawingPipeline.cleanup(gfxDevice);
 }
@@ -40,14 +37,18 @@ void SpriteRenderer::endDrawing()
     // do nothing
 }
 
-void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage)
+void SpriteRenderer::draw(VkCommandBuffer cmd, GfxDevice& gfxDevice, const GPUImage& drawImage)
 {
     Camera uiCamera;
     uiCamera.initOrtho2D(static_cast<glm::vec2>(drawImage.getSize2D()));
-    draw(cmd, drawImage, uiCamera.getViewProj());
+    draw(cmd, gfxDevice, drawImage, uiCamera.getViewProj());
 }
 
-void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage, const glm::mat4& viewProj)
+void SpriteRenderer::draw(
+    VkCommandBuffer cmd,
+    GfxDevice& gfxDevice,
+    const GPUImage& drawImage,
+    const glm::mat4& viewProj)
 {
     assert(initialized && "SpriteRenderer::init not called");
     // TODO: check that begin/endFrame are called
@@ -61,6 +62,7 @@ void SpriteRenderer::draw(VkCommandBuffer cmd, const GPUImage& drawImage, const 
 }
 
 void SpriteRenderer::drawSprite(
+    GfxDevice& gfxDevice,
     const Sprite& sprite,
     const glm::vec2& position,
     float rotation,
@@ -74,10 +76,11 @@ void SpriteRenderer::drawSprite(
     }
     transform.setScale(glm::vec3{scale, 1.f});
 
-    drawSprite(sprite, transform.asMatrix(), shaderId);
+    drawSprite(gfxDevice, sprite, transform.asMatrix(), shaderId);
 }
 
 void SpriteRenderer::drawSprite(
+    GfxDevice& gfxDevice,
     const Sprite& sprite,
     const glm::mat4& transform,
     std::uint32_t shaderId)
@@ -100,6 +103,7 @@ void SpriteRenderer::drawSprite(
 }
 
 void SpriteRenderer::drawText(
+    GfxDevice& gfxDevice,
     const Font& font,
     const std::string& text,
     const glm::vec2& pos,
@@ -114,19 +118,20 @@ void SpriteRenderer::drawText(
     int numGlyphsDrawn = 0;
     font.forEachGlyph(
         text,
-        [this, &glyphSprite, &pos, &numGlyphsDrawn, &maxNumGlyphsToDraw](
+        [this, &gfxDevice, &glyphSprite, &pos, &numGlyphsDrawn, &maxNumGlyphsToDraw](
             const glm::vec2& glyphPos, const glm::vec2& uv0, const glm::vec2& uv1) {
             if (numGlyphsDrawn >= maxNumGlyphsToDraw) {
                 return;
             }
             glyphSprite.uv0 = uv0;
             glyphSprite.uv1 = uv1;
-            drawSprite(glyphSprite, pos + glyphPos, 0.f, glm::vec2{1.f}, textShaderId);
+            drawSprite(gfxDevice, glyphSprite, pos + glyphPos, 0.f, glm::vec2{1.f}, textShaderId);
             ++numGlyphsDrawn;
         });
 }
 
 void SpriteRenderer::drawRect(
+    GfxDevice& gfxDevice,
     const math::FloatRect& rect,
     const LinearColor& color,
     float borderWidth,
@@ -203,7 +208,7 @@ void SpriteRenderer::drawRect(
         transform.setScale(glm::vec3{borderRect.getSize(), 1.f});
 
         const auto tm = parentTransform.asMatrix() * transform.asMatrix();
-        drawSprite(rectSprite, tm);
+        drawSprite(gfxDevice, rectSprite, tm);
         /* More efficient code, but a bit harder to understand
            rectSprite.pivot = -borderRect.getPosition() / borderRect.getSize();
            drawSprite(rectSprite, rect.getTopLeftCorner(), rotation, borderRect.getSize() * scale);
@@ -212,6 +217,7 @@ void SpriteRenderer::drawRect(
 }
 
 void SpriteRenderer::drawInsetRect(
+    GfxDevice& gfxDevice,
     const math::FloatRect& rect,
     const LinearColor& color,
     float borderWidth,
@@ -219,10 +225,11 @@ void SpriteRenderer::drawInsetRect(
     const glm::vec2& scale,
     const glm::vec2& pivot)
 {
-    drawRect(rect, color, borderWidth, rotation, scale, pivot, true);
+    drawRect(gfxDevice, rect, color, borderWidth, rotation, scale, pivot, true);
 }
 
 void SpriteRenderer::drawFilledRect(
+    GfxDevice& gfxDevice,
     const math::FloatRect& rect,
     const LinearColor& color,
     float rotation,
@@ -235,5 +242,5 @@ void SpriteRenderer::drawFilledRect(
     rectSprite.color = color;
     rectSprite.pivot = pivot;
 
-    drawSprite(rectSprite, rect.getTopLeftCorner(), rotation, rect.getSize() * scale);
+    drawSprite(gfxDevice, rectSprite, rect.getTopLeftCorner(), rotation, rect.getSize() * scale);
 }

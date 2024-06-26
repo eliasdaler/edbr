@@ -108,11 +108,11 @@ void Cursor::update(float dt)
     }
 }
 
-void Cursor::draw(SpriteRenderer& spriteRenderer) const
+void Cursor::draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const
 {
     if (selection) {
         const auto cursorPos = selection->absolutePosition + selection->cursorSelectionOffset +
                                glm::vec2{bouncer.getOffset(), 0.f};
-        spriteRenderer.drawSprite(sprite, cursorPos, 0.f, spriteScale);
+        spriteRenderer.drawSprite(gfxDevice, sprite, cursorPos, 0.f, spriteScale);
     }
 }

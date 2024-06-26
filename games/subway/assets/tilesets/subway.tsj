@@ -1,0 +1,14 @@
+{ "columns":10,
+ "image":"subway.png",
+ "imageheight":160,
+ "imagewidth":160,
+ "margin":0,
+ "name":"subway",
+ "spacing":0,
+ "tilecount":100,
+ "tiledversion":"1.10.2",
+ "tileheight":16,
+ "tilewidth":16,
+ "type":"tileset",
+ "version":"1.10"
+}

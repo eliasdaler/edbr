@@ -18,17 +18,21 @@ public:
     static const std::uint32_t textShaderId = 1;
 
 public:
-    SpriteRenderer(GfxDevice& gfxDevice);
-    void init(VkFormat drawImageFormat);
-    void cleanup();
+    void init(GfxDevice& gfxDevice, VkFormat drawImageFormat);
+    void cleanup(GfxDevice& gfxDevice);
 
     void beginDrawing();
     void endDrawing();
 
-    void draw(VkCommandBuffer cmd, const GPUImage& drawImage);
-    void draw(VkCommandBuffer cmd, const GPUImage& drawImage, const glm::mat4& viewProj);
+    void draw(VkCommandBuffer cmd, GfxDevice& gfxDevice, const GPUImage& drawImage);
+    void draw(
+        VkCommandBuffer cmd,
+        GfxDevice& gfxDevice,
+        const GPUImage& drawImage,
+        const glm::mat4& viewProj);
 
     void drawSprite(
+        GfxDevice& gfxDevice,
         const Sprite& sprite,
         const glm::vec2& position,
         float rotation = 0.f, // rotation around Z in radians
@@ -39,11 +43,13 @@ public:
     // it's calculated automatically - so if you want to draw the sprite at 2x
     // size, the transform should just have {2, 2, 1} scale
     void drawSprite(
+        GfxDevice& gfxDevice,
         const Sprite& sprite,
         const glm::mat4& transform,
         std::uint32_t shaderId = spriteShaderId);
 
     void drawText(
+        GfxDevice& gfxDevice,
         const Font& font,
         const std::string& text,
         const glm::vec2& pos,
@@ -54,6 +60,7 @@ public:
     // if insetBorder == true, the border is drawn inside the rect
     // otherwise it doesn't overlap the rect and is draw outside of it
     void drawRect(
+        GfxDevice& gfxDevice,
         const math::FloatRect& rect,
         const LinearColor& color,
         float borderWidth = 1.f,
@@ -63,6 +70,7 @@ public:
         bool insetBorder = false);
 
     void drawInsetRect(
+        GfxDevice& gfxDevice,
         const math::FloatRect& rect,
         const LinearColor& color,
         float borderWidth = 1.f,
@@ -71,16 +79,14 @@ public:
         const glm::vec2& pivot = glm::vec2{0.f});
 
     void drawFilledRect(
+        GfxDevice& gfxDevice,
         const math::FloatRect& rect,
         const LinearColor& color,
         float rotation = 0.f, // rotation around Z in radians
         const glm::vec2& scale = glm::vec2{1.f},
         const glm::vec2& pivot = glm::vec2{0.f});
 
-    GfxDevice& getGfxDevice() { return gfxDevice; }
-
 private:
-    GfxDevice& gfxDevice;
     bool initialized{false};
 
     SpriteDrawingPipeline uiDrawingPipeline;

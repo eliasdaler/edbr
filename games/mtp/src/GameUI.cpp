@@ -161,7 +161,7 @@ void GameUI::update(float dt)
     }
 }
 
-void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
+void GameUI::draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer, const UIContext& ctx) const
 {
     // ideally it should be calculated in update, but sometimes
     // it's possible to add new menus to stack betwee update and draw
@@ -169,33 +169,38 @@ void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
 
     if (isInMainMenu()) {
         titleScreenUI->calculateLayout(screenSize);
-        ui::drawElement(spriteRenderer, *titleScreenUI);
+        ui::drawElement(gfxDevice, spriteRenderer, *titleScreenUI);
     }
 
     if (!isDialogueBoxOpen()) {
         if (ctx.interactionType != InteractComponent::Type::None) {
-            drawInteractTip(spriteRenderer, ctx);
+            drawInteractTip(gfxDevice, spriteRenderer, ctx);
         }
     }
 
     if (isInPauseMenu()) {
-        spriteRenderer.drawFilledRect({{}, screenSize}, LinearColor{0.f, 0.f, 0.f, 0.9f});
+        spriteRenderer
+            .drawFilledRect(gfxDevice, {{}, screenSize}, LinearColor{0.f, 0.f, 0.f, 0.9f});
     }
 
-    menuStack.draw(spriteRenderer);
+    menuStack.draw(gfxDevice, spriteRenderer);
 
     if (cursor.visible) {
-        cursor.draw(spriteRenderer);
+        cursor.draw(gfxDevice, spriteRenderer);
     }
 
     if (fadeLevel != 0.f) {
-        spriteRenderer.drawFilledRect({{}, screenSize}, LinearColor{0.f, 0.f, 0.f, fadeLevel});
+        spriteRenderer
+            .drawFilledRect(gfxDevice, {{}, screenSize}, LinearColor{0.f, 0.f, 0.f, fadeLevel});
     }
 
-    uiInspector.draw(spriteRenderer);
+    uiInspector.draw(gfxDevice, spriteRenderer);
 }
 
-void GameUI::drawInteractTip(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
+void GameUI::drawInteractTip(
+    GfxDevice& gfxDevice,
+    SpriteRenderer& spriteRenderer,
+    const UIContext& ctx) const
 {
     const Sprite& sprite = [this](InteractComponent::Type type) {
         switch (type) {
@@ -213,7 +218,7 @@ void GameUI::drawInteractTip(SpriteRenderer& spriteRenderer, const UIContext& ct
     auto screenPos = edbr::util::fromWorldCoordsToScreenCoords(
         ctx.playerPos + glm::vec3{0.f, 1.7f, 0.f}, ctx.camera.getViewProj(), ctx.screenSize);
     screenPos.y += interactTipBouncer.getOffset();
-    spriteRenderer.drawSprite(sprite, screenPos);
+    spriteRenderer.drawSprite(gfxDevice, sprite, screenPos);
 }
 
 void GameUI::updateDevTools(float dt)

@@ -25,7 +25,7 @@
 #include "EntityUtil.h"
 #include "Systems.h"
 
-Game::Game() : spriteRenderer(gfxDevice), uiRenderer(gfxDevice)
+Game::Game()
 {}
 
 void Game::customInit()
@@ -34,8 +34,8 @@ void Game::customInit()
     inputManager.loadMapping("assets/data/input_actions.json", "assets/data/input_mapping.json");
 
     drawImageId = gfxDevice.createDrawImage(drawImageFormat, params.renderSize, "draw image");
-    spriteRenderer.init(drawImageFormat);
-    uiRenderer.init(drawImageFormat);
+    spriteRenderer.init(gfxDevice, drawImageFormat);
+    uiRenderer.init(gfxDevice, drawImageFormat);
 
     devToolsFont.load(gfxDevice, "assets/fonts/at01.ttf", 16, false);
 
@@ -63,7 +63,7 @@ void Game::loadAppSettings()
     const std::filesystem::path appSettingsPath{"assets/data/default_app_settings.json"};
     JsonFile file(appSettingsPath);
     if (!file.isGood()) {
-        fmt::println("failed to load dev settings from {}", appSettingsPath.string());
+        fmt::println("failed to load app settings from {}", appSettingsPath.string());
         return;
     }
 
@@ -115,8 +115,8 @@ void Game::customCleanup()
     destroyNonPersistentEntities();
 
     gfxDevice.waitIdle();
-    spriteRenderer.cleanup();
-    uiRenderer.cleanup();
+    spriteRenderer.cleanup(gfxDevice);
+    uiRenderer.cleanup(gfxDevice);
 }
 
 void Game::customUpdate(float dt)
@@ -285,13 +285,13 @@ void Game::customDraw()
         devToolsDrawInWorldUI();
     }
     spriteRenderer.endDrawing();
-    spriteRenderer.draw(cmd, drawImage, gameCamera.getViewProj());
+    spriteRenderer.draw(cmd, gfxDevice, drawImage, gameCamera.getViewProj());
 
     // draw UI
     uiRenderer.beginDrawing();
     drawUI();
     uiRenderer.endDrawing();
-    uiRenderer.draw(cmd, drawImage);
+    uiRenderer.draw(cmd, gfxDevice, drawImage);
 
     // finish frame
     const auto devClearBgColor = edbr::rgbToLinear(97, 120, 159);
@@ -332,7 +332,7 @@ void Game::drawGameObjects()
     // TODO: sort by Z
     for (const auto&& [e, sc] : registry.view<SpriteComponent>().each()) {
         const auto spritePos = glm::round(entityutil::getWorldPosition2D({registry, e}));
-        spriteRenderer.drawSprite(sc.sprite, spritePos);
+        spriteRenderer.drawSprite(gfxDevice, sc.sprite, spritePos);
     }
 }
 
@@ -348,10 +348,10 @@ void Game::drawUI()
         uiCtx.interactionType = ic.type;
     }
 
-    ui.draw(uiRenderer, uiCtx);
+    ui.draw(gfxDevice, uiRenderer, uiCtx);
 
     if (isDevEnvironment) {
-        uiInspector.draw(uiRenderer);
+        uiInspector.draw(gfxDevice, uiRenderer);
     }
 }
 
@@ -414,7 +414,6 @@ void Game::doLevelChange()
     if (hasPreviousLevel) {
         exitLevel();
     }
-    // level.load("assets/levels/" + newLevelToLoad + ".json", gfxDevice);
 
     level.setName(newLevelToLoad);
     auto& tileMap = level.getTileMap();

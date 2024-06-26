@@ -5,14 +5,11 @@
 #include <edbr/Graphics/Vulkan/Util.h>
 #include <edbr/Math/Util.h>
 
-MeshId MeshCache::addMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh, MaterialId materialId)
+MeshId MeshCache::addMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh)
 {
-    assert(materialId != NULL_MATERIAL_ID);
-
     auto gpuMesh = GPUMesh{
         .numVertices = (std::uint32_t)cpuMesh.vertices.size(),
         .numIndices = (std::uint32_t)cpuMesh.indices.size(),
-        .materialId = materialId,
         .minPos = cpuMesh.minPos,
         .maxPos = cpuMesh.maxPos,
         .hasSkeleton = cpuMesh.hasSkeleton,

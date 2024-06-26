@@ -37,7 +37,7 @@ bool Font::load(
     bool antialiasing)
 {
     std::cout << "Loading font: " << path << ", size=" << size
-              << ", num glyphs to load= " << neededCodePoints.size() << std::endl;
+              << ", num glyphs to load=" << neededCodePoints.size() << std::endl;
 
     this->size = size;
 

@@ -31,6 +31,8 @@ layout (buffer_reference, scalar) readonly buffer SceneDataBuffer {
     mat4 csmLightSpaceTMs[3]; // 3 = NUM_SHADOW_CASCADES
     uint csmShadowMapId;
 
+    float pointLightFarPlane;
+
     LightsDataBuffer lights;
     int numLights;
     int sunlightIndex; // if -1, there's no sun

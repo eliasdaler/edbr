@@ -158,7 +158,7 @@ void Game::devToolsDrawInWorldUI()
             bbColor.b *= v;
             bbColor.a = 0.5f;
         }
-        spriteRenderer.drawInsetRect(selectionRect, bbColor);
+        spriteRenderer.drawInsetRect(gfxDevice, selectionRect, bbColor);
     }
 
     if (drawCollisionShapes) {
@@ -174,7 +174,7 @@ void Game::devToolsDrawInWorldUI()
             if (registry.all_of<TeleportComponent>(e) || prefabName == "trigger") {
                 collBoxColor = LinearColor{1.f, 1.f, 0.f, 0.5f};
             }
-            spriteRenderer.drawFilledRect(bb, collBoxColor);
+            spriteRenderer.drawFilledRect(gfxDevice, bb, collBoxColor);
         }
     }
 
@@ -188,9 +188,14 @@ void Game::devToolsDrawInWorldUI()
 
             // "shadow"
             spriteRenderer.drawText(
-                devToolsFont, tc.tag, textPos + glm::vec2{1.f, 1.f}, LinearColor::Black());
+                gfxDevice,
+                devToolsFont,
+                tc.tag,
+                textPos + glm::vec2{1.f, 1.f},
+                LinearColor::Black());
 
-            spriteRenderer.drawText(devToolsFont, tc.tag, textPos, LinearColor{1.f, 1.f, 0.f});
+            spriteRenderer
+                .drawText(gfxDevice, devToolsFont, tc.tag, textPos, LinearColor{1.f, 1.f, 0.f});
         }
     }
 }

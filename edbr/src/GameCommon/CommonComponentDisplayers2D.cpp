@@ -15,7 +15,7 @@ namespace edbr
 {
 void registerTransformComponentDisplayer2D(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer("Transform", [](entt::const_handle e, const TransformComponent& tc) {
+    eid.registerDisplayer("Transform", [](entt::handle e, const TransformComponent& tc) {
         BeginPropertyTable();
         {
             DisplayProperty("Position2D", entityutil::getWorldPosition2D(e));
@@ -27,7 +27,7 @@ void registerTransformComponentDisplayer2D(EntityInfoDisplayer& eid)
 
 void registerCollisionComponent2DDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer("Collision", [](entt::const_handle e, const CollisionComponent2D& cc) {
+    eid.registerDisplayer("Collision", [](entt::handle e, const CollisionComponent2D& cc) {
         BeginPropertyTable();
         {
             DisplayProperty("Size", cc.size);
@@ -39,17 +39,16 @@ void registerCollisionComponent2DDisplayer(EntityInfoDisplayer& eid)
 
 void registerSpriteAnimationComponentDisplayer(EntityInfoDisplayer& eid)
 {
-    eid.registerDisplayer(
-        "Animation", [](entt::const_handle e, const SpriteAnimationComponent& ac) {
-            BeginPropertyTable();
-            {
-                DisplayProperty("Animation", ac.animator.getAnimationName());
-                DisplayProperty("Frame", ac.animator.getCurrentFrame());
-                DisplayProperty("Progress", ac.animator.getProgress());
-                DisplayProperty("Anim data", ac.animationsDataTag);
-            }
-            EndPropertyTable();
-        });
+    eid.registerDisplayer("Animation", [](entt::handle e, const SpriteAnimationComponent& ac) {
+        BeginPropertyTable();
+        {
+            DisplayProperty("Animation", ac.animator.getAnimationName());
+            DisplayProperty("Frame", ac.animator.getCurrentFrame());
+            DisplayProperty("Progress", ac.animator.getProgress());
+            DisplayProperty("Anim data", ac.animationsDataTag);
+        }
+        EndPropertyTable();
+    });
 }
 
 }

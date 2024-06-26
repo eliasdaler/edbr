@@ -14,10 +14,10 @@ void MenuStack::calculateLayout(const glm::vec2& screenSize) const
     }
 }
 
-void MenuStack::draw(SpriteRenderer& spriteRenderer) const
+void MenuStack::draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const
 {
     for (const auto& menu : menuStack) {
-        ui::drawElement(spriteRenderer, *menu);
+        ui::drawElement(gfxDevice, spriteRenderer, *menu);
     }
 }
 

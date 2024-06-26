@@ -14,8 +14,6 @@ struct GPUMesh {
     std::uint32_t numVertices{0};
     std::uint32_t numIndices{0};
 
-    MaterialId materialId{NULL_MATERIAL_ID};
-
     // AABB
     glm::vec3 minPos;
     glm::vec3 maxPos;

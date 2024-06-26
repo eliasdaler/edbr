@@ -58,3 +58,6 @@ https://github.com/eliasdaler/edbr/assets/1285136/f689d3dd-5556-4a7c-9765-aa7724
 * Bindless textures (aka descriptor indexing)
 * Using Vulkan Memory Allocator, volk and vk-bootstrap to make the code simpler
 
+## Dev mode
+
+To enable dev mode (dev tools, etc.) set `EDBR_SOURCE_ROOT` env variable to where the cloned repository is or pass `--dev` flag when launching a game.

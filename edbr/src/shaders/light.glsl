@@ -18,7 +18,7 @@ struct Light
     float intensity;
 
     vec2 scaleOffset; // spot light only
-    float shadowMapIndex;
+    uint shadowMapID;
 
     float unused;
 };

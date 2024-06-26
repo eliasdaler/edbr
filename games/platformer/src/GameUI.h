@@ -25,7 +25,7 @@ public:
     bool capturesInput() const;
     void handleInput(const ActionMapping& am);
     void update(const glm::vec2 screenSize, float dt);
-    void draw(SpriteRenderer& spriteRenderer, const UIContext& ctx);
+    void draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer, const UIContext& ctx);
 
     DialogueBox& getDialogueBox() override { return dialogueBox; }
     bool isDialogueBoxOpen() const override;
@@ -33,7 +33,8 @@ public:
     void closeDialogueBox() override;
 
 private:
-    void drawInteractTip(SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
+    void drawInteractTip(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer, const UIContext& ctx)
+        const;
 
     DialogueBox dialogueBox;
     Font defaultFont;

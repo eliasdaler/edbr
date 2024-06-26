@@ -11,7 +11,7 @@ class MeshCache {
 public:
     void cleanup(const GfxDevice& gfxDevice);
 
-    MeshId addMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh, MaterialId materialId);
+    MeshId addMesh(GfxDevice& gfxDevice, const CPUMesh& cpuMesh);
     const GPUMesh& getMesh(MeshId id) const;
 
 private:

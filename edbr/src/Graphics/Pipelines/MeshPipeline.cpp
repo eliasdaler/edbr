@@ -97,14 +97,13 @@ void MeshPipeline::draw(
             vkCmdBindIndexBuffer(cmd, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         }
 
+        assert(dc.materialId != NULL_MATERIAL_ID);
         const auto pushConstants = PushConstants{
             .transform = dc.transformMatrix,
             .sceneDataBuffer = sceneDataBuffer.address,
             .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                              mesh.vertexBuffer.address,
-            .materialId = mesh.materialId != NULL_MATERIAL_ID ?
-                              (std::uint32_t)mesh.materialId :
-                              (std::uint32_t)materialCache.getPlaceholderMaterialId(),
+            .materialId = dc.materialId,
         };
         vkCmdPushConstants(
             cmd,

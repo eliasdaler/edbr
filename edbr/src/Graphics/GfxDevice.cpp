@@ -71,7 +71,8 @@ void GfxDevice::init(SDL_Window* window, const char* appName, const Version& ver
         errorImageId = createImage(
             {
                 .format = VK_FORMAT_R8G8B8A8_UNORM,
-                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 .extent = VkExtent3D{2, 2, 1},
             },
             "error texture",
@@ -114,6 +115,7 @@ void GfxDevice::initVulkan(SDL_Window* window, const char* appName, const Versio
     }
 
     const auto deviceFeatures = VkPhysicalDeviceFeatures{
+        .imageCubeArray = VK_TRUE,
         .geometryShader = VK_TRUE, // for im3d
         .depthClamp = VK_TRUE,
         .samplerAnisotropy = VK_TRUE,
@@ -495,8 +497,13 @@ ImageId GfxDevice::createImage(
     return addImageToCache(std::move(image));
 }
 
-ImageId GfxDevice::createDrawImage(VkFormat format, glm::ivec2 size, const char* debugName)
+ImageId GfxDevice::createDrawImage(
+    VkFormat format,
+    glm::ivec2 size,
+    const char* debugName,
+    ImageId imageId)
 {
+    assert(size.x > 0 && size.y > 0);
     const auto extent = VkExtent3D{
         .width = (std::uint32_t)size.x,
         .height = (std::uint32_t)size.y,
@@ -514,7 +521,7 @@ ImageId GfxDevice::createDrawImage(VkFormat format, glm::ivec2 size, const char*
         .usage = usages,
         .extent = extent,
     };
-    return createImage(createImageInfo, debugName);
+    return createImage(createImageInfo, debugName, nullptr, imageId);
 }
 
 ImageId GfxDevice::loadImageFromFile(
@@ -536,7 +543,9 @@ ImageId GfxDevice::addImageToCache(GPUImage img)
     return imageCache.addImage(std::move(img));
 }
 
-GPUImage GfxDevice::createImageRaw(const vkutil::CreateImageInfo& createInfo) const
+GPUImage GfxDevice::createImageRaw(
+    const vkutil::CreateImageInfo& createInfo,
+    std::optional<VmaAllocationCreateInfo> customAllocationCreateInfo) const
 {
     std::uint32_t mipLevels = 1;
     if (createInfo.mipMap) {
@@ -545,12 +554,12 @@ GPUImage GfxDevice::createImageRaw(const vkutil::CreateImageInfo& createInfo) co
     }
 
     if (createInfo.isCubemap) {
-        assert(createInfo.numLayers == 6);
+        assert(createInfo.numLayers % 6 == 0);
         assert(!createInfo.mipMap);
         assert((createInfo.flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0);
     }
 
-    const auto imgInfo = VkImageCreateInfo{
+    auto imgInfo = VkImageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .flags = createInfo.flags,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -559,13 +568,17 @@ GPUImage GfxDevice::createImageRaw(const vkutil::CreateImageInfo& createInfo) co
         .mipLevels = mipLevels,
         .arrayLayers = createInfo.numLayers,
         .samples = createInfo.samples,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .tiling = createInfo.tiling,
         .usage = createInfo.usage,
     };
-    const auto allocInfo = VmaAllocationCreateInfo{
+
+    static const auto defaultAllocInfo = VmaAllocationCreateInfo{
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
+    const auto allocInfo = customAllocationCreateInfo.has_value() ?
+                               customAllocationCreateInfo.value() :
+                               defaultAllocInfo;
 
     GPUImage image{};
     image.format = createInfo.format;
@@ -578,33 +591,41 @@ GPUImage GfxDevice::createImageRaw(const vkutil::CreateImageInfo& createInfo) co
     VK_CHECK(
         vmaCreateImage(allocator, &imgInfo, &allocInfo, &image.image, &image.allocation, nullptr));
 
-    // create view
-    VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
-    if (createInfo.format == VK_FORMAT_D32_SFLOAT) { // TODO: support other depth formats
-        aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+    // create view only when usage flags allow it
+    bool shouldCreateView = ((createInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT) != 0) ||
+                            ((createInfo.usage & VK_IMAGE_USAGE_STORAGE_BIT) != 0) ||
+                            ((createInfo.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0) ||
+                            ((createInfo.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0);
+
+    if (shouldCreateView) {
+        VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+        if (createInfo.format == VK_FORMAT_D32_SFLOAT) { // TODO: support other depth formats
+            aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+
+        auto viewType =
+            createInfo.numLayers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        if (createInfo.isCubemap && createInfo.numLayers == 6) {
+            viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+        }
+
+        const auto viewCreateInfo = VkImageViewCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = image.image,
+            .viewType = viewType,
+            .format = createInfo.format,
+            .subresourceRange =
+                VkImageSubresourceRange{
+                    .aspectMask = aspectFlag,
+                    .baseMipLevel = 0,
+                    .levelCount = mipLevels,
+                    .baseArrayLayer = 0,
+                    .layerCount = createInfo.numLayers,
+                },
+        };
+
+        VK_CHECK(vkCreateImageView(device, &viewCreateInfo, nullptr, &image.imageView));
     }
-
-    auto viewType = createInfo.numLayers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    if (createInfo.isCubemap) {
-        viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-    }
-
-    const auto viewCreateInfo = VkImageViewCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = image.image,
-        .viewType = viewType,
-        .format = createInfo.format,
-        .subresourceRange =
-            VkImageSubresourceRange{
-                .aspectMask = aspectFlag,
-                .baseMipLevel = 0,
-                .levelCount = mipLevels,
-                .baseArrayLayer = 0,
-                .layerCount = createInfo.numLayers,
-            },
-    };
-
-    VK_CHECK(vkCreateImageView(device, &viewCreateInfo, nullptr, &image.imageView));
 
     return image;
 }

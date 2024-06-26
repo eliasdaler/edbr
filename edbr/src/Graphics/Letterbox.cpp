@@ -7,38 +7,41 @@
 namespace util
 {
 glm::vec4 calculateLetterbox(
-    const glm::ivec2& drawImageSize,
-    const glm::ivec2& swapchainSize,
-    bool intergerScale)
+    const glm::ivec2& inputSize,
+    const glm::ivec2& outputSize,
+    bool integerScale)
 {
-    const auto ir = glm::vec2{drawImageSize.x, drawImageSize.y};
-    auto scale = std::min(swapchainSize.x / ir.x, swapchainSize.y / ir.y);
-
-    std::array<float, 4> vp{0.f, 0.f, 1.f, 1.f};
-    if (intergerScale) {
+    if (integerScale &&
+        // integer scaling won't work if inputSize > outputSize
+        outputSize.x >= inputSize.x && outputSize.y >= inputSize.y) {
+        auto scale = std::min(outputSize.x / (float)inputSize.x, outputSize.y / (float)inputSize.y);
         scale = std::floor(scale);
 
-        const auto realSize = drawImageSize * (int)scale;
-        auto tl = (swapchainSize - realSize) / 2;
-        return {tl.x, tl.y, drawImageSize.x * scale, drawImageSize.y * scale};
-    } else {
-        const auto ss = glm::vec2{swapchainSize} / (ir * scale);
-
-        // letterboxing
-        if (ss.x > ss.y) { // won't fit horizontally - add vertical bars
-            vp[2] = ss.y / ss.x;
-            vp[0] = (1.f - vp[2]) / 2.f; // center horizontally
-        } else { // won'f fit vertically - add horizonal bars (pillarboxing)
-            vp[3] = ss.x / ss.y;
-            vp[1] = (1.f - vp[3]) / 2.f; // center vertically
+        if (scale != 0.f) {
+            const auto realSize = inputSize * (int)scale;
+            auto tl = (outputSize - realSize) / 2;
+            return {tl.x, tl.y, inputSize.x * scale, inputSize.y * scale};
         }
     }
 
-    const auto destX = std::ceil(vp[0] * swapchainSize.x);
-    const auto destY = std::ceil(vp[1] * swapchainSize.y);
-    const auto destW = std::ceil(vp[2] * swapchainSize.x);
-    const auto destH = std::ceil(vp[3] * swapchainSize.y);
+    const auto inputAspect = inputSize.x / (float)inputSize.y;
+    const auto outputAspect = outputSize.x / (float)outputSize.y;
 
-    return {(int)destX, (int)destY, (int)destW, (int)destH};
+    const auto resWidth = (outputAspect > inputAspect) ? // output proportionally wider
+                                                         // than input?
+                              (outputSize.y * inputAspect) : // take portion of width
+                              (outputSize.x); // take up entire width
+
+    const auto resHeight = (outputAspect < inputAspect) ? // output proportionally taller
+                                                          // than input?
+                               (outputSize.x / inputAspect) : // take portion of height
+                               (outputSize.y); // take up entire height
+
+    return {
+        (outputSize.x - resWidth) / 2.0f, // center horizontally.
+        (outputSize.y - resHeight) / 2.0f, // center vertically.
+        resWidth,
+        resHeight,
+    };
 }
 }

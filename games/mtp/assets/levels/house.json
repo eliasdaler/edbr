@@ -2,5 +2,9 @@
   "model": "assets/models/levels/house/house.gltf",
   "default_camera": "Default",
   "default_spawn": "Test",
+  "ambient": {
+    "color": [ 0.631, 0.514, 0.424],
+    "intensity": 0.05
+  },
   "bgm": "assets/music/forest_birds_ambient_inside.ogg"
 }

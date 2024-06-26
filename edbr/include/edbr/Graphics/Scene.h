@@ -30,6 +30,7 @@ struct SceneNode {
 
 struct SceneMesh {
     std::vector<MeshId> primitives;
+    std::vector<MaterialId> primitiveMaterials;
 };
 
 struct Scene {

@@ -41,6 +41,6 @@ void TileMapRenderer::drawTileMapLayer(
         sprite.uv0 = uv0;
         sprite.uv1 = uv1;
 
-        spriteRenderer.drawSprite(sprite, edbr::tilemap::tileIndexToWorldPos(ti));
+        spriteRenderer.drawSprite(gfxDevice, sprite, edbr::tilemap::tileIndexToWorldPos(ti));
     }
 }

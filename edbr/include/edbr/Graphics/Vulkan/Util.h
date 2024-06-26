@@ -28,6 +28,7 @@ struct CreateImageInfo {
     VkExtent3D extent{};
     std::uint32_t numLayers{1};
     VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
+    VkImageTiling tiling{VK_IMAGE_TILING_OPTIMAL};
     bool mipMap{false};
     bool isCubemap{false};
 };

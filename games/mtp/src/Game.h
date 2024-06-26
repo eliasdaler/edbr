@@ -68,6 +68,8 @@ public:
     void customDraw() override;
     void customCleanup() override;
 
+    ImageId getMainDrawImageId() const override;
+
     void registerLevels();
     void initUI();
     void loadLevel(const std::filesystem::path& path);

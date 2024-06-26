@@ -59,7 +59,6 @@ void Swapchain::create(
             string_VkResult(res.full_error().vk_result)));
     }
     swapchain = res.value();
-    extent = VkExtent2D{.width = width, .height = height};
 
     images = swapchain.get_images().value();
     imageViews = swapchain.get_image_views().value();
@@ -97,8 +96,11 @@ void Swapchain::recreate(
     }
     vkb::destroy_swapchain(swapchain);
 
+    for (auto imageView : imageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+
     swapchain = res.value();
-    extent = VkExtent2D{.width = width, .height = height};
 
     images = swapchain.get_images().value();
     imageViews = swapchain.get_image_views().value();
@@ -148,7 +150,7 @@ std::pair<VkImage, std::uint32_t> Swapchain::acquireImage(VkDevice device, std::
         &swapchainImageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         dirty = true;
-        return {VK_NULL_HANDLE, 0};
+        return {images[swapchainImageIndex], swapchainImageIndex};
     } else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
@@ -190,7 +192,9 @@ void Swapchain::submitAndPresent(
 
         auto res = vkQueuePresentKHR(graphicsQueue, &presentInfo);
         if (res != VK_SUCCESS) {
-            fmt::println("failed to present: {}", string_VkResult(res));
+            if (res != VK_SUBOPTIMAL_KHR) {
+                fmt::println("failed to present: {}", string_VkResult(res));
+            }
             dirty = true;
         }
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -21,6 +22,7 @@
 
 struct MeshComponent {
     std::vector<MeshId> meshes;
+    std::vector<MaterialId> meshMaterials;
     std::vector<Transform> meshTransforms;
     bool castShadow{true};
 };
@@ -127,4 +129,30 @@ struct AnimationEventSoundComponent {
 
     // event name -> sound name
     std::unordered_map<std::string, std::string> eventSounds;
+};
+
+struct FaceComponent {
+    struct FaceData {
+        MaterialId materialId{NULL_MATERIAL_ID};
+    };
+
+    std::unordered_map<std::string, FaceData> faces;
+    std::size_t faceMeshIndex; // index into MeshComponent::meshes for mesh which is the face
+    std::string currentFace;
+    std::string defaultFace;
+
+    std::filesystem::path facesTexturesDir;
+    std::unordered_map<std::string, std::string> facesFilenames;
+};
+
+struct BlinkComponent {
+    float blinkPeriod;
+    float blinkHold;
+    std::unordered_map<std::string, std::string> faces; // non-blink face -> blink face
+
+    float timer{0.f};
+    bool isBlinking{false};
+
+    std::string blinkFace; // if blinking - current blink face
+    std::string nonBlinkFace; // face to return to after blink
 };

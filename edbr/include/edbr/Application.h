@@ -6,6 +6,7 @@
 
 #include <edbr/ActionList/ActionListManager.h>
 #include <edbr/Audio/IAudioManager.h>
+#include <edbr/DevTools/ScreenshotTaker.h>
 #include <edbr/Event/EventManager.h>
 #include <edbr/Graphics/GfxDevice.h>
 #include <edbr/Input/InputManager.h>
@@ -23,12 +24,16 @@ public:
     struct Params {
         // Either windowSize or renderSize should be set
         // You can also load them in loadAppSettings before they're used
-        glm::ivec2 windowSize{};
-        glm::ivec2 renderSize{};
+        glm::ivec2 windowSize{}; // default window size
+        glm::ivec2 renderSize{}; // size of presented draw image
 
         std::string appName{"EDBR Application"};
         std::string windowTitle; // if not set, set to appName
         Version version{};
+
+        std::string sourceSubDirName;
+        // needed for finding dev files in source directory
+        // they should be stored in ${EDBR_SOURCE_ROOT}/games/<sourceSubDirName>/dev/
     };
 
 public:
@@ -44,9 +49,13 @@ public:
     virtual void customDraw() = 0;
     virtual void customCleanup() = 0;
 
+    virtual void onWindowResize(){};
+
     const Version& getVersion() const { return params.version; }
 
     IAudioManager& getAudioManager();
+
+    virtual ImageId getMainDrawImageId() const { return NULL_IMAGE_ID; }
 
 protected:
     virtual void loadAppSettings(){};
@@ -78,6 +87,10 @@ protected:
     ActionListManager actionListManager;
     TextManager textManager;
 
+    ScreenshotTaker screenshotTaker;
+
 private:
+    void handleBaseDevInput();
+
     std::unique_ptr<IAudioManager> audioManager;
 };

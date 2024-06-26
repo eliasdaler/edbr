@@ -1,9 +1,12 @@
 #include "Game.h"
 
 #include <edbr/ECS/Components/HierarchyComponent.h>
+#include <edbr/ECS/Components/MetaInfoComponent.h>
 #include <edbr/ECS/Components/NPCComponent.h>
 #include <edbr/ECS/Components/NameComponent.h>
 #include <edbr/ECS/Components/SceneComponent.h>
+
+#include "EntityUtil.h"
 
 namespace
 {
@@ -47,6 +50,45 @@ void Game::entityPostInit(entt::handle e)
             return;
         }
         e.get_or_emplace<NameComponent>().name = extractNameFromSceneNodeName(sceneNodeName);
+    }
+
+    if (e.all_of<FaceComponent>()) {
+        auto& fc = e.get<FaceComponent>();
+
+        // find face mesh
+        auto& mc = e.get<MeshComponent>();
+        fc.faceMeshIndex = [&mc, this]() {
+            for (std::size_t i = 0; i < mc.meshes.size(); ++i) {
+                const auto& material = materialCache.getMaterial(mc.meshMaterials[i]);
+                if (material.name == "Face") {
+                    return i;
+                }
+            }
+            return std::string::npos;
+        }();
+        if (fc.faceMeshIndex == std::string::npos) {
+            throw std::runtime_error("FaceComponent: mesh with material 'Face' was not found");
+        }
+
+        // create face materials
+        fc.faces.reserve(fc.facesFilenames.size());
+        const auto& prefabName = e.get<MetaInfoComponent>().prefabName;
+        for (const auto& [faceName, filename] : fc.facesFilenames) {
+            FaceComponent::FaceData fd{};
+            const auto texturePath = fc.facesTexturesDir / (filename + ".png");
+
+            // copy
+            auto faceMaterial = materialCache.getMaterial(mc.meshMaterials[fc.faceMeshIndex]);
+            faceMaterial.name = fmt::format("{}.face.{}", prefabName, faceName);
+            // change diffuse texture
+            faceMaterial.diffuseTexture = gfxDevice.loadImageFromFile(
+                texturePath, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+            fd.materialId = materialCache.addMaterial(gfxDevice, faceMaterial);
+
+            fc.faces.emplace(faceName, std::move(fd));
+        }
+
+        entityutil::setFace(e, fc.defaultFace);
     }
 
     // init children

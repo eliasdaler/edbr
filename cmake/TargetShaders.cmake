@@ -7,18 +7,20 @@ find_program(GLSLVALIDATOR glslangValidator
 )
 
 function (target_shaders target shaders)
-  cmake_policy(PUSH)
-	cmake_policy(SET CMP0116 NEW)
-
   set(SHADERS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
   if (NOT MSVC)
-	file(MAKE_DIRECTORY "${SHADERS_BUILD_DIR}")
+    file(MAKE_DIRECTORY "${SHADERS_BUILD_DIR}")
   else()
     # FIXME: make the dir beforehand for all multi-config builds
     set(SHADERS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/shaders")
   endif()
 
-  foreach (SHADER_PATH ${SHADERS})
+  list(LENGTH shaders shaders_len)
+  if(shaders_len EQUAL 1)
+    message(FATAL_ERROR "target_shaders called without quotes around the list. Should called like this:\n\ttarget_shaders(tgt \"\$\{SHADERS\}\")")
+  endif()
+
+  foreach (SHADER_PATH ${shaders})
     get_filename_component(SHADER_FILENAME "${SHADER_PATH}" NAME)
     set(SHADER_SPIRV_PATH "${SHADERS_BUILD_DIR}/${SHADER_FILENAME}.spv")
     set(DEPFILE "${SHADER_SPIRV_PATH}.d")
@@ -40,6 +42,4 @@ function (target_shaders target shaders)
   )
 
   add_dependencies(${target} ${shaders_target_name})
-
-  cmake_policy(POP)
 endfunction()

@@ -4,6 +4,7 @@
 
 #include <edbr/Graphics/Color.h>
 
+class GfxDevice;
 class SpriteRenderer;
 
 namespace ui
@@ -17,7 +18,7 @@ public:
 
     void updateUI(float dt);
 
-    void draw(SpriteRenderer& spriteRenderer) const;
+    void draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const;
 
     bool drawUIElementBoundingBoxes{false};
 
@@ -30,9 +31,13 @@ public:
 private:
     void showUITree(const ui::Element& element, bool openByDefault = true);
     void showSelectedElementInfo();
-    void drawBoundingBoxes(SpriteRenderer& spriteRenderer, const ui::Element& element) const;
-    void drawSelectedElement(SpriteRenderer& spriteRenderer) const;
+    void drawBoundingBoxes(
+        GfxDevice& gfxDevice,
+        SpriteRenderer& spriteRenderer,
+        const ui::Element& element) const;
+    void drawSelectedElement(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const;
     void drawBorderAroundElement(
+        GfxDevice& gfxDevice,
         SpriteRenderer& spriteRenderer,
         const ui::Element& element,
         const LinearColor& color,

@@ -50,8 +50,6 @@ vec3 calculateLight(Light light, vec3 fragPos, vec3 n, vec3 v, vec3 l,
     vec3 fr = pbrBRDF(
             diffuseColor, roughness, metallic, f0,
             n, v, l, h, NoL);
-    // TODO: figure out how to properly compute light intensity for PBR
-    light.intensity *= 2.6;
 #else
     vec3 fr = blinnPhongBRDF(diffuseColor, n, v, l, h);
 #endif

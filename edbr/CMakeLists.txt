@@ -16,6 +16,7 @@ add_library(edbr
   src/DevTools/ImGuiPropertyTable.cpp
   src/DevTools/JoltDebugRenderer.cpp
   src/DevTools/ResourcesInspector.cpp
+  src/DevTools/ScreenshotTaker.cpp
   src/DevTools/UIInspector.cpp
 
   # Event
@@ -71,9 +72,11 @@ add_library(edbr
   src/Graphics/SpriteAnimationData.cpp
 
   # Graphics/Pipeline
+  src/Graphics/Pipelines/CRTPipeline.cpp
   src/Graphics/Pipelines/CSMPipeline.cpp
   src/Graphics/Pipelines/DepthResolvePipeline.cpp
   src/Graphics/Pipelines/MeshPipeline.cpp
+  src/Graphics/Pipelines/PointLightShadowMapPipeline.cpp
   src/Graphics/Pipelines/PostFXPipeline.cpp
   src/Graphics/Pipelines/SkinningPipeline.cpp
   src/Graphics/Pipelines/SkyboxPipeline.cpp

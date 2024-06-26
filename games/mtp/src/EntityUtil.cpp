@@ -184,4 +184,23 @@ const std::string& getMetaName(entt::const_handle e)
     return e.get<SceneComponent>().sceneNodeName;
 }
 
+void setFace(entt::handle e, const std::string& faceName)
+{
+    auto& fc = e.get<FaceComponent>();
+    if (fc.currentFace == faceName) {
+        return;
+    }
+    auto& mc = e.get<MeshComponent>();
+    auto it = fc.faces.find(faceName);
+    if (it == fc.faces.end()) {
+        fmt::println(
+            "[error] face '{}' was not loaded for prefab '{}'",
+            faceName,
+            e.get<MetaInfoComponent>().prefabName);
+        return;
+    }
+    mc.meshMaterials[fc.faceMeshIndex] = it->second.materialId;
+    fc.currentFace = faceName;
+}
+
 }

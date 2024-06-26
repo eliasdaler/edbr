@@ -44,6 +44,24 @@ float calculateCSMOcclusion(
 #endif
 }
 
+// point light shadows
+float calculatePointShadow(vec3 pos, vec3 lightPos, float NoL, uint shadowMapIndex, float farPlane)
+{
+    vec3 fragToLight = pos - lightPos;
+    fragToLight.z = -fragToLight.z; // coordinate system BS?
+
+    float currentDepth = length(fragToLight);
+
+    // slope based bias
+    float bias = max(0.05f * (1.0f - NoL), 0.05f);
+
+	// float closestDepth = texture(shadowMap, vec4(fragToLight, mapIndex)).r;
+	float closestDepth = sampleTextureCubeNearest(shadowMapIndex, fragToLight).r;
+
+    closestDepth *= farPlane;
+    return currentDepth -  bias > closestDepth ? 0.0 : 1.0;
+}
+
 vec3 debugShadowsFactor(uint cascadeIndex)  {
     switch (cascadeIndex) {
         case 0: {

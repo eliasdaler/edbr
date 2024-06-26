@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 
 // don't sort these includes
 // clang-format off
@@ -82,6 +83,8 @@ public:
     const VkDescriptorSet& getBindlessDescSet() const;
     void bindBindlessDescSet(VkCommandBuffer cmd, VkPipelineLayout layout) const;
 
+    VmaAllocator getAllocator() const { return allocator; }
+
 public:
     [[nodiscard]] ImageId createImage(
         const vkutil::CreateImageInfo& createInfo,
@@ -90,7 +93,11 @@ public:
         ImageId imageId = NULL_IMAGE_ID);
 
     // create a color image which can be used as a draw target
-    [[nodiscard]] ImageId createDrawImage(VkFormat format, glm::ivec2 size, const char* debugName);
+    [[nodiscard]] ImageId createDrawImage(
+        VkFormat format,
+        glm::ivec2 size,
+        const char* debugName,
+        ImageId imageId = NULL_IMAGE_ID);
 
     [[nodiscard]] ImageId loadImageFromFile(
         const std::filesystem::path& path,
@@ -108,7 +115,9 @@ public:
     // createImageRaw is mostly intended for low level usage. In most cases,
     // createImage should be preferred as it will automatically
     // add the image to bindless set
-    [[nodiscard]] GPUImage createImageRaw(const vkutil::CreateImageInfo& createInfo) const;
+    [[nodiscard]] GPUImage createImageRaw(
+        const vkutil::CreateImageInfo& createInfo,
+        std::optional<VmaAllocationCreateInfo> customAllocationInfo = std::nullopt) const;
     // loadImageFromFileRaw is mostly intended for low level usage. In most cases,
     // loadImageFromFile should be preferred as it will automatically
     // add the image to bindless set

@@ -13,6 +13,7 @@ int main(int argc, char** argv)
 
     game.init({
         .appName = "Platformer",
+        .sourceSubDirName = "platformer",
     });
     game.run();
     game.cleanup();

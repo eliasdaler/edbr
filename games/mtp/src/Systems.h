@@ -15,7 +15,6 @@
 
 inline void skeletonAnimationSystemUpdate(entt::registry& registry, EventManager& em, float dt)
 {
-    // animate entities with skeletons
     for (const auto&& [e, sc] : registry.view<SkeletonComponent>().each()) {
         sc.skeletonAnimator.update(sc.skeleton, dt);
 
@@ -73,6 +72,50 @@ inline void playerAnimationSystemUpdate(
             } else if (velMag > 0.2f) {
                 // HACK: sometimes the player can fall slightly when being spawned
                 eu::setAnimation(player, "Walk");
+            }
+        }
+    }
+}
+
+inline void blinkSystemUpdate(entt::registry& registry, float dt)
+{
+    for (const auto&& [e, bc, fc] : registry.view<BlinkComponent, FaceComponent>().each()) {
+        if (!bc.isBlinking && !bc.faces.contains(fc.currentFace)) {
+            // current face doesn't have blink animation
+            bc.isBlinking = false;
+            bc.timer = 0.f;
+            bc.blinkFace.clear();
+            bc.nonBlinkFace.clear();
+            continue;
+        }
+
+        // check if face was changed externally
+        if ((bc.isBlinking && bc.blinkFace != fc.currentFace) ||
+            (!bc.isBlinking && bc.nonBlinkFace != fc.currentFace)) {
+            bc.isBlinking = false;
+            bc.timer = 0.f;
+            bc.nonBlinkFace = fc.currentFace;
+        }
+
+        if (bc.isBlinking) {
+            bc.timer += dt;
+            if (bc.timer >= bc.blinkHold) {
+                bc.isBlinking = false;
+                bc.timer = 0.f;
+
+                // restore non-blink face
+                entityutil::setFace({registry, e}, bc.nonBlinkFace);
+            }
+        } else {
+            bc.timer += dt;
+            if (bc.timer >= bc.blinkPeriod) {
+                bc.isBlinking = true;
+                bc.timer = 0.f;
+
+                // set blink-face
+                bc.nonBlinkFace = fc.currentFace;
+                bc.blinkFace = bc.faces.at(fc.currentFace);
+                entityutil::setFace({registry, e}, bc.blinkFace);
             }
         }
     }

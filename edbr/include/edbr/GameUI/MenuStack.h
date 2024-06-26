@@ -11,6 +11,7 @@ struct Element;
 }
 
 struct Cursor;
+class GfxDevice;
 class SpriteRenderer;
 
 // MenuStack handles multiple menus either being shown at the same time
@@ -21,7 +22,7 @@ public:
     MenuStack(Cursor& cursor);
 
     void calculateLayout(const glm::vec2& screenSize) const;
-    void draw(SpriteRenderer& spriteRenderer) const;
+    void draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const;
 
     void replaceTopMenu(ui::Element& menu);
     void menuGoBack();

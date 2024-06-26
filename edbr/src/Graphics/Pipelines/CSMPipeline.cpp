@@ -5,7 +5,6 @@
 #include <edbr/Graphics/MeshCache.h>
 #include <edbr/Graphics/MeshDrawCommand.h>
 #include <edbr/Graphics/ShadowMapping.h>
-#include <edbr/Graphics/Vulkan/Init.h>
 #include <edbr/Graphics/Vulkan/Pipelines.h>
 #include <edbr/Graphics/Vulkan/Util.h>
 
@@ -182,7 +181,7 @@ void CSMPipeline::draw(
                 .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                                  mesh.vertexBuffer.address,
                 .materialsBuffer = materialsBuffer.address,
-                .materialId = (std::uint32_t)mesh.materialId,
+                .materialId = dc.materialId,
             };
             vkCmdPushConstants(
                 cmd,

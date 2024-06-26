@@ -65,6 +65,9 @@ void main()
     vec3 n = normal;
     vec3 v = normalize(cameraPos - fragPos);
 
+    // diffuseColor = vec3(1.0);
+    // baseColor = vec3(1.0);
+
     vec3 fragColor = vec3(0.0);
     for (int i = 0; i < pcs.sceneData.numLights; i++) {
         Light light = pcs.sceneData.lights.data[i];
@@ -79,7 +82,14 @@ void main()
         if (light.type == TYPE_DIRECTIONAL_LIGHT) {
             occlusion = calculateCSMOcclusion(
                     fragPos, cameraPos, NoL,
-                    pcs.sceneData.csmShadowMapId, pcs.sceneData.cascadeFarPlaneZs, pcs.sceneData.csmLightSpaceTMs);
+                    pcs.sceneData.csmShadowMapId,
+                    pcs.sceneData.cascadeFarPlaneZs,
+                    pcs.sceneData.csmLightSpaceTMs);
+        } else if (light.type == TYPE_POINT_LIGHT && light.shadowMapID != 0) {
+            occlusion = calculatePointShadow(
+                    fragPos, light.position, NoL,
+                    light.shadowMapID,
+                    pcs.sceneData.pointLightFarPlane);
         }
 
         fragColor += calculateLight(light, fragPos, n, v, l,

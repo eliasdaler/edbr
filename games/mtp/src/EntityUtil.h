@@ -59,4 +59,6 @@ entt::handle findEntityByName(entt::registry& registry, const std::string& name)
 // 3. scene node name
 const std::string& getMetaName(entt::const_handle e);
 
+void setFace(entt::handle e, const std::string& faceName);
+
 }

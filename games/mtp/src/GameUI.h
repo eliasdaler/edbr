@@ -61,7 +61,7 @@ public:
 
     void onScreenSizeChanged(const glm::ivec2 newScreenSize);
 
-    void draw(SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
+    void draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer, const UIContext& ctx) const;
 
     DialogueBox& getDialogueBox() override { return dialogueBox; }
     void openDialogueBox() override;
@@ -91,7 +91,8 @@ private:
     void createSettingsMenu(Game& game, GfxDevice& gfxDevice, const ui::NineSliceStyle& nsStyle);
     void createPauseMenu(Game& game, GfxDevice& gfxDevice, const ui::NineSliceStyle& nsStyle);
 
-    void drawInteractTip(SpriteRenderer& uiRenderer, const UIContext& ctx) const;
+    void drawInteractTip(GfxDevice& gfxDevice, SpriteRenderer& uiRenderer, const UIContext& ctx)
+        const;
 
     void enterMenu(ui::Element& menu);
     void exitMenu(ui::Element& menu);

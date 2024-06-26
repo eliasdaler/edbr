@@ -13,6 +13,8 @@ GameUI::GameUI() : menuStack(cursor)
 
 void GameUI::init(GfxDevice& gfxDevice, IAudioManager& audioManager)
 {
+    this->audioManager = &audioManager;
+
     { // dialogue box
         std::filesystem::path dbStylePath{"assets/ui/dialogue_box.json"};
         JsonFile dbStyleFile(dbStylePath);
@@ -110,19 +112,22 @@ void GameUI::closeDialogueBox()
     audioManager->playSound("assets/sounds/ui/menu_close.wav");
 }
 
-void GameUI::draw(SpriteRenderer& spriteRenderer, const UIContext& ctx)
+void GameUI::draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer, const UIContext& ctx)
 {
-    menuStack.draw(spriteRenderer);
+    menuStack.draw(gfxDevice, spriteRenderer);
     if (cursor.visible) {
-        cursor.draw(spriteRenderer);
+        cursor.draw(gfxDevice, spriteRenderer);
     }
 
     if (!isDialogueBoxOpen() && ctx.interactionType != InteractComponent::Type::None) {
-        drawInteractTip(spriteRenderer, ctx);
+        drawInteractTip(gfxDevice, spriteRenderer, ctx);
     }
 }
 
-void GameUI::drawInteractTip(SpriteRenderer& spriteRenderer, const UIContext& ctx) const
+void GameUI::drawInteractTip(
+    GfxDevice& gfxDevice,
+    SpriteRenderer& spriteRenderer,
+    const UIContext& ctx) const
 {
     const Sprite& sprite = [this](InteractComponent::Type type) {
         switch (type) {
@@ -139,5 +144,5 @@ void GameUI::drawInteractTip(SpriteRenderer& spriteRenderer, const UIContext& ct
 
     auto screenPos = ctx.playerPos + glm::vec2{0.f, -16.f} - ctx.cameraPos;
     screenPos.y += interactTipBouncer.getOffset();
-    spriteRenderer.drawSprite(sprite, screenPos);
+    spriteRenderer.drawSprite(gfxDevice, sprite, screenPos);
 }

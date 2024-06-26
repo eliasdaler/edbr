@@ -27,7 +27,7 @@ public:
         bool vSync);
     void cleanup(VkDevice device);
 
-    VkExtent2D getExtent() const { return extent; }
+    VkExtent2D getExtent() const { return swapchain.extent; }
 
     const std::vector<VkImage>& getImages() { return images; };
 
@@ -59,7 +59,6 @@ private:
 
     std::array<FrameData, graphics::FRAME_OVERLAP> frames;
     vkb::Swapchain swapchain;
-    VkExtent2D extent;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     bool dirty{false};

@@ -13,6 +13,7 @@ int main(int argc, char** argv)
 
     game.init({
         .appName = "Project MTP",
+        .sourceSubDirName = "mtp",
     });
     game.run();
     game.cleanup();

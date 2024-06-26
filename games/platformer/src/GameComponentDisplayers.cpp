@@ -23,7 +23,7 @@ void Game::registerComponentDisplayers()
     edbr::registerMetaInfoComponentDisplayer(eid);
     edbr::registerTagComponentDisplayer(eid);
 
-    eid.registerDisplayer("Name", [](entt::const_handle e, const NameComponent& nc) {
+    eid.registerDisplayer("Name", [](entt::handle e, const NameComponent& nc) {
         BeginPropertyTable();
         if (!nc.name.empty()) {
             DisplayProperty("Name", nc.name);
@@ -37,7 +37,7 @@ void Game::registerComponentDisplayers()
     edbr::registerSpriteAnimationComponentDisplayer(eid);
 
     eid.registerDisplayer(
-        "CharacterController", [](entt::const_handle e, const CharacterControllerComponent& cc) {
+        "CharacterController", [](entt::handle e, const CharacterControllerComponent& cc) {
             BeginPropertyTable();
             {
                 DisplayProperty("Gravity", cc.gravity);
@@ -50,7 +50,7 @@ void Game::registerComponentDisplayers()
 
     eid.registerEmptyDisplayer<SpawnerComponent>("Spawner");
 
-    eid.registerDisplayer("Teleport", [](entt::const_handle e, const TeleportComponent& tc) {
+    eid.registerDisplayer("Teleport", [](entt::handle e, const TeleportComponent& tc) {
         BeginPropertyTable();
         {
             DisplayProperty("Level", tc.levelTag);
@@ -59,7 +59,7 @@ void Game::registerComponentDisplayers()
         EndPropertyTable();
     });
 
-    eid.registerDisplayer("Interact", [](entt::const_handle e, const InteractComponent& ic) {
+    eid.registerDisplayer("Interact", [](entt::handle e, const InteractComponent& ic) {
         BeginPropertyTable();
         {
             const auto interactTypeString = [](InteractComponent::Type t) {

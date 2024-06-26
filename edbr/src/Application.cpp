@@ -41,7 +41,9 @@ void operator delete(void* ptr, std::size_t) noexcept
 void Application::defineCLIArgs()
 {
     cliApp.add_flag("-p,--prod", prodMode, "Run in prod mode (even when dev path is set)");
+    cliApp.add_flag("--dev", isDevEnvironment, "Run in dev mode");
 }
+
 void Application::parseCLIArgs(int argc, char** argv)
 {
     try {
@@ -70,12 +72,34 @@ void Application::init(const Params& ps)
     }
 
     if (!prodMode) {
-        // Set EDBR_DEV_PATH to a path containing dev_settings.json to enable dev mode
-        if (auto* devSettingsPath = std::getenv("EDBR_DEV_PATH"); devSettingsPath) {
+        // Set EDBR_SOURCE_ROOT to enable dev mode
+        if (auto* sourceRootPath = std::getenv("EDBR_SOURCE_ROOT"); sourceRootPath) {
             isDevEnvironment = true;
-            const auto configPath = std::filesystem::path{devSettingsPath};
-            devDirPath = configPath.parent_path();
+            if (params.sourceSubDirName.empty()) {
+                fmt::println("[dev] params.sourceSubDirName not set, exiting");
+                std::exit(1);
+            }
+
+            devDirPath =
+                std::filesystem::path{sourceRootPath} / "games" / params.sourceSubDirName / "dev";
+            if (!std::filesystem::exists(devDirPath)) {
+                fmt::println("[dev] dev dir '{}' doesn't exist, creating", devDirPath.string());
+                std::filesystem::create_directories(devDirPath);
+                if (!std::filesystem::exists(devDirPath)) {
+                    fmt::println("[dev] failed to create dev dir '{}'", devDirPath.string());
+                }
+            }
+            const auto devSettingsPath = devDirPath / "dev_settings.json";
             loadDevSettings(std::filesystem::path{devSettingsPath});
+        }
+
+        if (auto* screenshotDirRootPath = std::getenv("EDBR_SCREENSHOT_ROOT");
+            screenshotDirRootPath) {
+            auto dir = std::filesystem::path{screenshotDirRootPath} / params.sourceSubDirName;
+            screenshotTaker.setScreenshotDir(std::move(dir));
+        } else {
+            fmt::println(
+                "[dev] EDBR_SCREENSHOT_ROOT not set: will save to exe dir", devDirPath.string());
         }
     }
 
@@ -114,10 +138,9 @@ void Application::init(const Params& ps)
 
     gfxDevice.init(window, params.appName.c_str(), params.version, vSync);
 
-    if (!devDirPath.empty()) {
+    if (!devDirPath.empty() && std::filesystem::exists(devDirPath)) {
         imguiIniPath = (devDirPath / "imgui.ini").string();
         ImGui::GetIO().IniFilename = imguiIniPath.c_str();
-        fmt::println("ImGui ini path: {}, {}", devDirPath.string(), ImGui::GetIO().IniFilename);
     } else {
         // don't write imgui.ini
         ImGui::GetIO().IniFilename = nullptr;
@@ -193,8 +216,8 @@ void Application::run()
                         case SDL_WINDOWEVENT_SIZE_CHANGED:
                             /* fallthrough */
                         case SDL_WINDOWEVENT_RESIZED:
-                            fmt::println(
-                                "window resized: {}x{}", event.window.data1, event.window.data2);
+                            // fmt::println(
+                            //    "window resized: {}x{}", event.window.data1, event.window.data2);
                             params.windowSize = {event.window.data1, event.window.data2};
                             break;
                         }
@@ -206,6 +229,7 @@ void Application::run()
 
             if (gfxDevice.needsSwapchainRecreate()) {
                 gfxDevice.recreateSwapchain(params.windowSize.x, params.windowSize.y);
+                onWindowResize();
             }
 
             // ImGui_ImplVulkan_NewFrame();
@@ -214,6 +238,9 @@ void Application::run()
 
             // update
             inputManager.update(dt);
+            if (isDevEnvironment) {
+                handleBaseDevInput();
+            }
             customUpdate(dt);
 
             actionListManager.update(dt, gamePaused);
@@ -258,4 +285,16 @@ IAudioManager& Application::getAudioManager()
 {
     assert(audioManager && "audio wasn't initialized");
     return *audioManager;
+}
+
+void Application::handleBaseDevInput()
+{
+    if (inputManager.getKeyboard().wasJustPressed(SDL_SCANCODE_F11)) {
+        const auto mainImageId = getMainDrawImageId();
+        if (mainImageId != NULL_IMAGE_ID) {
+            screenshotTaker.takeScreenshot(gfxDevice, mainImageId);
+        } else {
+            fmt::println("[dev] can't take screenshot: getMainDrawImageId returned NULL_IMAGE_ID");
+        }
+    }
 }

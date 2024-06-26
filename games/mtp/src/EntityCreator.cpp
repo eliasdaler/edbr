@@ -163,6 +163,18 @@ entt::handle EntityCreator::createFromNode(
     return e;
 }
 
+namespace
+{
+void appendMesh(MeshComponent& mc, const SceneMesh& mesh, const glm::mat4& transform)
+{
+    for (std::size_t i = 0; i < mesh.primitives.size(); ++i) {
+        mc.meshes.push_back(mesh.primitives[i]);
+        mc.meshMaterials.push_back(mesh.primitiveMaterials[i]);
+        mc.meshTransforms.push_back(transform);
+    }
+}
+}
+
 void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneNode& rootNode)
 {
     static const glm::mat4 I{1.f};
@@ -206,10 +218,8 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
     if (rootNode.meshIndex != -1) {
         auto& mc = e.get_or_emplace<MeshComponent>();
         if (mc.meshes.empty()) {
-            for (const auto& id : scene.meshes[rootNode.meshIndex].primitives) {
-                mc.meshes.push_back(id);
-                mc.meshTransforms.push_back(I);
-            }
+            const auto& sceneMesh = scene.meshes[rootNode.meshIndex];
+            appendMesh(mc, sceneMesh, I);
         } else {
             // TODO: what to do here?
             // Prefab can have a mesh, but would also have it in a level
@@ -251,10 +261,8 @@ void EntityCreator::processNode(entt::handle e, const Scene& scene, const SceneN
         if (cNode.meshIndex != -1) {
             // merge child meshes into the parent node
             auto& mc = e.get_or_emplace<MeshComponent>();
-            for (const auto& id : scene.meshes[cNode.meshIndex].primitives) {
-                mc.meshes.push_back(id);
-                mc.meshTransforms.push_back(cNode.transform.asMatrix());
-            }
+            const auto& childMesh = scene.meshes[cNode.meshIndex];
+            appendMesh(mc, childMesh, cNode.transform.asMatrix());
         }
     }
 }

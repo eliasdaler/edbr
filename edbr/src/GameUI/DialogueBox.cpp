@@ -212,9 +212,9 @@ void DialogueBox::update(float dt)
     }
 }
 
-void DialogueBox::draw(SpriteRenderer& spriteRenderer) const
+void DialogueBox::draw(GfxDevice& gfxDevice, SpriteRenderer& spriteRenderer) const
 {
-    ui::drawElement(spriteRenderer, *dialogueBoxUI);
+    ui::drawElement(gfxDevice, spriteRenderer, *dialogueBoxUI);
 }
 
 void DialogueBox::setText(std::string t)
