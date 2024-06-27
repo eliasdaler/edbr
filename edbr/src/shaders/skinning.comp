@@ -51,5 +51,9 @@ void main()
     Vertex v = pcs.inputBuffer.vertices[index];
     v.position = vec3(skinMatrix * vec4(v.position, 1.0));
 
+    mat3 skinMat3 = mat3(skinMatrix);
+    v.normal = skinMat3 * v.normal;
+    v.tangent.xyz = skinMat3 * v.tangent.xyz; // don't transform tangent.w
+
     pcs.outputBuffer.vertices[index] = v;
 }
