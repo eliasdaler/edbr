@@ -35,8 +35,8 @@ symlink_assets(fps)
 generate_spritesheets(fps)
 
 # Build shaders
-get_edbr_common_2d_shaders(EDBR_2D_SHADERS)
-target_shaders(fps "${EDBR_2D_SHADERS}")
+get_edbr_common_3d_shaders(EDBR_3D_SHADERS)
+target_shaders(fps "${EDBR_3D_SHADERS}")
 
 set_exe_target_common_props(fps)
 

@@ -39,7 +39,6 @@ namespace eu = entityutil;
 
 Game::Game() :
     Application(),
-    renderer(meshCache, materialCache),
     sceneCache(gfxDevice, meshCache, materialCache, animationCache),
     entityCreator(registry, "static_geometry", entityFactory, sceneCache),
     cameraManager(actionListManager),
@@ -588,7 +587,7 @@ void Game::customDraw()
         }
 
         auto cmd = gfxDevice.beginFrame();
-        renderer.draw(cmd, gfxDevice, camera, sceneData);
+        renderer.draw(cmd, gfxDevice, meshCache, materialCache, camera, sceneData);
 
         const auto& drawImage = renderer.getDrawImage(gfxDevice);
         { // UI
@@ -645,7 +644,8 @@ void Game::generateDrawList()
             const auto meshTransform = mc.meshTransforms[i].isIdentity() ?
                                            tc.worldTransform :
                                            tc.worldTransform * mc.meshTransforms[i].asMatrix();
-            renderer.drawMesh(mc.meshes[i], meshTransform, mc.meshMaterials[i], mc.castShadow);
+            renderer.drawMesh(
+                meshCache, mc.meshes[i], meshTransform, mc.meshMaterials[i], mc.castShadow);
         }
     }
 
@@ -657,6 +657,7 @@ void Game::generateDrawList()
             renderer.appendJointMatrices(gfxDevice, sc.skeletonAnimator.getJointMatrices());
         for (std::size_t i = 0; i < mc.meshes.size(); ++i) {
             renderer.drawSkinnedMesh(
+                meshCache,
                 mc.meshes[i],
                 tc.worldTransform,
                 mc.meshMaterials[i],

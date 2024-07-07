@@ -5,6 +5,9 @@
 
 void MaterialCache::init(GfxDevice& gfxDevice)
 {
+    assert(!initialized && "MaterialCache::init was already called");
+    initialized = true;
+
     materialDataBuffer = gfxDevice.createBuffer(
         MAX_MATERIALS * sizeof(MaterialData),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
@@ -28,11 +31,14 @@ void MaterialCache::init(GfxDevice& gfxDevice)
 
 void MaterialCache::cleanup(GfxDevice& gfxDevice)
 {
+    assert(initialized && "MaterialCache::init not called");
     gfxDevice.destroyBuffer(materialDataBuffer);
 }
 
 MaterialId MaterialCache::addMaterial(GfxDevice& gfxDevice, Material material)
 {
+    assert(initialized && "MaterialCache::init not called");
+
     const auto getTextureOrElse = [](ImageId imageId, ImageId placeholder) {
         return imageId != NULL_IMAGE_ID ? imageId : placeholder;
     };
@@ -60,16 +66,19 @@ MaterialId MaterialCache::addMaterial(GfxDevice& gfxDevice, Material material)
 
 const Material& MaterialCache::getMaterial(MaterialId id) const
 {
+    assert(initialized && "MaterialCache::init not called");
     return materials.at(id);
 }
 
 MaterialId MaterialCache::getFreeMaterialId() const
 {
+    assert(initialized && "MaterialCache::init not called");
     return materials.size();
 }
 
 MaterialId MaterialCache::getPlaceholderMaterialId() const
 {
+    assert(initialized);
     assert(placeholderMaterialId != NULL_MATERIAL_ID && "MaterialCache::init not called");
     return placeholderMaterialId;
 }

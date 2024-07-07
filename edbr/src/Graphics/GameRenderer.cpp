@@ -16,12 +16,11 @@
 
 #include <tracy/Tracy.hpp>
 
-GameRenderer::GameRenderer(MeshCache& meshCache, MaterialCache& materialCache) :
-    meshCache(meshCache), materialCache(materialCache)
-{}
-
 void GameRenderer::init(GfxDevice& gfxDevice, const glm::ivec2& drawImageSize)
 {
+    assert(!initialized && "GameRenderer::init already called");
+    initialized = true;
+
     initSceneData(gfxDevice);
 
     samples = gfxDevice.getMaxSupportedSamplingCount(); // needs to be called before
@@ -127,12 +126,34 @@ void GameRenderer::initSceneData(GfxDevice& gfxDevice)
     lightDataGPU.resize(MAX_LIGHTS);
 }
 
+void GameRenderer::cleanup(GfxDevice& gfxDevice)
+{
+    assert(initialized && "GameRenderer::init was not called");
+
+    const auto& device = gfxDevice.getDevice();
+
+    lightDataBuffer.cleanup(gfxDevice);
+    sceneDataBuffer.cleanup(gfxDevice);
+
+    postFXPipeline.cleanup(device);
+    depthResolvePipeline.cleanup(device);
+    skyboxPipeline.cleanup(device);
+    meshPipeline.cleanup(device);
+    pointLightShadowMapPipeline.cleanup(gfxDevice);
+    csmPipeline.cleanup(gfxDevice);
+    skinningPipeline.cleanup(gfxDevice);
+}
+
 void GameRenderer::draw(
     VkCommandBuffer cmd,
     GfxDevice& gfxDevice,
+    const MeshCache& meshCache,
+    const MaterialCache& materialCache,
     const Camera& camera,
     const SceneData& sceneData)
 {
+    assert(initialized && "GameRenderer::init was not called");
+
     { // skinning
         { // Sync reading from skinning buffers with new writes
             const auto memoryBarrier = VkMemoryBarrier2{
@@ -428,22 +449,6 @@ void GameRenderer::draw(
     }
 }
 
-void GameRenderer::cleanup(GfxDevice& gfxDevice)
-{
-    const auto& device = gfxDevice.getDevice();
-
-    lightDataBuffer.cleanup(gfxDevice);
-    sceneDataBuffer.cleanup(gfxDevice);
-
-    postFXPipeline.cleanup(device);
-    depthResolvePipeline.cleanup(device);
-    skyboxPipeline.cleanup(device);
-    meshPipeline.cleanup(device);
-    pointLightShadowMapPipeline.cleanup(gfxDevice);
-    csmPipeline.cleanup(gfxDevice);
-    skinningPipeline.cleanup(gfxDevice);
-}
-
 void GameRenderer::updateDevTools(GfxDevice& gfxDevice, float dt)
 {
     ImGui::DragFloat3("Cascades", csmPipeline.percents.data(), 0.1f, 0.f, 1.f);
@@ -555,6 +560,7 @@ void GameRenderer::addLight(const Light& light, const Transform& transform)
 }
 
 void GameRenderer::drawMesh(
+    const MeshCache& meshCache,
     MeshId id,
     const glm::mat4& transform,
     MaterialId materialId,
@@ -582,6 +588,7 @@ std::size_t GameRenderer::appendJointMatrices(
 }
 
 void GameRenderer::drawSkinnedMesh(
+    const MeshCache& meshCache,
     MeshId meshId,
     const glm::mat4& transform,
     MaterialId materialId,

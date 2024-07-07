@@ -35,4 +35,6 @@ private:
     MaterialId placeholderMaterialId{NULL_MATERIAL_ID};
 
     ImageId defaultNormalMapTextureID{NULL_IMAGE_ID};
+
+    bool initialized{false};
 };

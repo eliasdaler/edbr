@@ -9,7 +9,7 @@
 
 void Game::customInit()
 {
-    gameScreenDrawImageId =
+    drawImageId =
         gfxDevice.createDrawImage(drawImageFormat, params.renderSize, "game screen draw image");
 
     // this will create finalDrawImage
@@ -97,7 +97,7 @@ void Game::customDraw()
 {
     auto cmd = gfxDevice.beginFrame();
 
-    const auto& drawImage = gfxDevice.getImage(gameScreenDrawImageId);
+    const auto& drawImage = gfxDevice.getImage(drawImageId);
     vkutil::transitionImage(
         cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 

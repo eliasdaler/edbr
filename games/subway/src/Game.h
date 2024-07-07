@@ -31,7 +31,7 @@ private:
     glm::ivec2 gameWindowSize;
 
     VkFormat drawImageFormat{VK_FORMAT_R16G16B16A16_SFLOAT};
-    ImageId gameScreenDrawImageId{NULL_IMAGE_ID}; // image to which game pixels are drawn to
+    ImageId drawImageId{NULL_IMAGE_ID}; // image to which game pixels are drawn to
     ImageId finalDrawImageId{NULL_IMAGE_ID}; // id of image which is drawn to the window
 
     CRTPipeline crtPipeline;

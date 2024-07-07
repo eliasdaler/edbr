@@ -39,15 +39,16 @@ public:
     };
 
 public:
-    GameRenderer(MeshCache& meshCache, MaterialCache& materialCache);
-
     void init(GfxDevice& gfxDevice, const glm::ivec2& drawImageSize);
+    void cleanup(GfxDevice& gfxDevice);
+
     void draw(
         VkCommandBuffer cmd,
         GfxDevice& gfxDevice,
+        const MeshCache& meshCache,
+        const MaterialCache& materialCache,
         const Camera& camera,
         const SceneData& sceneData);
-    void cleanup(GfxDevice& gfxDevice);
 
     void updateDevTools(GfxDevice& gfxDevice, float dt);
 
@@ -57,11 +58,17 @@ public:
 
     void addLight(const Light& light, const Transform& transform);
 
-    void drawMesh(MeshId id, const glm::mat4& transform, MaterialId materialId, bool castShadow);
+    void drawMesh(
+        const MeshCache& meshCache,
+        MeshId meshId,
+        const glm::mat4& transform,
+        MaterialId materialId,
+        bool castShadow);
 
     std::size_t appendJointMatrices(GfxDevice& gfxDevice, std::span<const glm::mat4> jointMatrices);
 
     void drawSkinnedMesh(
+        const MeshCache& meshCache,
         MeshId meshId,
         const glm::mat4& transform,
         MaterialId materialId,
@@ -85,9 +92,7 @@ private:
 
     void sortDrawList();
 
-    MeshCache& meshCache;
-    MaterialCache& materialCache;
-
+    bool initialized{false};
     SkinningPipeline skinningPipeline;
     CSMPipeline csmPipeline;
     PointLightShadowMapPipeline pointLightShadowMapPipeline;
