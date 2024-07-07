@@ -7,6 +7,9 @@
 #include <edbr/Graphics/Scene.h>
 #include <edbr/Util/GltfLoader.h>
 
+#include <edbr/Util/ImGuiUtil.h>
+#include <imgui.h>
+
 Game::Game()
 {}
 
@@ -20,13 +23,9 @@ void Game::customInit()
     renderer.init(gfxDevice, params.renderSize);
 
     std::filesystem::path scenePath{"assets/models/cato.gltf"};
-    auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, scenePath);
-    auto meshIndex = scene.nodes[0]->meshIndex;
-    auto mesh = scene.meshes[meshIndex];
-    for (const auto& m : mesh.primitives) {
-        std::cout << m << ", num vertices = " << scene.cpuMeshes[m].vertices.size() << std::endl;
-    }
-
+    const auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, scenePath);
+    const auto meshIndex = scene.nodes[0]->meshIndex;
+    const auto mesh = scene.meshes[meshIndex];
     catMeshes = mesh.primitives;
     catMaterials = mesh.primitiveMaterials;
 
@@ -37,8 +36,11 @@ void Game::customInit()
     camera.init(cameraFovX, cameraNear, cameraFar, aspectRatio);
     camera.setUseInverseDepth(true);
 
-    camera.setPosition({0.f, 4.5f, 5.f});
+    camera.setPosition({0.f, 2.5f, 5.f});
     camera.lookAt({0.f, 0.f, 0.f});
+
+    ambientColor = LinearColor{0.3, 0.65, 0.8};
+    ambientIntensity = 0.025f;
 }
 
 void Game::loadAppSettings()
@@ -83,17 +85,35 @@ void Game::customUpdate(float dt)
         gameWindowPos = {blitRect.x, blitRect.y};
         gameWindowSize = {blitRect.z, blitRect.w};
     }
+
+    ImGui::Begin("Dev");
+    util::ImGuiColorEdit3("Ambient", ambientColor);
+    ImGui::DragFloat("Intensity", &ambientIntensity, 0.1f, 0.f, 1.f);
+    ImGui::End();
 }
 
 void Game::customDraw()
 {
     auto cmd = gfxDevice.beginFrame();
 
-    drawGameWorld(cmd);
+    {
+        renderer.beginDrawing(gfxDevice);
+        drawGameWorld(cmd);
+        renderer.endDrawing();
+
+        const auto sceneData = GameRenderer::SceneData{
+            .camera = camera,
+            .ambientColor = ambientColor,
+            .ambientIntensity = ambientIntensity,
+        };
+        renderer.draw(cmd, gfxDevice, meshCache, materialCache, camera, sceneData);
+    }
+
     const auto& drawImage = renderer.getDrawImage(gfxDevice);
 
     spriteRenderer.beginDrawing();
     drawUI();
+
     spriteRenderer.endDrawing();
     spriteRenderer.draw(cmd, gfxDevice, drawImage);
 
@@ -112,20 +132,20 @@ void Game::customDraw()
 
 void Game::drawGameWorld(VkCommandBuffer cmd)
 {
-    renderer.beginDrawing(gfxDevice);
-
     for (std::size_t i = 0; i < catMeshes.size(); ++i) {
         renderer.drawMesh(meshCache, catMeshes[i], glm::mat4{1.f}, catMaterials[i], false);
     }
-    renderer.endDrawing();
 
-    GameRenderer::SceneData sceneData{
-        .camera = camera,
-        .ambientColor = LinearColor::White(),
-        .ambientIntensity = 1.f,
+    Transform lightTransform;
+    lightTransform.setHeading(
+        glm::quatLookAt(glm::normalize(glm::vec3{-1.f, -0.f, -1.f}), math::GlobalUpAxis));
+    Light light{
+        .type = LightType::Directional,
+        .color = LinearColor::FromRGB(120, 100, 40),
+        .intensity = 10.f,
+        .castShadow = true,
     };
-
-    renderer.draw(cmd, gfxDevice, meshCache, materialCache, camera, sceneData);
+    renderer.addLight(light, lightTransform);
 }
 
 void Game::drawUI()

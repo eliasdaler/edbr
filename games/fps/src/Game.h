@@ -30,7 +30,7 @@ private:
 
     // dev
     bool gameDrawnInWindow{false};
-    bool drawImGui{false};
+    bool drawImGui{true};
 
     MeshCache meshCache;
     MaterialCache materialCache;
@@ -38,11 +38,12 @@ private:
     std::vector<MeshId> catMeshes;
     std::vector<MaterialId> catMaterials;
 
+    Camera camera;
     GameRenderer renderer;
 
+    SpriteRenderer spriteRenderer;
     Font defaultFont;
 
-    SpriteRenderer spriteRenderer;
-
-    Camera camera;
+    LinearColor ambientColor;
+    float ambientIntensity{0.1f};
 };

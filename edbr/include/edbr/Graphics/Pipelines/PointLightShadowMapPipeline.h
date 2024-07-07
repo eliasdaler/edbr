@@ -32,7 +32,6 @@ public:
         VkCommandBuffer cmd,
         const GfxDevice& gfxDevice,
         const MeshCache& meshCache,
-        const Camera& camera,
         const std::uint32_t lightIndex,
         const glm::vec3& lightPos,
         const GPUBuffer& materialsBuffer,

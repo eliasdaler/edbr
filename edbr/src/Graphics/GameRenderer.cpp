@@ -236,7 +236,6 @@ void GameRenderer::draw(
                 cmd,
                 gfxDevice,
                 meshCache,
-                camera,
                 (std::uint32_t)lightIndex,
                 light.position,
                 materialCache.getMaterialDataBuffer(),
