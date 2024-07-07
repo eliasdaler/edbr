@@ -169,7 +169,8 @@ void PointLightShadowMapPipeline::draw(
     const Camera& camera,
     const std::uint32_t lightIndex,
     const glm::vec3& lightPos,
-    const GPUBuffer& sceneDataBuffer,
+    const GPUBuffer& materialsBuffer,
+    const GPUBuffer& lightsBuffer,
     const std::vector<MeshDrawCommand>& meshDrawCommands,
     bool shadowsEnabled)
 {
@@ -236,7 +237,8 @@ void PointLightShadowMapPipeline::draw(
                 .model = dc.transformMatrix,
                 .vertexBuffer = dc.skinnedMesh ? dc.skinnedMesh->skinnedVertexBuffer.address :
                                                  mesh.vertexBuffer.address,
-                .sceneDataBuffer = sceneDataBuffer.address,
+                .materialsBuffer = materialsBuffer.address,
+                .lightsBuffer = lightsBuffer.address,
                 .vpsBuffer = vpsBuffer.getBuffer().address,
                 .materialId = dc.materialId,
                 .lightIndex = lightIndex,

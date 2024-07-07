@@ -219,7 +219,8 @@ void GameRenderer::draw(
                 camera,
                 (std::uint32_t)lightIndex,
                 light.position,
-                sceneDataBuffer.getBuffer(),
+                materialCache.getMaterialDataBuffer(),
+                lightDataBuffer.getBuffer(),
                 meshDrawCommands,
                 shadowsEnabled);
         }

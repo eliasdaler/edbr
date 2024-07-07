@@ -33,7 +33,7 @@ public:
                     .voiceSoundSpeed = 0.15f,
                 };
 
-                if (index == 0) {
+                if (index == 1) {
                     tt.text = LST{"WELCOME_REACTION"};
                     return game.say(tt);
                 }

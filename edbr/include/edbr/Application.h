@@ -63,7 +63,7 @@ protected:
 
     GfxDevice gfxDevice;
 
-    SDL_Window* window;
+    SDL_Window* window{nullptr};
 
     Params params;
     bool vSync{true};

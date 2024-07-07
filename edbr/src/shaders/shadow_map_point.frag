@@ -10,13 +10,13 @@ layout (location = 1) in vec2 inUV;
 
 void main()
 {
-    MaterialData material = pcs.sceneData.materials.data[pcs.materialID];
+    MaterialData material = pcs.materials.data[pcs.materialID];
     vec4 diffuse = sampleTexture2DLinear(material.diffuseTex, inUV);
     if (diffuse.a < 0.1) {
         discard;
     }
 
-    Light light = pcs.sceneData.lights.data[pcs.lightIndex];
+    Light light = pcs.lights.data[pcs.lightIndex];
     gl_FragDepth = length(vec3(inWorldPos) - light.position) / pcs.farPlane;
 }
 

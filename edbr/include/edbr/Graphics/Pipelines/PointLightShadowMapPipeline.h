@@ -35,7 +35,8 @@ public:
         const Camera& camera,
         const std::uint32_t lightIndex,
         const glm::vec3& lightPos,
-        const GPUBuffer& sceneDataBuffer,
+        const GPUBuffer& materialsBuffer,
+        const GPUBuffer& lightsBuffer,
         const std::vector<MeshDrawCommand>& meshDrawCommands,
         bool shadowsEnabled);
     void endFrame(VkCommandBuffer cmd, const GfxDevice& gfxDevice);
@@ -64,7 +65,8 @@ private:
     struct PushConstants {
         glm::mat4 model;
         VkDeviceAddress vertexBuffer;
-        VkDeviceAddress sceneDataBuffer;
+        VkDeviceAddress materialsBuffer;
+        VkDeviceAddress lightsBuffer;
         VkDeviceAddress vpsBuffer;
         std::uint32_t materialId;
         std::uint32_t lightIndex;
