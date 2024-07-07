@@ -1,0 +1,43 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "/home/eliasdaler/work/edbr/games/subway/assets/levels/subway.tmj",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "/home/eliasdaler/work/edbr/games/subway/assets/levels/subway.tmj": {
+            "scale": 4.2766,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 128.1391759809194,
+                "y": 92.36309217602766
+            }
+        },
+        "/home/eliasdaler/work/edbr/games/subway/assets/tilesets/subway.tsj": {
+            "scaleInDock": 3.1394,
+            "scaleInEditor": 3.8122
+        }
+    },
+    "last.imagePath": "/home/eliasdaler/work/edbr/games/subway/assets/tilesets",
+    "map.fixedSize": false,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+        "/home/eliasdaler/work/edbr/games/subway/assets/tilesets/subway.tsj",
+        "/home/eliasdaler/work/edbr/games/subway/assets/levels/subway.tmj"
+    ],
+    "project": "subway.tiled-project",
+    "property.type": "int",
+    "recentFiles": [
+        "/home/eliasdaler/work/edbr/games/subway/assets/tilesets/subway.tsj",
+        "/home/eliasdaler/work/edbr/games/subway/assets/levels/subway.tmj"
+    ],
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
