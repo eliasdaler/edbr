@@ -87,9 +87,9 @@ void MeshPipeline::draw(
 
     for (const auto& dcIdx : sortedDrawCommands) {
         const auto& dc = drawCommands[dcIdx];
-        if (!edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
+        /* if (!edge::isInFrustum(frustum, dc.worldBoundingSphere)) {
             continue;
-        }
+        } */
 
         const auto& mesh = meshCache.getMesh(dc.meshId);
         if (dc.meshId != prevMeshId) {

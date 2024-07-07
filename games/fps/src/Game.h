@@ -19,7 +19,7 @@ public:
     void customUpdate(float dt) override;
     void customDraw() override;
 
-    ImageId getMainDrawImageId() const override { return drawImageId; }
+    ImageId getMainDrawImageId() const override { return renderer.getDrawImageId(); }
 
 private:
     void drawGameWorld(VkCommandBuffer cmd);
@@ -27,9 +27,6 @@ private:
 
     glm::ivec2 gameWindowPos;
     glm::ivec2 gameWindowSize;
-
-    VkFormat drawImageFormat{VK_FORMAT_R16G16B16A16_SFLOAT};
-    ImageId drawImageId{NULL_IMAGE_ID}; // image to which game pixels are drawn to
 
     // dev
     bool gameDrawnInWindow{false};
@@ -41,7 +38,7 @@ private:
     std::vector<MeshId> catMeshes;
     std::vector<MaterialId> catMaterials;
 
-    GameRenderer gameRenderer;
+    GameRenderer renderer;
 
     Font defaultFont;
 

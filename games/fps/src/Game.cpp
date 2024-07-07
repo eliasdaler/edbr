@@ -12,15 +12,12 @@ Game::Game()
 
 void Game::customInit()
 {
-    drawImageId =
-        gfxDevice.createDrawImage(drawImageFormat, params.renderSize, "game screen draw image");
-
     defaultFont.load(gfxDevice, "assets/fonts/pressstart2p.ttf", 32, false);
 
-    spriteRenderer.init(gfxDevice, drawImageFormat);
+    spriteRenderer.init(gfxDevice, renderer.getDrawImageFormat());
 
     materialCache.init(gfxDevice);
-    gameRenderer.init(gfxDevice, params.renderSize);
+    renderer.init(gfxDevice, params.renderSize);
 
     std::filesystem::path scenePath{"assets/models/cato.gltf"};
     auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, scenePath);
@@ -38,6 +35,10 @@ void Game::customInit()
     float cameraFovX{glm::radians(45.f)};
     auto aspectRatio = (float)params.renderSize.x / (float)params.renderSize.y;
     camera.init(cameraFovX, cameraNear, cameraFar, aspectRatio);
+    camera.setUseInverseDepth(true);
+
+    camera.setPosition({0.f, 4.5f, 5.f});
+    camera.lookAt({0.f, 0.f, 0.f});
 }
 
 void Game::loadAppSettings()
@@ -68,7 +69,7 @@ void Game::customCleanup()
     gfxDevice.waitIdle();
     spriteRenderer.cleanup(gfxDevice);
 
-    gameRenderer.cleanup(gfxDevice);
+    renderer.cleanup(gfxDevice);
     meshCache.cleanup(gfxDevice);
     materialCache.cleanup(gfxDevice);
 }
@@ -76,9 +77,9 @@ void Game::customCleanup()
 void Game::customUpdate(float dt)
 {
     if (!gameDrawnInWindow) {
-        const auto& finalDrawImage = gfxDevice.getImage(drawImageId);
-        const auto blitRect = util::
-            calculateLetterbox(finalDrawImage.getSize2D(), gfxDevice.getSwapchainSize(), true);
+        const auto& drawImage = renderer.getDrawImage(gfxDevice);
+        const auto blitRect =
+            util::calculateLetterbox(drawImage.getSize2D(), gfxDevice.getSwapchainSize(), true);
         gameWindowPos = {blitRect.x, blitRect.y};
         gameWindowSize = {blitRect.z, blitRect.w};
     }
@@ -88,15 +89,8 @@ void Game::customDraw()
 {
     auto cmd = gfxDevice.beginFrame();
 
-    const auto& drawImage = gfxDevice.getImage(drawImageId);
-    vkutil::transitionImage(
-        cmd, drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    // clear screen
-    const auto clearColor = glm::vec4{0.f, 1.f, 0.f, 1.f};
-    vkutil::clearColorImage(cmd, drawImage.getExtent2D(), drawImage.imageView, clearColor);
-
     drawGameWorld(cmd);
+    const auto& drawImage = renderer.getDrawImage(gfxDevice);
 
     spriteRenderer.beginDrawing();
     drawUI();
@@ -118,14 +112,24 @@ void Game::customDraw()
 
 void Game::drawGameWorld(VkCommandBuffer cmd)
 {
+    renderer.beginDrawing(gfxDevice);
+
+    for (std::size_t i = 0; i < catMeshes.size(); ++i) {
+        renderer.drawMesh(meshCache, catMeshes[i], glm::mat4{1.f}, catMaterials[i], false);
+    }
+    renderer.endDrawing();
+
     GameRenderer::SceneData sceneData{
         .camera = camera,
+        .ambientColor = LinearColor::White(),
+        .ambientIntensity = 1.f,
     };
-    gameRenderer.draw(cmd, gfxDevice, meshCache, materialCache, camera, sceneData);
+
+    renderer.draw(cmd, gfxDevice, meshCache, materialCache, camera, sceneData);
 }
 
 void Game::drawUI()
 {
     spriteRenderer
-        .drawText(gfxDevice, defaultFont, "Hello, world", glm::vec2{64, 64}, LinearColor::Black());
+        .drawText(gfxDevice, defaultFont, "Hello, world", glm::vec2{64, 64}, LinearColor::White());
 }

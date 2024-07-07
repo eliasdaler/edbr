@@ -33,6 +33,7 @@ public:
     glm::mat4 getViewProj() const;
 
     void setYawPitch(float yaw, float pitch);
+    void lookAt(const glm::vec3& point);
 
     const Transform& getTransform() const { return transform; }
 

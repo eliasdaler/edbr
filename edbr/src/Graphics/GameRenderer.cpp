@@ -216,19 +216,18 @@ void GameRenderer::draw(
         vkutil::cmdEndLabel(cmd);
     }
 
-    { // point light shadows
+    std::vector<std::size_t> pointLightIndices;
+    for (std::size_t i = 0; i < lightDataGPU.size(); ++i) {
+        const auto& light = lightDataGPU[i];
+        if (light.type == edbr::TYPE_POINT_LIGHT) {
+            // TODO: check if this light should cast shadow or not
+            pointLightIndices.push_back(i);
+        }
+    }
+    if (!pointLightIndices.empty()) { // point light shadows
         ZoneScopedN("Point shadow");
         TracyVkZoneC(gfxDevice.getTracyVkCtx(), cmd, "Point shadow", tracy::Color::CornflowerBlue);
         vkutil::cmdBeginLabel(cmd, "Point shadow");
-
-        std::vector<std::size_t> pointLightIndices;
-        for (std::size_t i = 0; i < lightDataGPU.size(); ++i) {
-            const auto& light = lightDataGPU[i];
-            if (light.type == edbr::TYPE_POINT_LIGHT) {
-                // TODO: check if this light should cast shadow or not
-                pointLightIndices.push_back(i);
-            }
-        }
 
         pointLightShadowMapPipeline.beginFrame(cmd, gfxDevice, lightDataGPU, pointLightIndices);
         for (const auto lightIndex : pointLightIndices) {

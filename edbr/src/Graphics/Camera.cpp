@@ -102,6 +102,12 @@ void Camera::setYawPitch(float yaw, float pitch)
     setHeading(yawRotation * pitchRotation);
 }
 
+void Camera::lookAt(const glm::vec3& point)
+{
+    auto dir = glm::normalize(getPosition() - point);
+    setHeading(glm::quatLookAt(dir, math::GlobalUpAxis));
+}
+
 void Camera::setUseInverseDepth(bool b)
 {
     useInverseDepth = b;
