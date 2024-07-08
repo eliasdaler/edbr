@@ -31,7 +31,6 @@ class MaterialCache;
 class GameRenderer {
 public:
     struct SceneData {
-        const Camera& camera;
         LinearColor ambientColor;
         float ambientIntensity;
         LinearColor fogColor;

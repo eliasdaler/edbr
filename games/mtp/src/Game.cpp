@@ -577,7 +577,6 @@ void Game::customDraw()
     {
         ZoneScopedN("Render");
         auto sceneData = GameRenderer::SceneData{
-            .camera = camera,
             .ambientColor = level.getAmbientLightColor(),
             .ambientIntensity = level.getAmbientLightIntensity(),
         };

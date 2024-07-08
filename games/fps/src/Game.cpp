@@ -102,7 +102,6 @@ void Game::customDraw()
         renderer.endDrawing();
 
         const auto sceneData = GameRenderer::SceneData{
-            .camera = camera,
             .ambientColor = ambientColor,
             .ambientIntensity = ambientIntensity,
         };

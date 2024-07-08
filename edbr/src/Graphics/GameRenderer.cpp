@@ -249,10 +249,10 @@ void GameRenderer::draw(
 
     { // upload scene data - can only be done after shadow mapping was finished
         const auto gpuSceneData = GPUSceneData{
-            .view = sceneData.camera.getView(),
-            .proj = sceneData.camera.getProjection(),
-            .viewProj = sceneData.camera.getViewProj(),
-            .cameraPos = glm::vec4{sceneData.camera.getPosition(), 1.f},
+            .view = camera.getView(),
+            .proj = camera.getProjection(),
+            .viewProj = camera.getViewProj(),
+            .cameraPos = glm::vec4{camera.getPosition(), 1.f},
             .ambientColor = LinearColorNoAlpha{sceneData.ambientColor},
             .ambientIntensity = sceneData.ambientIntensity,
             .fogColor = LinearColorNoAlpha{sceneData.fogColor},
