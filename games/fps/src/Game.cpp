@@ -10,6 +10,43 @@
 #include <edbr/Util/ImGuiUtil.h>
 #include <imgui.h>
 
+namespace
+{
+void dumpMesh(
+    const std::filesystem::path& path,
+    GfxDevice& gfxDevice,
+    MeshCache& meshCache,
+    MaterialCache& materialCache)
+{
+    std::filesystem::path scenePath{"assets/models/star.gltf"};
+    const auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, scenePath);
+    const auto meshIndex = scene.nodes[0]->meshIndex;
+    const auto mesh = scene.meshes[meshIndex];
+    auto& cpuMesh = scene.cpuMeshes.at(mesh.primitives[0]);
+
+    fmt::print("indices = {{ ");
+    for (const auto& v : cpuMesh.indices) {
+        fmt::print("{},", v);
+    }
+    fmt::println("}}");
+
+    for (const auto& v : cpuMesh.vertices) {
+        fmt::print(
+            "{{.position = glm::vec3{{ {}, {}, {} }}, .uv = {{ {}, {} }}, .normal = {{ {}, {}, "
+            "{} }} }},\n",
+            v.position.x,
+            v.position.y,
+            v.position.z,
+            v.uv_x,
+            v.uv_y,
+            v.normal.x,
+            v.normal.y,
+            v.normal.z);
+    }
+}
+
+}
+
 Game::Game()
 {}
 

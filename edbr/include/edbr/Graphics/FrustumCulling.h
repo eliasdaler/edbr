@@ -12,13 +12,17 @@ struct AABB;
 }
 class Camera;
 
-/* Mostly stolen from https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling */
 struct Frustum {
     struct Plane {
         Plane() = default;
-        Plane(const glm::vec3& p1, const glm::vec3& norm) :
-            normal(glm::normalize(norm)), distance(glm::dot(normal, p1))
-        {}
+
+        // the plane equation is ai+bj+ck+d=0, where (i,j,k) is basis
+        Plane(float a, float b, float c, float d)
+        {
+            const auto mag = glm::length(glm::vec3{a, b, c});
+            this->normal = glm::vec3{a, b, c} / mag;
+            this->distance = d / mag;
+        }
 
         glm::vec3 normal{0.f, 1.f, 0.f};
 
@@ -27,7 +31,7 @@ struct Frustum {
 
         float getSignedDistanceToPlane(const glm::vec3& point) const
         {
-            return glm::dot(normal, point) - distance;
+            return glm::dot(normal, point) + distance;
         }
     };
 
@@ -64,7 +68,6 @@ struct Frustum {
 
 namespace edge
 {
-// NOTE: this doesn't work for cameras with inverse depth
 std::array<glm::vec3, 8> calculateFrustumCornersWorldSpace(const Camera& camera);
 
 Frustum createFrustumFromCamera(const Camera& camera);

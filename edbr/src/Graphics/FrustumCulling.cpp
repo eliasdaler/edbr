@@ -7,22 +7,6 @@
 #include <algorithm>
 #include <array>
 
-namespace
-{
-glm::vec3 findCenter(const std::array<glm::vec3, 8>& points, const std::array<int, 4>& is)
-{
-    return (points[is[0]] + points[is[1]] + points[is[2]] + points[is[3]]) / 4.f;
-}
-
-glm::vec3 findNormal(const std::array<glm::vec3, 8>& points, const std::array<int, 4>& is)
-{
-    const auto e1 = glm::normalize(points[is[1]] - points[is[0]]);
-    const auto e2 = glm::normalize(points[is[2]] - points[is[1]]);
-    return glm::cross(e1, e2);
-}
-
-}
-
 namespace edge
 {
 
@@ -57,57 +41,31 @@ std::array<glm::vec3, 8> calculateFrustumCornersWorldSpace(const Camera& camera)
 
 Frustum createFrustumFromCamera(const Camera& camera)
 {
-    // TODO: write a non-horrible version of this, lol
+    // http://www8.cs.umu.se/kurser/5DV051/HT12/lab/plane_extraction.pdf
+    // Need to negate everything because we're looking at -Z, not +Z
+    const auto m = camera.getViewProj();
+
     Frustum frustum;
-    if (camera.isOrthographic()) {
-        const auto points = calculateFrustumCornersWorldSpace(camera);
+    /*
+    // if clipNearZ == -1
+    frustum.nearFace =
+        {-(m[0][3] + m[0][2]), -(m[1][3] + m[1][2]), -(m[2][3] + m[2][2]), -(m[3][3] + m[3][2])};
+    */
+    // clipNearZ == 0
+    frustum.nearFace = {-(m[0][2]), -(m[1][2]), -(m[2][2]), -(m[3][2])};
 
-        /*
-               5────────6
-              ╱┊       ╱│
-             ╱ ┊      ╱ │
-            1──┼─────2  │
-            │  ┊ (C) │  │            Y ╿   . Z
-            │  4┈┈┈┈┈│┈┈7              │  ╱
-            │ ╱      │ ╱         X     │ ╱
-            │╱       │╱           ╾────┼
-            0--------3
+    frustum.farFace =
+        {-(m[0][3] - m[0][2]), -(m[1][3] - m[1][2]), -(m[2][3] - m[2][2]), -(m[3][3] - m[3][2])};
 
-        */
-        // from bottom-left and moving CW...
-        static const std::array<int, 4> near{0, 1, 2, 3};
-        static const std::array<int, 4> far{7, 6, 5, 4};
-        static const std::array<int, 4> left{4, 5, 1, 0};
-        static const std::array<int, 4> right{3, 2, 6, 7};
-        static const std::array<int, 4> bottom{4, 0, 3, 7};
-        static const std::array<int, 4> top{5, 6, 2, 1};
+    frustum.leftFace =
+        {-(m[0][3] + m[0][0]), -(m[1][3] + m[1][0]), -(m[2][3] + m[2][0]), -(m[3][3] + m[3][0])};
+    frustum.rightFace =
+        {-(m[0][3] - m[0][0]), -(m[1][3] - m[1][0]), -(m[2][3] - m[2][0]), -(m[3][3] - m[3][0])};
 
-        frustum.nearFace = {findCenter(points, near), findNormal(points, near)};
-        frustum.farFace = {findCenter(points, far), findNormal(points, far)};
-        frustum.leftFace = {findCenter(points, left), findNormal(points, left)};
-        frustum.rightFace = {findCenter(points, right), findNormal(points, right)};
-        frustum.bottomFace = {findCenter(points, bottom), findNormal(points, bottom)};
-        frustum.topFace = {findCenter(points, top), findNormal(points, top)};
-    } else {
-        const auto camPos = camera.getPosition();
-        const auto camFront = camera.getTransform().getLocalFront();
-        const auto camUp = camera.getTransform().getLocalUp();
-        const auto camRight = camera.getTransform().getLocalRight();
-
-        const auto zNear = camera.getZNear();
-        const auto zFar = camera.getZFar();
-        const auto halfVSide = zFar * tanf(camera.getFOVY() * .5f);
-        const auto halfHSide = halfVSide * camera.getAspectRatio();
-        const auto frontMultFar = zFar * camFront;
-
-        frustum.nearFace = {camPos + zNear * camFront, camFront};
-        frustum.farFace = {camPos + frontMultFar, -camFront};
-        frustum.leftFace = {camPos, glm::cross(camUp, frontMultFar + camRight * halfHSide)};
-        frustum.rightFace = {camPos, glm::cross(frontMultFar - camRight * halfHSide, camUp)};
-        frustum.bottomFace = {camPos, glm::cross(frontMultFar + camUp * halfVSide, camRight)};
-        frustum.topFace = {camPos, glm::cross(camRight, frontMultFar - camUp * halfVSide)};
-    }
-
+    frustum.bottomFace =
+        {-(m[0][3] + m[0][1]), -(m[1][3] + m[1][1]), -(m[2][3] + m[2][1]), -(m[3][3] + m[3][1])};
+    frustum.topFace =
+        {-(m[0][3] - m[0][1]), -(m[1][3] - m[1][1]), -(m[2][3] - m[2][1]), -(m[3][3] - m[3][1])};
     return frustum;
 }
 
@@ -129,46 +87,40 @@ namespace
 
 bool isInFrustum(const Frustum& frustum, const math::Sphere& s)
 {
-    return (
-        isOnOrForwardPlane(frustum.farFace, s) && isOnOrForwardPlane(frustum.nearFace, s) &&
-        isOnOrForwardPlane(frustum.leftFace, s) && isOnOrForwardPlane(frustum.rightFace, s) &&
-        isOnOrForwardPlane(frustum.topFace, s) && isOnOrForwardPlane(frustum.bottomFace, s));
+    bool res = true;
+    for (int i = 0; i < 6; ++i) {
+        const auto& plane = frustum.getPlane(i);
+        const auto dist = plane.getSignedDistanceToPlane(s.center);
+        if (dist > s.radius) {
+            return false;
+        } else if (dist > -s.radius) {
+            res = true;
+        }
+    }
+    return res;
 }
 
 bool isInFrustum(const Frustum& frustum, const math::AABB& aabb)
 {
-    glm::vec3 vmin, vmax;
     bool ret = true;
     for (int i = 0; i < 6; ++i) {
         const auto& plane = frustum.getPlane(i);
-        // X axis
-        if (plane.normal.x < 0) {
-            vmin.x = aabb.min.x;
-            vmax.x = aabb.max.x;
-        } else {
-            vmin.x = aabb.max.x;
-            vmax.x = aabb.min.x;
-        }
-        // Y axis
-        if (plane.normal.y < 0) {
-            vmin.y = aabb.min.y;
-            vmax.y = aabb.max.y;
-        } else {
-            vmin.y = aabb.max.y;
-            vmax.y = aabb.min.y;
-        }
-        // Z axis
-        if (plane.normal.z < 0) {
-            vmin.z = aabb.min.z;
-            vmax.z = aabb.max.z;
-        } else {
-            vmin.z = aabb.max.z;
-            vmax.z = aabb.min.z;
-        }
-        if (plane.getSignedDistanceToPlane(vmin) < 0) {
+
+        // Nearest point
+        glm::vec3 p;
+        p.x = plane.normal.x >= 0 ? aabb.min.x : aabb.max.x;
+        p.y = plane.normal.y >= 0 ? aabb.min.y : aabb.max.y;
+        p.z = plane.normal.z >= 0 ? aabb.min.z : aabb.max.z;
+        if (plane.getSignedDistanceToPlane(p) > 0) {
             return false;
         }
-        if (plane.getSignedDistanceToPlane(vmax) <= 0) {
+
+        // Farthest point
+        glm::vec3 f;
+        f.x = plane.normal.x >= 0 ? aabb.max.x : aabb.min.x;
+        f.y = plane.normal.y >= 0 ? aabb.max.y : aabb.min.y;
+        f.z = plane.normal.z >= 0 ? aabb.max.z : aabb.min.z;
+        if (plane.getSignedDistanceToPlane(f) > 0) {
             ret = true;
         }
     }
