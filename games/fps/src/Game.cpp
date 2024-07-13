@@ -18,8 +18,7 @@ void dumpMesh(
     MeshCache& meshCache,
     MaterialCache& materialCache)
 {
-    std::filesystem::path scenePath{"assets/models/star.gltf"};
-    const auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, scenePath);
+    const auto scene = util::loadGltfFile(gfxDevice, meshCache, materialCache, path);
     const auto meshIndex = scene.nodes[0]->meshIndex;
     const auto mesh = scene.meshes[meshIndex];
     auto& cpuMesh = scene.cpuMeshes.at(mesh.primitives[0]);
@@ -78,6 +77,8 @@ void Game::customInit()
 
     ambientColor = LinearColor{0.3, 0.65, 0.8};
     ambientIntensity = 0.025f;
+
+    dumpMesh("assets/models/plane.gltf", gfxDevice, meshCache, materialCache);
 }
 
 void Game::loadAppSettings()

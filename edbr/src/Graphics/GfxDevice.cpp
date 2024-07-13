@@ -599,7 +599,8 @@ GPUImage GfxDevice::createImageRaw(
 
     if (shouldCreateView) {
         VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
-        if (createInfo.format == VK_FORMAT_D32_SFLOAT) { // TODO: support other depth formats
+        if (createInfo.format == VK_FORMAT_D16_UNORM ||
+            createInfo.format == VK_FORMAT_D32_SFLOAT) { // TODO: support other depth formats
             aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
         }
 

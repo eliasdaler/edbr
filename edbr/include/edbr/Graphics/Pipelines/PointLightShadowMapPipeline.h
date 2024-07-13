@@ -57,6 +57,7 @@ private:
 
     std::array<ImageId, MAX_POINT_LIGHTS> shadowMaps;
     std::vector<VkImageView> shadowMapImageViews;
+    VkFormat shadowMapFormat{VK_FORMAT_D16_UNORM};
 
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;

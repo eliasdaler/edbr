@@ -35,7 +35,7 @@ void CSMPipeline::init(GfxDevice& gfxDevice, const std::array<float, NUM_SHADOW_
                    .enableCulling()
                    .setMultisamplingNone()
                    .disableBlending()
-                   .setDepthFormat(VK_FORMAT_D32_SFLOAT)
+                   .setDepthFormat(shadowMapFormat)
                    .enableDepthClamp()
                    .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
                    .build(device);
@@ -51,7 +51,7 @@ void CSMPipeline::initCSMData(GfxDevice& gfxDevice)
 {
     csmShadowMapID = gfxDevice.createImage(
         {
-            .format = VK_FORMAT_D32_SFLOAT,
+            .format = shadowMapFormat,
             .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             .extent =
                 VkExtent3D{

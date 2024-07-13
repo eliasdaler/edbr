@@ -30,7 +30,8 @@ void Im3dDrawFrustum(const Camera& camera)
         Im3dText(corners[i], 8.f, RGBColor{255, 255, 255, 255}, std::to_string(i).c_str());
     } */
 
-    {
+    bool drawNormals = false;
+    if (drawNormals) {
         const auto normalLength = 0.25f;
         const auto normalColor = glm::vec4{1.f, 0.0f, 1.0f, 1.f};
         const auto normalColorEnd = glm::vec4{0.f, 1.f, 1.f, 1.f};

@@ -1,0 +1,8 @@
+{
+  "model": "assets/models/levels/sibenik/sibenik.gltf",
+  "default_spawn": "Default",
+  "ambient": {
+    "color": [ 0.1, 0.1, 0.1 ],
+    "intensity": 0.04
+  }
+}

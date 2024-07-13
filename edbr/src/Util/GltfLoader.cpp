@@ -250,8 +250,14 @@ CPUMesh loadPrimitive(
 
     if (primitive.indices != -1) { // load indices
         const auto& indexAccessor = model.accessors[primitive.indices];
-        const auto indices = getPackedBufferSpan<std::uint16_t>(model, indexAccessor);
-        mesh.indices.assign(indices.begin(), indices.end());
+        if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+            const auto indices = getPackedBufferSpan<std::uint32_t>(model, indexAccessor);
+            mesh.indices.assign(indices.begin(), indices.end());
+        } else {
+            assert(indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
+            const auto indices = getPackedBufferSpan<std::uint16_t>(model, indexAccessor);
+            mesh.indices.assign(indices.begin(), indices.end());
+        }
     }
 
     // load positions

@@ -45,6 +45,8 @@ private:
 
     ImageId csmShadowMapID{NULL_IMAGE_ID};
     float shadowMapTextureSize{4096.f};
+    VkFormat shadowMapFormat{VK_FORMAT_D32_SFLOAT};
+
     std::array<Camera, NUM_SHADOW_CASCADES> cascadeCameras;
     std::array<VkImageView, NUM_SHADOW_CASCADES> csmShadowMapViews;
 

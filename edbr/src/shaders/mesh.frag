@@ -35,6 +35,8 @@ void main()
         // normal.y = 1 - normal.y; // flip to make OpenGL normal maps work
         normal = inTBN * normalize(normal * 2.0 - 1.0);
         normal = normalize(normal);
+
+        normal = calculateBumpMapNormal(material.normalTex, inPos, inNormal, inUV);
     }
 
 #ifdef PBR

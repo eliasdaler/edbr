@@ -38,7 +38,7 @@ void PointLightShadowMapPipeline::init(GfxDevice& gfxDevice, float pointLightMax
                    .enableCulling()
                    .setMultisamplingNone()
                    .disableBlending()
-                   .setDepthFormat(VK_FORMAT_D32_SFLOAT)
+                   .setDepthFormat(shadowMapFormat)
                    .enableDepthClamp()
                    .enableDepthTest(true, VK_COMPARE_OP_LESS)
                    .build(device);
@@ -51,7 +51,7 @@ void PointLightShadowMapPipeline::init(GfxDevice& gfxDevice, float pointLightMax
     for (std::size_t j = 0; j < MAX_POINT_LIGHTS; ++j) {
         shadowMaps[j] = gfxDevice.createImage(
             {
-                .format = VK_FORMAT_D32_SFLOAT,
+                .format = shadowMapFormat,
                 .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 .flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
                 .extent =
@@ -59,7 +59,7 @@ void PointLightShadowMapPipeline::init(GfxDevice& gfxDevice, float pointLightMax
                         (std::uint32_t)shadowMapTextureSize,
                         (std::uint32_t)shadowMapTextureSize,
                         1},
-                .numLayers = 6 * MAX_POINT_LIGHTS,
+                .numLayers = 6,
                 .isCubemap = true,
             },
             fmt::format("point light shadow map[{}]", j).c_str());
@@ -71,7 +71,7 @@ void PointLightShadowMapPipeline::init(GfxDevice& gfxDevice, float pointLightMax
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = shadowMap.image,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = VK_FORMAT_D32_SFLOAT,
+                .format = shadowMapFormat,
                 .subresourceRange =
                     VkImageSubresourceRange{
                         .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
