@@ -662,6 +662,9 @@ void PhysicsSystem::addEntity(entt::handle e, SceneCache& sceneCache)
         const auto& sc = e.get<SceneComponent>();
         const auto& scene = sceneCache.loadOrGetScene(sc.creationSceneName);
         std::vector<const CPUMesh*> meshes;
+        assert(
+            e.all_of<MeshComponent>() &&
+            "Entity doesn't have a mesh, can't use PhysicsComponent::BodyType::TriangleMesh");
         const auto& mc = e.get<MeshComponent>();
         for (const auto& meshId : mc.meshes) {
             meshes.push_back(&scene.cpuMeshes.at(meshId));
@@ -705,6 +708,7 @@ JPH::Ref<JPH::Shape> PhysicsSystem::cacheMeshShape(
         JPH::MeshShapeSettings meshSettings;
         meshSettings.mTriangleVertices.reserve(mesh.vertices.size());
         meshSettings.mIndexedTriangles.reserve(mesh.indices.size());
+        assert(mesh.indices.size() % 3 == 0 && "number of indices is not divisible by 3!");
         for (std::size_t i = 0; i < mesh.indices.size(); i += 3) {
             auto triangle =
                 JPH::IndexedTriangle{mesh.indices[i + 0], mesh.indices[i + 1], mesh.indices[i + 2]};

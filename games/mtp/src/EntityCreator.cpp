@@ -130,10 +130,19 @@ std::vector<entt::handle> EntityCreator::createEntitiesFromScene(const Scene& sc
     for (const auto& rootNode : scene.nodes) {
         const auto prefabName =
             util::getPrefabNameFromSceneNode(entityFactory, *rootNode, defaultPrefabName);
+        // FIXME: do it better!
+        if (prefabName == defaultPrefabName && rootNode->meshIndex == -1) {
+            fmt::println(
+                "[ERROR] Probably meant to be an entity spawner (no mesh), but prefab was not "
+                "loaded: {}",
+                rootNode->name);
+            continue;
+        }
         auto e = createFromNode(prefabName, scene, *rootNode);
         createdEntities.push_back(std::move(e));
     }
     for (const auto& e : createdEntities) {
+        auto& mic = e.get<SceneComponent>();
         postInitEntityFunc(e);
     }
     return createdEntities;

@@ -1,0 +1,15 @@
+{
+  "bgm": "res/music/forest_birds_ambient_inside.ogg",
+  "default_spawn": "PlayerSpawn.LivingRoom",
+  "default_camera": "Camera.Lobby.TrackRotation",
+  "cameras": {
+    "Camera.Lobby.TrackRotation": {
+      "followOffset": [0, -1, 0]
+    }
+  },
+  "ambient_light": {
+    "color": [0.078, 0.052, 0.024],
+    "strength": 0.05
+  }
+}
+

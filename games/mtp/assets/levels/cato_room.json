@@ -1,0 +1,15 @@
+{
+  "bgm": "res/music/forest_birds_ambient_inside.ogg",
+  "model": "assets/models/levels/cato_room/cato_room.gltf",
+  "default_spawn": "LivingRoom",
+  "cameras": {
+    "Camera.Lobby.TrackRotation": {
+      "followOffset": [0, -1, 0]
+    }
+  },
+  "ambient": {
+    "color": { "rgb" : [ 128, 111, 111 ] },
+    "intensity": 0.05
+  }
+}
+
