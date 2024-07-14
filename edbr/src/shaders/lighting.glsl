@@ -79,7 +79,7 @@ vec3 calculateBumpMapNormal(uint bumpMapTex, vec3 pos, vec3 normal, vec2 uv) {
 
     // gradient of surface texture. dBs=Hlr-Hll, dBt=Hul-Hll
     vec3 surf_grad = sign(det) * ((Hlr - Hll) * r1 + (Hul - Hll)* r2);
-    float bump_amt = 0.4;   // adjustable bump amount
+    float bump_amt = 0.3;   // adjustable bump amount
     return normal * (1.0-bump_amt) +
         bump_amt * normalize (abs(det)*normal - surf_grad);
 }

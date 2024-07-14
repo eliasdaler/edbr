@@ -36,7 +36,8 @@ void main()
         normal = inTBN * normalize(normal * 2.0 - 1.0);
         normal = normalize(normal);
 
-        normal = calculateBumpMapNormal(material.normalTex, inPos, inNormal, inUV);
+        // TODO: recognize bump maps somehow
+        // normal = calculateBumpMapNormal(material.normalTex, inPos, inNormal, inUV);
     }
 
 #ifdef PBR
