@@ -10,6 +10,13 @@ layout (location = 2) out vec3 outNormal;
 layout (location = 3) out vec4 outTangent;
 layout (location = 4) out mat3 outTBN;
 
+mat3 adjoint(in mat4 m)
+{
+    return mat3(cross(m[1].xyz, m[2].xyz),
+                cross(m[2].xyz, m[0].xyz),
+                cross(m[0].xyz, m[1].xyz));
+}
+
 void main()
 {
     Vertex v = pcs.vertexBuffer.vertices[gl_VertexIndex];
@@ -19,11 +26,13 @@ void main()
     gl_Position = pcs.sceneData.viewProj * worldPos;
     outPos = worldPos.xyz;
     outUV = vec2(v.uv_x, v.uv_y);
-    // A bit inefficient, but okay - this is needed for non-uniform scale
-    // models. See: http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
-    // Simpler case, when everything is uniform
-    // outNormal = (pcs.transform * vec4(v.normal, 0.0)).xyz;
-    outNormal = mat3(transpose(inverse(pcs.transform))) * v.normal;
+
+    // Simpler case, when everything is uniform:
+    //     outNormal = (pcs.transform * vec4(v.normal, 0.0)).xyz;
+    // We're using adjoint it instead of doing:
+    //     outNormal = mat3(transpose(inverse(pcs.transform))) * v.normal;
+    // See https://github.com/graphitemaster/normals_revisited
+    outNormal = adjoint(pcs.transform) * v.normal;
 
     outTangent = v.tangent;
 
